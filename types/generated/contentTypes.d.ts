@@ -362,6 +362,133 @@ export interface AdminUser extends Schema.CollectionType {
   };
 }
 
+export interface ApiMonsterMonster extends Schema.CollectionType {
+  collectionName: 'monsters';
+  info: {
+    description: '';
+    displayName: 'Monster';
+    pluralName: 'monsters';
+    singularName: 'monster';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    AverageHeight: Attribute.Decimal &
+      Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      >;
+    AverageWeight: Attribute.Decimal &
+      Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      >;
+    createdAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<
+      'api::monster.monster',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    Image: Attribute.Media<'images'>;
+    InnateAbility: Attribute.Text;
+    Name: Attribute.String & Attribute.Required & Attribute.Unique;
+    Nature: Attribute.Text;
+    Origin: Attribute.Text;
+    publishedAt: Attribute.DateTime;
+    updatedAt: Attribute.DateTime;
+    updatedBy: Attribute.Relation<
+      'api::monster.monster',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+  };
+}
+
+export interface ApiPlacePlace extends Schema.CollectionType {
+  collectionName: 'places';
+  info: {
+    description: '';
+    displayName: 'Place';
+    pluralName: 'places';
+    singularName: 'place';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    Banner: Attribute.Media<'images'>;
+    createdAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<
+      'api::place.place',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    Description: Attribute.Text;
+    Name: Attribute.String & Attribute.Required & Attribute.Unique;
+    publishedAt: Attribute.DateTime;
+    Type: Attribute.Enumeration<['shop', 'game', 'information']> &
+      Attribute.Required;
+    updatedAt: Attribute.DateTime;
+    updatedBy: Attribute.Relation<
+      'api::place.place',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    World: Attribute.Relation<
+      'api::place.place',
+      'manyToOne',
+      'api::world.world'
+    >;
+  };
+}
+
+export interface ApiWorldWorld extends Schema.CollectionType {
+  collectionName: 'worlds';
+  info: {
+    description: '';
+    displayName: 'World';
+    pluralName: 'worlds';
+    singularName: 'world';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    createdAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<
+      'api::world.world',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    Description: Attribute.Text;
+    Image: Attribute.Media<'images'>;
+    Name: Attribute.String & Attribute.Required & Attribute.Unique;
+    places: Attribute.Relation<
+      'api::world.world',
+      'oneToMany',
+      'api::place.place'
+    >;
+    publishedAt: Attribute.DateTime;
+    updatedAt: Attribute.DateTime;
+    updatedBy: Attribute.Relation<
+      'api::world.world',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+  };
+}
+
 export interface PluginContentReleasesRelease extends Schema.CollectionType {
   collectionName: 'strapi_releases';
   info: {
@@ -798,6 +925,9 @@ declare module '@strapi/types' {
       'admin::transfer-token': AdminTransferToken;
       'admin::transfer-token-permission': AdminTransferTokenPermission;
       'admin::user': AdminUser;
+      'api::monster.monster': ApiMonsterMonster;
+      'api::place.place': ApiPlacePlace;
+      'api::world.world': ApiWorldWorld;
       'plugin::content-releases.release': PluginContentReleasesRelease;
       'plugin::content-releases.release-action': PluginContentReleasesReleaseAction;
       'plugin::i18n.locale': PluginI18NLocale;

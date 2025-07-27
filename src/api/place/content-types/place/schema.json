@@ -1,0 +1,48 @@
+
+{
+  "kind": "collectionType",
+  "collectionName": "places",
+  "info": {
+    "singularName": "place",
+    "pluralName": "places",
+    "displayName": "Place",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "attributes": {
+    "Name": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "Description": {
+      "type": "text",
+      "required": false
+    },
+    "Banner": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "Type": {
+      "type": "enumeration",
+      "enum": [
+        "shop",
+        "game",
+        "information"
+      ],
+      "required": true
+    },
+    "World": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::world.world",
+      "inversedBy": "places"
+    }
+  }
+}
