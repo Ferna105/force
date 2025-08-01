@@ -87,6 +87,13 @@
       "required": false,
       "min": 0,
       "default": 0
+    },
+    "users": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user",
+      "private": true,
+      "mappedBy": "items"
     }
   }
-} 
+}

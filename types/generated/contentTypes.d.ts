@@ -362,6 +362,80 @@ export interface AdminUser extends Schema.CollectionType {
   };
 }
 
+export interface ApiItemItem extends Schema.CollectionType {
+  collectionName: 'items';
+  info: {
+    description: 'Objetos del juego que pueden ser recolectados y usados por los jugadores';
+    displayName: 'Item';
+    pluralName: 'items';
+    singularName: 'item';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    cooldown: Attribute.Integer &
+      Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      > &
+      Attribute.DefaultTo<0>;
+    createdAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<'api::item.item', 'oneToOne', 'admin::user'> &
+      Attribute.Private;
+    description: Attribute.RichText;
+    icon: Attribute.Media<'images'>;
+    is_stackable: Attribute.Boolean & Attribute.DefaultTo<false>;
+    max_stack: Attribute.Integer &
+      Attribute.SetMinMax<
+        {
+          min: 1;
+        },
+        number
+      > &
+      Attribute.DefaultTo<1>;
+    name: Attribute.String & Attribute.Required & Attribute.Unique;
+    publishedAt: Attribute.DateTime;
+    rarity: Attribute.Enumeration<
+      ['common', 'uncommon', 'rare', 'epic', 'legendary']
+    > &
+      Attribute.Required;
+    slug: Attribute.UID<'api::item.item', 'name'> &
+      Attribute.Required &
+      Attribute.Unique;
+    type: Attribute.Enumeration<
+      ['weapon', 'armor', 'consumable', 'key', 'misc']
+    > &
+      Attribute.Required;
+    updatedAt: Attribute.DateTime;
+    updatedBy: Attribute.Relation<'api::item.item', 'oneToOne', 'admin::user'> &
+      Attribute.Private;
+    usable: Attribute.Boolean & Attribute.DefaultTo<false>;
+    users: Attribute.Relation<
+      'api::item.item',
+      'manyToMany',
+      'plugin::users-permissions.user'
+    > &
+      Attribute.Private;
+    value: Attribute.Integer &
+      Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      >;
+    weight: Attribute.Decimal &
+      Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      >;
+  };
+}
+
 export interface ApiMonsterMonster extends Schema.CollectionType {
   collectionName: 'monsters';
   info: {
@@ -869,7 +943,6 @@ export interface PluginUsersPermissionsUser extends Schema.CollectionType {
   };
   options: {
     draftAndPublish: false;
-    timestamps: true;
   };
   attributes: {
     blocked: Attribute.Boolean & Attribute.DefaultTo<false>;
@@ -887,6 +960,11 @@ export interface PluginUsersPermissionsUser extends Schema.CollectionType {
       Attribute.SetMinMaxLength<{
         minLength: 6;
       }>;
+    items: Attribute.Relation<
+      'plugin::users-permissions.user',
+      'manyToMany',
+      'api::item.item'
+    >;
     password: Attribute.Password &
       Attribute.Private &
       Attribute.SetMinMaxLength<{
@@ -925,6 +1003,7 @@ declare module '@strapi/types' {
       'admin::transfer-token': AdminTransferToken;
       'admin::transfer-token-permission': AdminTransferTokenPermission;
       'admin::user': AdminUser;
+      'api::item.item': ApiItemItem;
       'api::monster.monster': ApiMonsterMonster;
       'api::place.place': ApiPlacePlace;
       'api::world.world': ApiWorldWorld;
