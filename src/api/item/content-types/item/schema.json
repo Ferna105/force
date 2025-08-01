@@ -1,0 +1,92 @@
+{
+  "kind": "collectionType",
+  "collectionName": "items",
+  "info": {
+    "singularName": "item",
+    "pluralName": "items",
+    "displayName": "Item",
+    "description": "Objetos del juego que pueden ser recolectados y usados por los jugadores"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "slug": {
+      "type": "uid",
+      "targetField": "name",
+      "required": true,
+      "unique": true
+    },
+    "description": {
+      "type": "richtext",
+      "required": false
+    },
+    "type": {
+      "type": "enumeration",
+      "enum": [
+        "weapon",
+        "armor",
+        "consumable",
+        "key",
+        "misc"
+      ],
+      "required": true
+    },
+    "rarity": {
+      "type": "enumeration",
+      "enum": [
+        "common",
+        "uncommon",
+        "rare",
+        "epic",
+        "legendary"
+      ],
+      "required": true
+    },
+    "icon": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "weight": {
+      "type": "decimal",
+      "required": false,
+      "min": 0
+    },
+    "value": {
+      "type": "integer",
+      "required": false,
+      "min": 0
+    },
+    "is_stackable": {
+      "type": "boolean",
+      "required": false,
+      "default": false
+    },
+    "max_stack": {
+      "type": "integer",
+      "required": false,
+      "min": 1,
+      "default": 1
+    },
+    "usable": {
+      "type": "boolean",
+      "required": false,
+      "default": false
+    },
+    "cooldown": {
+      "type": "integer",
+      "required": false,
+      "min": 0,
+      "default": 0
+    }
+  }
+} 
