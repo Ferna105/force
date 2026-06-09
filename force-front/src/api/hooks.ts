@@ -100,7 +100,8 @@ export function useMonsters(params?: QueryParams) {
     };
 
     fetchMonsters();
-  }, [params]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(params)]);
 
   return state;
 }
@@ -129,7 +130,8 @@ export function useWorlds(params?: QueryParams) {
     };
 
     fetchWorlds();
-  }, [params]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(params)]);
 
   return state;
 }
@@ -158,7 +160,8 @@ export function usePlaces(params?: QueryParams) {
     };
 
     fetchPlaces();
-  }, [params]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(params)]);
 
   return state;
 }
@@ -189,7 +192,8 @@ export function usePlacesByWorld(worldId: number, params?: QueryParams) {
     if (worldId) {
       fetchPlaces();
     }
-  }, [worldId, params]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [worldId, JSON.stringify(params)]);
 
   return state;
 }
@@ -294,7 +298,8 @@ export function useItems(params?: QueryParams) {
     };
 
     fetchItems();
-  }, [params]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(params)]);
 
   return state;
 }
@@ -325,7 +330,8 @@ export function useItemsByType(type: string, params?: QueryParams) {
     if (type) {
       fetchItems();
     }
-  }, [type, params]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [type, JSON.stringify(params)]);
 
   return state;
 }
@@ -356,7 +362,8 @@ export function useItemsByRarity(rarity: string, params?: QueryParams) {
     if (rarity) {
       fetchItems();
     }
-  }, [rarity, params]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rarity, JSON.stringify(params)]);
 
   return state;
 }
