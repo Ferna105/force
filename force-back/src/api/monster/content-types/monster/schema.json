@@ -1,0 +1,50 @@
+{
+  "kind": "collectionType",
+  "collectionName": "monsters",
+  "info": {
+    "singularName": "monster",
+    "pluralName": "monsters",
+    "displayName": "Monster",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "attributes": {
+    "Name": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "Image": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "Nature": {
+      "type": "text",
+      "required": false
+    },
+    "Origin": {
+      "type": "text",
+      "required": false
+    },
+    "AverageHeight": {
+      "type": "decimal",
+      "required": false,
+      "min": 0
+    },
+    "AverageWeight": {
+      "type": "decimal",
+      "required": false,
+      "min": 0
+    },
+    "InnateAbility": {
+      "type": "text",
+      "required": false
+    }
+  }
+}

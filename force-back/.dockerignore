@@ -1,0 +1,10 @@
+node_modules
+build
+.cache
+.tmp
+.git
+.env
+.env.*
+npm-debug.log*
+yarn-error.log*
+*.md

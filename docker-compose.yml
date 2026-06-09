@@ -1,0 +1,71 @@
+# Orquestación de desarrollo: Postgres + Strapi (back) + Next.js (front).
+# Levantar todo con:  docker compose up
+# (las variables se leen del archivo .env de esta carpeta — ver .env.example)
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DATABASE_NAME:-strapi}
+      POSTGRES_USER: ${DATABASE_USERNAME:-strapi}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-strapi}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USERNAME:-strapi} -d ${DATABASE_NAME:-strapi}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  back:
+    build:
+      context: ./force-back
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      HOST: 0.0.0.0
+      PORT: 1337
+      DATABASE_CLIENT: postgres
+      DATABASE_HOST: db
+      DATABASE_PORT: 5432
+      DATABASE_NAME: ${DATABASE_NAME:-strapi}
+      DATABASE_USERNAME: ${DATABASE_USERNAME:-strapi}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-strapi}
+      DATABASE_SSL: "false"
+      APP_KEYS: ${APP_KEYS}
+      API_TOKEN_SALT: ${API_TOKEN_SALT}
+      ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET}
+      TRANSFER_TOKEN_SALT: ${TRANSFER_TOKEN_SALT}
+      JWT_SECRET: ${JWT_SECRET}
+    ports:
+      - "1337:1337"
+    volumes:
+      # Bind mount del código para hot-reload; node_modules queda aislado en un volumen
+      - ./force-back:/app
+      - back-node-modules:/app/node_modules
+
+  front:
+    build:
+      context: ./force-front
+    restart: unless-stopped
+    depends_on:
+      - back
+    environment:
+      # URL usada por el navegador del usuario, por eso es localhost (puerto publicado),
+      # no el nombre del servicio "back".
+      NEXT_PUBLIC_STRAPI_URL: ${NEXT_PUBLIC_STRAPI_URL:-http://localhost:1337}
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./force-front:/app
+      - front-node-modules:/app/node_modules
+
+volumes:
+  db-data:
+  back-node-modules:
+  front-node-modules:
