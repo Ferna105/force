@@ -3,3 +3,5 @@
 
 # Override local con credenciales de prod
 docker-compose.override.yml
+.db-sync.env
+.db-backups/

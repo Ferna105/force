@@ -4,14 +4,18 @@
 
 services:
   db:
-    image: postgres:16-alpine
+    # PG 18 para alinear con producción (Railway corre PG 18) y que el sync
+    # prod→local restaure limpio. Ver skill .claude/skills/db-sync.
+    image: postgres:18-alpine
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${DATABASE_NAME:-strapi}
       POSTGRES_USER: ${DATABASE_USERNAME:-strapi}
       POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-strapi}
     volumes:
-      - db-data:/var/lib/postgresql/data
+      # PG 18+ recomienda montar /var/lib/postgresql (la data queda en un subdir
+      # versionado, p. ej. /var/lib/postgresql/18/docker).
+      - db-data:/var/lib/postgresql
     ports:
       - "5432:5432"
     healthcheck:
