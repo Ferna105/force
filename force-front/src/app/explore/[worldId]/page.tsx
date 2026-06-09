@@ -3,7 +3,8 @@
 /* eslint-disable @next/next/no-img-element */
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { useWorld, useMonsters } from '@/api';
+import { useWorld, useMonsters, useDiscoveredMonsters } from '@/api';
+import { useAuth } from '@/hooks/useAuth';
 import { BIOME, mediaUrl, worldArtFallback, PLACE_TYPE } from '@/lib/design';
 import Topbar from '@/components/shell/Topbar';
 import { Loading, ErrorState } from '@/components/ui/states';
@@ -13,8 +14,10 @@ import { PlaceBanner, MonsterCard } from '@/components/ui/cards';
 export default function WorldPage() {
   const params = useParams();
   const worldId = Number(params.worldId);
+  const { user } = useAuth();
   const { data: world, loading, error } = useWorld(worldId);
   const { data: monsters } = useMonsters({ populate: '*' });
+  const { data: discoveredIds } = useDiscoveredMonsters(!!user);
 
   if (loading) return <><Topbar crumb="Explorar" /><div className="page"><Loading /></div></>;
   if (error || !world) return <><Topbar crumb="Explorar" /><div className="page"><ErrorState message={error ?? undefined} /></div></>;
@@ -22,7 +25,9 @@ export default function WorldPage() {
   const a = world.attributes;
   const places = a.places?.data ?? [];
   const biome = a.Biome;
-  const natives = (monsters ?? []).filter((m) => biome && m.attributes.Biome === biome);
+  // Criaturas nativas: solo las que el usuario logueado ya descubrió (vacío sin sesión).
+  const discovered = new Set(discoveredIds ?? []);
+  const natives = (monsters ?? []).filter((m) => biome && m.attributes.Biome === biome && discovered.has(m.id));
   const art = mediaUrl(a.Image, worldArtFallback(a.Name));
 
   return (
@@ -37,12 +42,12 @@ export default function WorldPage() {
             {a.Description && <p className="sub" style={{ fontSize: 18 }}>{a.Description}</p>}
             <div className="stat-strip">
               <div className="s"><b>{places.length}</b><span>Lugares</span></div>
-              <div className="s"><b>{natives.length}</b><span>Criaturas nativas</span></div>
+              {user && <div className="s"><b>{natives.length}</b><span>Criaturas nativas</span></div>}
               {biome && <div className="s"><b>{BIOME[biome].label}</b><span>Ecosistema</span></div>}
             </div>
             <div style={{ display: 'flex', gap: 12, marginTop: 26, flexWrap: 'wrap' }}>
               {places[0] && <Link className="btn btn-primary btn-lg" href={`/explore/${world.id}/places/${places[0].id}`}>Viajar a {a.Name} ✦</Link>}
-              <Link className="btn btn-secondary btn-lg" href="/monsters">Ver criaturas</Link>
+              {user && <Link className="btn btn-secondary btn-lg" href="/monsters">Ver criaturas</Link>}
             </div>
           </div>
           <div className="orbwrap">
@@ -80,7 +85,7 @@ export default function WorldPage() {
           {places.map((p) => <PlaceBanner key={p.id} place={p} worldId={world.id} worldName={a.Name} />)}
         </div>
 
-        {natives.length > 0 && (
+        {user && natives.length > 0 && (
           <>
             <SectionTitle title="Criaturas nativas" href="/monsters" action="Bestiario →" />
             <div className="grid" style={{ gridTemplateColumns: 'repeat(4,1fr)' }}>

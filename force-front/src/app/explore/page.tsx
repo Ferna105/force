@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useExploreData } from '@/api';
+import { useExploreData, useDiscoveredMonsters } from '@/api';
+import { useAuth } from '@/hooks/useAuth';
 import type { Biome } from '@/lib/design';
 import Topbar from '@/components/shell/Topbar';
 import { Loading, ErrorState, Segmented, BiomeChips } from '@/components/ui/states';
@@ -10,11 +11,20 @@ import { WorldCard, PlaceBanner, MonsterCard } from '@/components/ui/cards';
 type Tab = 'mundos' | 'lugares' | 'criaturas';
 
 export default function ExplorePage() {
+  const { user } = useAuth();
   const { data, loading, error } = useExploreData();
+  const { data: discoveredIds } = useDiscoveredMonsters(!!user);
   const [tab, setTab] = useState<Tab>('mundos');
   const [biome, setBiome] = useState<Biome | 'all'>('all');
 
   const match = (b?: string | null) => biome === 'all' || b === biome;
+  // El bestiario (criaturas) solo es accesible con sesión iniciada.
+  const discovered = new Set(discoveredIds ?? []);
+  const tabOptions = [
+    { key: 'mundos' as const, label: 'Mundos' },
+    { key: 'lugares' as const, label: 'Lugares' },
+    ...(user ? [{ key: 'criaturas' as const, label: 'Criaturas' }] : []),
+  ];
 
   return (
     <>
@@ -28,7 +38,7 @@ export default function ExplorePage() {
           <Segmented<Tab>
             value={tab}
             onChange={setTab}
-            options={[{ key: 'mundos', label: 'Mundos' }, { key: 'lugares', label: 'Lugares' }, { key: 'criaturas', label: 'Criaturas' }]}
+            options={tabOptions}
           />
         </div>
 
@@ -49,9 +59,9 @@ export default function ExplorePage() {
           </div>
         )}
 
-        {data && tab === 'criaturas' && (
+        {data && user && tab === 'criaturas' && (
           <div className="grid" style={{ gridTemplateColumns: 'repeat(4,1fr)' }}>
-            {data.monsters.filter((m) => match(m.attributes.Biome)).map((m) => <MonsterCard key={m.id} monster={m} />)}
+            {data.monsters.filter((m) => discovered.has(m.id) && match(m.attributes.Biome)).map((m) => <MonsterCard key={m.id} monster={m} />)}
           </div>
         )}
       </div>

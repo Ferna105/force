@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 import Link from 'next/link';
-import { useHomeData, useActiveCompanion } from '@/api';
+import { useHomeData, useActiveCompanion, useDiscoveredMonsters } from '@/api';
 import { useAuth } from '@/hooks/useAuth';
 import { mediaUrl, monsterArtFallback } from '@/lib/design';
 import Topbar from '@/components/shell/Topbar';
@@ -14,6 +14,11 @@ export default function HomePage() {
   const { user } = useAuth();
   const { data, loading, error } = useHomeData();
   const { data: companion } = useActiveCompanion(user?.id ?? null);
+  const { data: discoveredIds } = useDiscoveredMonsters(!!user);
+
+  // Solo las criaturas que el usuario ya descubrió (vacío sin sesión).
+  const discovered = new Set(discoveredIds ?? []);
+  const discoveredMonsters = (data?.monsters ?? []).filter((m) => discovered.has(m.id));
 
   return (
     <>
@@ -23,7 +28,11 @@ export default function HomePage() {
         {error && <ErrorState message={error} />}
         {data && (
           <>
-            <CompanionHero companion={companion} fallbackName={data.monsters[0]?.attributes.Name} />
+            <CompanionHero
+              companion={companion}
+              showBestiary={!!user}
+              fallbackName={discoveredMonsters[0]?.attributes.Name}
+            />
 
             <SectionTitle title="Mundos para explorar" href="/explore" />
             <div className="grid" style={{ gridTemplateColumns: 'repeat(4,1fr)' }}>
@@ -35,10 +44,15 @@ export default function HomePage() {
               {data.places.slice(0, 2).map((p) => <PlaceBanner key={p.id} place={p} />)}
             </div>
 
-            <SectionTitle title="Bestiario reciente" href="/monsters" action="Abrir bestiario →" />
-            <div className="grid" style={{ gridTemplateColumns: 'repeat(4,1fr)' }}>
-              {data.monsters.slice(0, 4).map((m) => <MonsterCard key={m.id} monster={m} />)}
-            </div>
+            {/* El bestiario reciente solo aparece con sesión y criaturas descubiertas. */}
+            {user && discoveredMonsters.length > 0 && (
+              <>
+                <SectionTitle title="Bestiario reciente" href="/monsters" action="Abrir bestiario →" />
+                <div className="grid" style={{ gridTemplateColumns: 'repeat(4,1fr)' }}>
+                  {discoveredMonsters.slice(0, 4).map((m) => <MonsterCard key={m.id} monster={m} />)}
+                </div>
+              </>
+            )}
           </>
         )}
       </div>
@@ -48,10 +62,11 @@ export default function HomePage() {
 
 /* Hero del compañero activo (o bienvenida si no hay sesión/compañero) */
 function CompanionHero({
-  companion, fallbackName,
+  companion, fallbackName, showBestiary = false,
 }: {
   companion: ReturnType<typeof useActiveCompanion>['data'];
   fallbackName?: string;
+  showBestiary?: boolean;
 }) {
   const monster = companion?.attributes.monster?.data;
 
@@ -68,7 +83,7 @@ function CompanionHero({
         </p>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           <Link className="btn btn-primary" href="/explore">Explorar mundos ✦</Link>
-          <Link className="btn btn-secondary" href="/monsters">Ver bestiario</Link>
+          {showBestiary && <Link className="btn btn-secondary" href="/monsters">Ver bestiario</Link>}
         </div>
       </section>
     );

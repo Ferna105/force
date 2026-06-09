@@ -1,26 +1,29 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useMonsters, useDiscoveredMonsters } from '@/api';
-import { useAuth } from '@/hooks/useAuth';
 import type { Biome } from '@/lib/design';
 import Topbar from '@/components/shell/Topbar';
+import ProtectedRoute from '@/components/ProtectedRoute';
 import { Loading, ErrorState, BiomeChips } from '@/components/ui/states';
 import { MonsterCard } from '@/components/ui/cards';
 
-export default function BestiaryPage() {
-  const { user } = useAuth();
+function BestiaryView() {
   const { data: monsters, loading, error } = useMonsters({ populate: '*' });
-  const { data: discoveredIds } = useDiscoveredMonsters(!!user);
+  const { data: discoveredIds, loading: discLoading } = useDiscoveredMonsters(true);
   const [biome, setBiome] = useState<Biome | 'all'>('all');
 
   const list = monsters ?? [];
   const total = list.length;
-  // Sin sesión mostramos todo el catálogo como "descubierto"
-  const isDiscovered = (id: number) => !user || (discoveredIds ?? []).includes(id);
-  const discoveredCount = user ? (discoveredIds ?? []).length : total;
-  const visible = list.filter((m) => biome === 'all' || m.attributes.Biome === biome);
+  const discovered = new Set(discoveredIds ?? []);
+  const discoveredCount = discovered.size;
+  // Solo se muestran las criaturas que el usuario ya encontró.
+  const visible = list
+    .filter((m) => discovered.has(m.id))
+    .filter((m) => biome === 'all' || m.attributes.Biome === biome);
   const pct = total ? Math.round((discoveredCount / total) * 100) : 0;
+  const busy = loading || discLoading;
 
   return (
     <>
@@ -30,7 +33,7 @@ export default function BestiaryPage() {
           <div>
             <div className="kicker">Catálogo viviente</div>
             <h1 className="h-page" style={{ margin: '8px 0 6px' }}>Bestiario</h1>
-            <p className="sub">Cada criatura es real en su ecosistema. Descubrilas explorando los mundos.</p>
+            <p className="sub">Acá viven las criaturas que ya encontraste. Seguí explorando los mundos para descubrir más.</p>
           </div>
           <div style={{ minWidth: 240 }}>
             <div className="meter" style={{ margin: 0 }}>
@@ -42,14 +45,28 @@ export default function BestiaryPage() {
 
         <div style={{ margin: '24px 0' }}><BiomeChips value={biome} onChange={setBiome} /></div>
 
-        {loading && <Loading />}
+        {busy && <Loading />}
         {error && <ErrorState message={error} />}
-        {!loading && (
+        {!busy && visible.length > 0 && (
           <div className="beast-grid">
-            {visible.map((m) => <MonsterCard key={m.id} monster={m} discovered={isDiscovered(m.id)} />)}
+            {visible.map((m) => <MonsterCard key={m.id} monster={m} />)}
+          </div>
+        )}
+        {!busy && !error && visible.length === 0 && (
+          <div className="state">
+            <p>Todavía no descubriste ninguna criatura{biome !== 'all' ? ' en este bioma' : ''}.</p>
+            <Link className="btn btn-primary" href="/explore">Explorar mundos ✦</Link>
           </div>
         )}
       </div>
     </>
+  );
+}
+
+export default function BestiaryPage() {
+  return (
+    <ProtectedRoute>
+      <BestiaryView />
+    </ProtectedRoute>
   );
 }

@@ -4,32 +4,52 @@
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { useMonster, useMonsters, useWorlds, usePlaces, companionsService } from '@/api';
+import { useMonster, useMonsters, useWorlds, usePlaces, useDiscoveredMonsters, companionsService } from '@/api';
 import type { Monster } from '@/api/types';
 import { useAuth } from '@/hooks/useAuth';
 import { BIOME, mediaUrl, monsterArtFallback } from '@/lib/design';
 import Topbar from '@/components/shell/Topbar';
+import ProtectedRoute from '@/components/ProtectedRoute';
 import { Loading, ErrorState } from '@/components/ui/states';
 import { BiomeTag, Meter, SectionTitle } from '@/components/ui/tags';
 import { WorldCard, PlaceBanner, MonsterCard } from '@/components/ui/cards';
 
-export default function MonsterPage() {
+function MonsterView() {
   const params = useParams();
   const id = Number(params.id);
   const { data: monster, loading, error } = useMonster(id);
   const { data: monsters } = useMonsters({ populate: '*' });
   const { data: worlds } = useWorlds({ populate: '*' });
   const { data: places } = usePlaces({ populate: '*' });
+  const { data: discoveredIds, loading: discLoading } = useDiscoveredMonsters(true);
 
-  if (loading) return <><Topbar crumb="Bestiario" /><div className="page"><Loading /></div></>;
+  if (loading || discLoading) return <><Topbar crumb="Bestiario" /><div className="page"><Loading /></div></>;
   if (error || !monster) return <><Topbar crumb="Bestiario" /><div className="page"><ErrorState message={error ?? undefined} /></div></>;
+
+  const discovered = new Set(discoveredIds ?? []);
+  // Solo se puede ver la ficha de una criatura ya descubierta.
+  if (!discovered.has(monster.id)) {
+    return (
+      <>
+        <Topbar crumb={<><Link href="/monsters" style={{ color: 'var(--gold-soft)' }}>Bestiario</Link> · <b>???</b></>} />
+        <div className="page">
+          <div className="state">
+            <h1 className="cinzel" style={{ fontSize: 40, color: '#F6ECD7' }}>Criatura sin descubrir</h1>
+            <p className="sub">Todavía no encontraste esta criatura. Explorá los mundos para descubrirla.</p>
+            <Link className="btn btn-primary" href="/explore">Explorar mundos ✦</Link>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   const a = monster.attributes;
   const biome = a.Biome;
   const art = mediaUrl(a.Image, monsterArtFallback(a.Name));
   const habitatWorld = biome ? (worlds ?? []).find((w) => w.attributes.Biome === biome) : undefined;
   const habitatPlace = biome ? (places ?? []).find((p) => p.attributes.Biome === biome) : undefined;
-  const kin = (monsters ?? []).filter((m) => m.id !== monster.id && (!biome || m.attributes.Biome === biome)).slice(0, 4);
+  // Las criaturas afines también se limitan a las ya descubiertas.
+  const kin = (monsters ?? []).filter((m) => m.id !== monster.id && discovered.has(m.id) && (!biome || m.attributes.Biome === biome)).slice(0, 4);
 
   return (
     <>
@@ -99,6 +119,14 @@ export default function MonsterPage() {
         )}
       </div>
     </>
+  );
+}
+
+export default function MonsterPage() {
+  return (
+    <ProtectedRoute>
+      <MonsterView />
+    </ProtectedRoute>
   );
 }
 

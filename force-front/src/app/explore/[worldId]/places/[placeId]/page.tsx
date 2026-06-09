@@ -4,7 +4,7 @@
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
-import { usePlace, useItems, useMonsters, inventoryService } from '@/api';
+import { usePlace, useItems, useMonsters, useDiscoveredMonsters, inventoryService } from '@/api';
 import type { Place, Item } from '@/api/types';
 import { useAuth } from '@/hooks/useAuth';
 import {
@@ -152,8 +152,12 @@ function GameBody({ place }: { place: Place }) {
 function InfoBody({ place }: { place: Place }) {
   const a = place.attributes;
   const world = a.World?.data;
+  const { user } = useAuth();
   const { data: monsters } = useMonsters({ populate: '*' });
-  const inhabitants = (monsters ?? []).filter((m) => a.Biome && m.attributes.Biome === a.Biome).slice(0, 4);
+  const { data: discoveredIds } = useDiscoveredMonsters(!!user);
+  // Habitantes: solo las criaturas que el usuario logueado descubrió (vacío sin sesión).
+  const discovered = new Set(discoveredIds ?? []);
+  const inhabitants = (monsters ?? []).filter((m) => a.Biome && m.attributes.Biome === a.Biome && discovered.has(m.id)).slice(0, 4);
 
   return (
     <>
@@ -178,7 +182,7 @@ function InfoBody({ place }: { place: Place }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--ink-3)', paddingTop: 14 }}>
               <span className="sub">Mundo</span><b className="fred" style={{ color: 'var(--gold-soft)' }}>{world?.attributes.Name ?? '—'}</b>
             </div>
-            {a.Biome && (
+            {a.Biome && user && (
               <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--ink-3)', paddingTop: 14 }}>
                 <span className="sub">Especies</span><b className="fred">{inhabitants.length} nativas</b>
               </div>
@@ -186,7 +190,7 @@ function InfoBody({ place }: { place: Place }) {
           </div>
         </div>
       </div>
-      {inhabitants.length > 0 && (
+      {user && inhabitants.length > 0 && (
         <>
           <SectionTitle title="Quién habita aquí" />
           <div className="grid" style={{ gridTemplateColumns: 'repeat(4,1fr)' }}>

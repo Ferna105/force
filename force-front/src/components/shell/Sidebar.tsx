@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { fmt } from '@/lib/design';
 
@@ -18,7 +18,7 @@ function Emblem() {
   );
 }
 
-type NavItem = { key: string; label: string; href: string; match: (p: string) => boolean; icon: React.ReactNode };
+type NavItem = { key: string; label: string; href: string; match: (p: string) => boolean; icon: React.ReactNode; auth?: boolean };
 
 const ITEMS: NavItem[] = [
   {
@@ -30,7 +30,8 @@ const ITEMS: NavItem[] = [
     icon: <><circle cx="11" cy="11" r="7" /><path d="M21 21l-4-4" /></>,
   },
   {
-    key: 'bestiario', label: 'Bestiario', href: '/monsters', match: (p) => p.startsWith('/monsters'),
+    // El bestiario solo se muestra a usuarios con sesión iniciada.
+    key: 'bestiario', label: 'Bestiario', href: '/monsters', match: (p) => p.startsWith('/monsters'), auth: true,
     icon: <><path d="M4 13c0-4 3-7 8-7s8 3 8 7c0 3-2 5-4 5-1 0-2-1-4-1s-3 1-4 1c-2 0-4-2-4-5z" /><circle cx="9" cy="11" r="1.2" fill="currentColor" stroke="none" /><circle cx="15" cy="11" r="1.2" fill="currentColor" stroke="none" /></>,
   },
   {
@@ -41,7 +42,13 @@ const ITEMS: NavItem[] = [
 
 export default function Sidebar() {
   const pathname = usePathname() || '/';
-  const { user } = useAuth();
+  const router = useRouter();
+  const { user, logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    router.push('/');
+  };
 
   return (
     <aside className="sidebar">
@@ -53,7 +60,7 @@ export default function Sidebar() {
         </span>
       </Link>
 
-      {ITEMS.map((i) => (
+      {ITEMS.filter((i) => !i.auth || user).map((i) => (
         <Link key={i.key} href={i.href} className={`nav-i ${i.match(pathname) ? 'active' : ''}`}>
           <svg viewBox="0 0 24 24">{i.icon}</svg>
           <span>{i.label}</span>
@@ -71,6 +78,17 @@ export default function Sidebar() {
               <b>{user.username}</b>
               <span>Domador{user.username?.endsWith('a') ? 'a' : ''}</span>
             </div>
+            <button
+              type="button"
+              className="logout-btn"
+              onClick={handleLogout}
+              title="Cerrar sesión"
+              aria-label="Cerrar sesión"
+            >
+              <svg viewBox="0 0 24 24">
+                <path d="M16 17l5-5-5-5M21 12H9M9 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3" />
+              </svg>
+            </button>
           </div>
         ) : (
           <Link className="btn btn-secondary btn-sm" href="/login" style={{ justifyContent: 'center' }}>
