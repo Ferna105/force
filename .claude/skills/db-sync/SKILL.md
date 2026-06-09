@@ -49,3 +49,22 @@ El script, según la dirección:
   apunta a la base local). Recreá el back con `docker compose up -d back` tras cambiarlo.
 - Los backups de `.db-backups/` están gitignored. Restaurar uno a mano:
   `docker exec -i force-db-1 psql -U strapi -d strapi < .db-backups/<archivo>.sql`.
+
+## Troubleshooting
+
+- **El contenedor `db` queda en loop de reinicio** (`docker compose ps` lo muestra
+  `Restarting`) con un error tipo *"There appears to be PostgreSQL data in
+  /var/lib/postgresql/data (unused mount/volume)"*. Pasa cuando el volumen `db-data`
+  trae data de una config vieja (mount en `/var/lib/postgresql/data`, estilo pre-PG18)
+  pero el compose actual montea `/var/lib/postgresql` (estilo PG 18, data en subdir
+  versionado). Como `db` nunca queda *healthy*, el `back` tampoco arranca y el sync
+  no puede correr. Solución (destruye la data local, recuperable de prod con un sync):
+  ```bash
+  docker compose down
+  docker volume rm force_db-data
+  docker compose up -d
+  ```
+- **El `back` sigue apuntando a prod tras borrar/renombrar `docker-compose.override.yml`.**
+  El contenedor viejo conserva las env con las que se creó. Recrealo:
+  `docker compose up -d back` y verificá con
+  `docker compose exec -T back printenv DATABASE_HOST` (debe decir `db`).
