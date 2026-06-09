@@ -12,11 +12,23 @@ const apiClient = axios.create({
   },
 });
 
+// Endpoints de autenticación: nunca deben llevar un Bearer del localStorage
+// (un token viejo/expirado haría que Strapi rechace el login con 401).
+const AUTH_ENDPOINTS = ['/auth/local', '/auth/local/register'];
+
 // Interceptor para requests: adjunta el JWT del localStorage si existe,
-// salvo que la llamada ya traiga su propio header Authorization.
+// salvo que la llamada ya traiga su propio header Authorization o sea un
+// endpoint de autenticación (login/register).
 apiClient.interceptors.request.use(
   (config) => {
-    if (typeof window !== 'undefined' && !config.headers?.Authorization) {
+    const isAuthEndpoint = AUTH_ENDPOINTS.some((path) =>
+      (config.url ?? '').startsWith(path)
+    );
+    if (
+      typeof window !== 'undefined' &&
+      !config.headers?.Authorization &&
+      !isAuthEndpoint
+    ) {
       const token = localStorage.getItem('authToken');
       if (token) {
         config.headers = config.headers ?? {};
