@@ -47,6 +47,9 @@ const AUTH_ACTIONS = [
   'api::companion.companion.mine',
   'api::companion.companion.feed', 'api::companion.companion.play', 'api::companion.companion.pet',
   'api::shop.shop.buy',
+  // Motor de descubrimiento: registrar eventos + reevaluar estrategias.
+  'api::discovery.discovery.event',
+  'api::discovery.discovery.sync',
   'plugin::users-permissions.user.me',
 ];
 
@@ -64,6 +67,86 @@ async function enablePermissions(strapi, roleType, actions) {
 // Hotspot determinístico para lugares sin coords explícitas
 function fallbackHotspot(id) {
   return { x: 30 + ((id * 37) % 40), y: 30 + ((id * 53) % 40) };
+}
+
+/**
+ * Estrategias de descubrimiento explícitas por nombre de monstruo (datos demo).
+ * Diseñadas para ser completables por un usuario recién registrado (saldo 500 F)
+ * sin depender del tipo de cada lugar: usan visitas (cualquier lugar sirve) y la
+ * tenencia / compra de objetos baratos. Ejercitan estrategias ordenadas y sin
+ * orden, y varios tipos de tarea. Ver la tabla de tipos en CLAUDE.md.
+ */
+const MONSTER_STRATEGIES = {
+  // Ordenada: hay que visitar los dos lugares EN ESTE ORDEN.
+  Tronc: {
+    ordered: true,
+    tasks: [
+      { type: 'visit_place', params: { placeName: 'Verdant Hollow' }, label: 'Primero adentrate en Verdant Hollow' },
+      { type: 'visit_place', params: { placeName: 'Obsidian Watchtower' }, label: 'Después subí a la Obsidian Watchtower' },
+    ],
+  },
+  // Sin orden: visitar su isla + tener cualquier objeto misceláneo en el inventario.
+  Serpi: {
+    ordered: false,
+    tasks: [
+      { type: 'visit_place', params: { placeName: "Serpent's Rest Island" }, label: 'Visitá Serpent’s Rest Island' },
+      { type: 'own_item_of_type', params: { type: 'misc' }, label: 'Tené un objeto misceláneo (p. ej. Moder Granite Table, 40 F)' },
+    ],
+  },
+  // Sin orden: visitar la ciudadela + tener un objeto poco común.
+  Triso: {
+    ordered: false,
+    tasks: [
+      { type: 'visit_place', params: { placeName: 'Frostpeak Citadel' }, label: 'Explorá la Frostpeak Citadel' },
+      { type: 'own_item_of_rarity', params: { rarity: 'uncommon' }, label: 'Conseguí un objeto poco común (Bespoke Rubber Gloves, 95 F)' },
+    ],
+  },
+  // Una sola tarea: comprar un objeto puntual (en cualquier tienda).
+  Raya: {
+    ordered: false,
+    tasks: [
+      { type: 'buy_item', params: { itemName: 'Moder Granite Table' }, label: 'Comprá una Moder Granite Table' },
+    ],
+  },
+  // Sin orden: tener un objeto raro + visitar la torre.
+  Terri: {
+    ordered: false,
+    tasks: [
+      { type: 'own_item_of_rarity', params: { rarity: 'rare' }, label: 'Conseguí un objeto raro (Fanstastic Plastic Towels, 210 F)' },
+      { type: 'visit_place', params: { placeName: 'Obsidian Watchtower' }, label: 'Asomate a la Obsidian Watchtower' },
+    ],
+  },
+};
+
+/**
+ * Fallback genérico para monstruos sin estrategia explícita: ancla 2–3 tareas a
+ * un mundo con lugares (preferentemente del mismo bioma). Devuelve null si no hay
+ * ningún mundo con lugares.
+ */
+function buildGenericStrategy(monster, worldsWithCounts, idx) {
+  const withPlaces = worldsWithCounts.filter((w) => w.placeCount > 0);
+  if (!withPlaces.length) return null;
+  const biomeMatch = monster.Biome
+    ? withPlaces.find((w) => WORLD_BIOME[w.Name] === monster.Biome)
+    : null;
+  const home = biomeMatch || withPlaces[idx % withPlaces.length];
+  return {
+    ordered: idx % 2 === 0,
+    tasks: [
+      { type: 'visit_all_places_in_world', params: { worldName: home.Name }, label: `Recorré todos los lugares de ${home.Name}` },
+      { type: 'play_in_world', params: { worldName: home.Name }, label: `Jugá al menos una vez en ${home.Name}` },
+      { type: 'buy_in_world', params: { worldName: home.Name }, label: `Comprá un objeto en una tienda de ${home.Name}` },
+    ],
+  };
+}
+
+// Estrategia a sembrar para un monstruo: explícita por nombre, o genérica.
+function buildDiscoveryStrategy(monster, worldsWithCounts, idx) {
+  const strategy = MONSTER_STRATEGIES[monster.Name] || buildGenericStrategy(monster, worldsWithCounts, idx);
+  if (!strategy) return null;
+  // Marca para distinguir lo sembrado de una edición manual del admin: el seed
+  // refresca lo que tenga seeded:true pero nunca pisa una estrategia editada a mano.
+  return { ...strategy, seeded: true };
 }
 
 module.exports = async function seed({ strapi }) {
@@ -180,6 +263,35 @@ module.exports = async function seed({ strapi }) {
         });
       }
     }
+
+    // 11) Estrategias de descubrimiento para TODOS los monstruos.
+    //     Se reconsultan para leer DiscoveryStrategy/Biome actuales.
+    //     Se (re)siembra cuando el monstruo no tiene estrategia o cuando la que
+    //     tiene fue puesta por el seed (seeded:true) — así un re-deploy actualiza
+    //     los ejemplos sin pisar nunca una estrategia editada a mano en el admin.
+    //     RESEED_STRATEGIES=true fuerza el re-sembrado aunque haya edición manual.
+    const forceReseed = process.env.RESEED_STRATEGIES === 'true';
+    const monstersFull = await strapi.db.query('api::monster.monster').findMany({});
+    const placeCountByWorld = {};
+    for (const p of places) {
+      const wname = p.World?.Name;
+      if (wname) placeCountByWorld[wname] = (placeCountByWorld[wname] || 0) + 1;
+    }
+    const worldsWithCounts = worlds.map((w) => ({ Name: w.Name, placeCount: placeCountByWorld[w.Name] || 0 }));
+    let idx = 0;
+    let seededCount = 0;
+    for (const m of monstersFull) {
+      const current = m.DiscoveryStrategy;
+      const hasTasks = current && Array.isArray(current.tasks) && current.tasks.length;
+      const isManual = hasTasks && current.seeded !== true;
+      if (isManual && !forceReseed) continue; // respetar ediciones manuales
+      const strategy = buildDiscoveryStrategy(m, worldsWithCounts, idx++);
+      if (strategy) {
+        await strapi.db.query('api::monster.monster').update({ where: { id: m.id }, data: { DiscoveryStrategy: strategy } });
+        seededCount += 1;
+      }
+    }
+    strapi.log.info(`[seed] Estrategias de descubrimiento sembradas: ${seededCount}`);
 
     strapi.log.info('[seed] Force seed completado ✓');
   } catch (err) {

@@ -1,0 +1,44 @@
+{
+  "kind": "collectionType",
+  "collectionName": "user_events",
+  "info": {
+    "singularName": "user-event",
+    "pluralName": "user-events",
+    "displayName": "User Event",
+    "description": "Registro de actividad del usuario (visitas, juego, compras) usado por el motor de descubrimiento de monstruos"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "type": {
+      "type": "enumeration",
+      "enum": [
+        "visit_place",
+        "play_place",
+        "buy_item"
+      ],
+      "required": true
+    },
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "place": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::place.place"
+    },
+    "world": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::world.world"
+    },
+    "item": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::item.item"
+    }
+  }
+}

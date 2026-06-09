@@ -43,6 +43,9 @@ services:
       ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET}
       TRANSFER_TOKEN_SALT: ${TRANSFER_TOKEN_SALT}
       JWT_SECRET: ${JWT_SECRET}
+      # Re-siembra las estrategias de descubrimiento de ejemplo aunque ya existan
+      # (incluso si fueron editadas a mano). Útil tras cambiar MONSTER_STRATEGIES.
+      RESEED_STRATEGIES: ${RESEED_STRATEGIES:-false}
     ports:
       - "1337:1337"
     volumes:

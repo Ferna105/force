@@ -66,6 +66,19 @@ export interface StrapiImageFormat {
 // Unión de biomas/ecosistemas (debe coincidir con el enum del backend)
 export type BiomeName = 'forest' | 'aqua' | 'volcanic' | 'space' | 'snow' | 'arid';
 
+// Estrategia de descubrimiento de un monstruo (campo json en el backend).
+// Una tarea queda definida por su `type` + `params` libres; el motor server-side
+// es la única fuente de verdad de su evaluación.
+export interface DiscoveryTask {
+  type: string;
+  label?: string;
+  params?: Record<string, unknown>;
+}
+export interface DiscoveryStrategy {
+  ordered?: boolean;
+  tasks: DiscoveryTask[];
+}
+
 // Tipos específicos para cada entidad basados en la respuesta real
 export interface Monster extends StrapiEntity {
   attributes: {
@@ -77,6 +90,7 @@ export interface Monster extends StrapiEntity {
     AverageWeight: number | null;
     InnateAbility: string | null;
     Biome: BiomeName | null;
+    DiscoveryStrategy?: DiscoveryStrategy | null;
     createdAt: string;
     updatedAt: string;
     publishedAt: string;
@@ -240,4 +254,20 @@ export type InventoryEntriesResponse = StrapiResponse<InventoryEntry[]>;
 export interface BuyResponse {
   balance: number;
   entry: { id: number; quantity: number };
+  // Monstruos recién descubiertos por efecto de la compra (p. ej. "comprar en X").
+  newlyDiscovered?: Monster[];
+}
+
+// ============ Descubrimiento de monstruos ============
+export type DiscoveryEventType = 'visit_place' | 'play_place' | 'buy_item';
+
+export interface DiscoveryEventRequest {
+  type: DiscoveryEventType;
+  placeId?: number;
+  itemId?: number;
+}
+
+// Respuesta de /discovery/event y /discovery/sync
+export interface DiscoveryResponse {
+  newlyDiscovered: Monster[];
 }

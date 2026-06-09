@@ -57,6 +57,9 @@
         "arid"
       ],
       "required": false
+    },
+    "DiscoveryStrategy": {
+      "type": "json"
     }
   }
 }

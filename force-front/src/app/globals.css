@@ -317,6 +317,22 @@ h1,h2,h3,h4{margin:0;}
 @keyframes spin{to{transform:rotate(360deg);}}
 
 /* ============ RESPONSIVE ============ */
+/* ============ Modal de descubrimiento de criaturas ============ */
+.disc-overlay{position:fixed;inset:0;z-index:200;display:grid;place-items:center;padding:24px;background:rgba(8,6,4,.74);backdrop-filter:blur(8px);animation:disc-fade .22s ease;}
+.disc-modal{position:relative;width:100%;max-width:440px;padding:34px 36px 30px;text-align:center;box-shadow:0 30px 80px -20px rgba(0,0,0,.7),0 0 0 1px rgba(236,164,42,.18);animation:disc-pop .26s cubic-bezier(.2,.9,.3,1.2);}
+.disc-kicker{font-family:var(--font-fredoka);font-weight:600;letter-spacing:.16em;text-transform:uppercase;font-size:12px;color:var(--gold);margin-bottom:18px;}
+.disc-art{width:170px;height:170px;margin:0 auto 18px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 38% 30%,rgba(236,164,42,.18),rgba(8,6,4,.2));border:1px solid rgba(236,164,42,.3);overflow:hidden;}
+.disc-art img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 8px 22px rgba(0,0,0,.5));}
+.disc-name{font-size:32px;color:var(--gold-soft);margin:0 0 18px;}
+.disc-facts{display:flex;flex-direction:column;gap:10px;margin-bottom:24px;text-align:left;}
+.disc-fact{display:flex;justify-content:space-between;gap:16px;border-top:1px solid var(--ink-3);padding-top:10px;}
+.disc-fact:first-child{border-top:none;padding-top:0;}
+.disc-fact span{font-family:var(--font-fredoka);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--mist-2);flex-shrink:0;}
+.disc-fact b{color:#EFE3CE;font-weight:600;text-align:right;}
+.disc-close{width:100%;justify-content:center;}
+@keyframes disc-fade{from{opacity:0;}to{opacity:1;}}
+@keyframes disc-pop{from{opacity:0;transform:translateY(14px) scale(.96);}to{opacity:1;transform:none;}}
+
 .mobile-only{display:none;}
 @media(max-width:1100px){.inv-grid{grid-template-columns:repeat(3,1fr);}.beast-grid{grid-template-columns:repeat(3,1fr);}}
 @media(max-width:980px){.inv-wrap{grid-template-columns:1fr;}.detail{position:static;}}

@@ -3,10 +3,11 @@
 /* eslint-disable @next/next/no-img-element */
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { usePlace, useItems, useMonsters, useDiscoveredMonsters, inventoryService } from '@/api';
 import type { Place, Item } from '@/api/types';
 import { useAuth } from '@/hooks/useAuth';
+import { useDiscovery } from '@/hooks/useDiscovery';
 import {
   PLACE_TYPE, mediaUrl, placeBannerFallback, thumbFallback, fmt,
 } from '@/lib/design';
@@ -19,6 +20,14 @@ export default function PlacePage() {
   const params = useParams();
   const placeId = Number(params.placeId);
   const { data: place, loading, error } = usePlace(placeId);
+  const { user } = useAuth();
+  const { recordEvent } = useDiscovery();
+
+  // Registrar la visita al lugar (habilita tareas de descubrimiento de tipo
+  // "visitar lugar" / "visitar todos los lugares del mundo"). Una vez por lugar.
+  useEffect(() => {
+    if (user && placeId) recordEvent('visit_place', { placeId });
+  }, [user, placeId, recordEvent]);
 
   if (loading) return <><Topbar crumb="Lugar" /><div className="page"><Loading /></div></>;
   if (error || !place) return <><Topbar crumb="Lugar" /><div className="page"><ErrorState message={error ?? undefined} /></div></>;
@@ -46,7 +55,7 @@ export default function PlacePage() {
           </div>
         </section>
 
-        {a.Type === 'shop' && <ShopBody />}
+        {a.Type === 'shop' && <ShopBody placeId={placeId} />}
         {a.Type === 'game' && <GameBody place={place} />}
         {a.Type === 'information' && <InfoBody place={place} />}
       </div>
@@ -55,8 +64,9 @@ export default function PlacePage() {
 }
 
 /* ============ TIENDA ============ */
-function ShopBody() {
+function ShopBody({ placeId }: { placeId: number }) {
   const { user, updateUser } = useAuth();
+  const { reportDiscoveries } = useDiscovery();
   const { data: items, loading } = useItems({ populate: '*' });
   const [busy, setBusy] = useState<number | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
@@ -65,8 +75,10 @@ function ShopBody() {
     if (!user) { setMsg('Iniciá sesión para comprar.'); return; }
     setBusy(item.id); setMsg(null);
     try {
-      const res = await inventoryService.buy(item.id);
+      // Se pasa el lugar para habilitar tareas "comprar en una tienda de X".
+      const res = await inventoryService.buy(item.id, placeId);
       updateUser({ balance: res.balance });
+      reportDiscoveries(res.newlyDiscovered);
       setMsg(`Compraste ${item.attributes.name}. Saldo: F ${fmt(res.balance)}.`);
     } catch {
       setMsg('No se pudo completar la compra (¿saldo insuficiente?).');
@@ -109,7 +121,10 @@ function ShopBody() {
 
 /* ============ JUEGO (estático / placeholder) ============ */
 function GameBody({ place }: { place: Place }) {
+  const { user } = useAuth();
+  const { recordEvent } = useDiscovery();
   const name = place.attributes.Name;
+  const play = () => { if (user) recordEvent('play_place', { placeId: place.id }); };
   const leaders = [
     { rk: 1, av: 'V', name: 'Vael', pts: '24.110' },
     { rk: 2, av: 'M', name: 'Mira', pts: '21.890' },
@@ -131,7 +146,7 @@ function GameBody({ place }: { place: Place }) {
             </div>
           ))}
         </div>
-        <button className="btn btn-primary btn-lg" style={{ marginTop: 12 }}>▶ Jugar ahora</button>
+        <button className="btn btn-primary btn-lg" style={{ marginTop: 12 }} onClick={play}>▶ Jugar ahora</button>
       </div>
       <div className="panel" style={{ padding: '24px 26px' }}>
         <div className="kicker" style={{ marginBottom: 6 }}>Tabla de clasificación</div>

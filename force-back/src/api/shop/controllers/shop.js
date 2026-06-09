@@ -8,9 +8,13 @@
  * (creándola si no existía).
  */
 
+const { evaluateUser } = require('../../discovery/engine');
+
 const USER_UID = 'plugin::users-permissions.user';
 const ITEM_UID = 'api::item.item';
 const ENTRY_UID = 'api::inventory-entry.inventory-entry';
+const PLACE_UID = 'api::place.place';
+const EVENT_UID = 'api::user-event.user-event';
 
 module.exports = {
   async buy(ctx) {
@@ -19,7 +23,10 @@ module.exports = {
       return ctx.unauthorized('Debés iniciar sesión para comprar.');
     }
 
-    const itemId = ctx.request.body?.itemId ?? ctx.request.body?.data?.itemId;
+    const body = ctx.request.body ?? {};
+    const itemId = body.itemId ?? body.data?.itemId;
+    // Lugar (tienda) donde se hizo la compra: habilita tareas "comprar en mundo X".
+    const placeId = body.placeId ?? body.data?.placeId ?? null;
     if (!itemId) {
       return ctx.badRequest('Falta itemId.');
     }
@@ -60,6 +67,21 @@ module.exports = {
       });
     }
 
-    return ctx.send({ balance: newBalance, entry });
+    // Registrar el evento de compra (con su mundo derivado del lugar) y reevaluar
+    // las estrategias de descubrimiento.
+    let worldId = null;
+    if (placeId) {
+      const place = await strapi.entityService.findOne(PLACE_UID, placeId, {
+        populate: { World: { fields: ['id'] } },
+      });
+      worldId = place?.World?.id ?? null;
+    }
+    await strapi.entityService.create(EVENT_UID, {
+      data: { type: 'buy_item', user: user.id, item: itemId, place: placeId || null, world: worldId },
+    });
+
+    const { newlyDiscovered } = await evaluateUser(strapi, user.id);
+
+    return ctx.send({ balance: newBalance, entry, newlyDiscovered });
   },
 };

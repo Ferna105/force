@@ -20,6 +20,8 @@ import {
   CompanionsResponse,
   InventoryEntriesResponse,
   BuyResponse,
+  DiscoveryEventRequest,
+  DiscoveryResponse,
 } from './types';
 
 // Función helper para construir query parameters
@@ -466,13 +468,39 @@ export const inventoryService = {
     }
   },
 
-  // Comprar un objeto (descuenta saldo y suma al inventario)
-  async buy(itemId: number): Promise<BuyResponse> {
+  // Comprar un objeto (descuenta saldo y suma al inventario). Si se indica el
+  // lugar (tienda) donde se compró, habilita tareas de descubrimiento del tipo
+  // "comprar en el mundo X" y la respuesta puede traer monstruos descubiertos.
+  async buy(itemId: number, placeId?: number): Promise<BuyResponse> {
     try {
-      const response = await apiClient.post('/shop/buy', { itemId });
+      const response = await apiClient.post('/shop/buy', { itemId, placeId });
       return response.data;
     } catch (error) {
       throw new Error(`Error al comprar: ${error}`);
     }
   },
-}; 
+};
+
+// Servicio de descubrimiento de monstruos.
+// Registra eventos de actividad (visitar/jugar) y reevalúa las estrategias; la
+// respuesta trae los monstruos recién descubiertos para mostrar el modal.
+export const discoveryService = {
+  async recordEvent(event: DiscoveryEventRequest): Promise<DiscoveryResponse> {
+    try {
+      const response = await apiClient.post('/discovery/event', event);
+      return { newlyDiscovered: response.data?.newlyDiscovered ?? [] };
+    } catch (error) {
+      throw new Error(`Error registrando evento de descubrimiento: ${error}`);
+    }
+  },
+
+  // Reevalúa sin registrar evento (tareas basadas en estado, p. ej. inventario).
+  async sync(): Promise<DiscoveryResponse> {
+    try {
+      const response = await apiClient.post('/discovery/sync');
+      return { newlyDiscovered: response.data?.newlyDiscovered ?? [] };
+    } catch (error) {
+      throw new Error(`Error sincronizando descubrimientos: ${error}`);
+    }
+  },
+};

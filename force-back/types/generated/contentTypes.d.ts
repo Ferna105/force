@@ -587,6 +587,7 @@ export interface ApiMonsterMonster extends Schema.CollectionType {
       'admin::user'
     > &
       Attribute.Private;
+    DiscoveryStrategy: Attribute.JSON;
     Image: Attribute.Media<'images'>;
     InnateAbility: Attribute.Text;
     Name: Attribute.String & Attribute.Required & Attribute.Unique;
@@ -656,6 +657,57 @@ export interface ApiPlacePlace extends Schema.CollectionType {
       Attribute.Private;
     World: Attribute.Relation<
       'api::place.place',
+      'manyToOne',
+      'api::world.world'
+    >;
+  };
+}
+
+export interface ApiUserEventUserEvent extends Schema.CollectionType {
+  collectionName: 'user_events';
+  info: {
+    description: 'Registro de actividad del usuario (visitas, juego, compras) usado por el motor de descubrimiento de monstruos';
+    displayName: 'User Event';
+    pluralName: 'user-events';
+    singularName: 'user-event';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<
+      'api::user-event.user-event',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    item: Attribute.Relation<
+      'api::user-event.user-event',
+      'manyToOne',
+      'api::item.item'
+    >;
+    place: Attribute.Relation<
+      'api::user-event.user-event',
+      'manyToOne',
+      'api::place.place'
+    >;
+    type: Attribute.Enumeration<['visit_place', 'play_place', 'buy_item']> &
+      Attribute.Required;
+    updatedAt: Attribute.DateTime;
+    updatedBy: Attribute.Relation<
+      'api::user-event.user-event',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    user: Attribute.Relation<
+      'api::user-event.user-event',
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    world: Attribute.Relation<
+      'api::user-event.user-event',
       'manyToOne',
       'api::world.world'
     >;
@@ -1171,6 +1223,7 @@ declare module '@strapi/types' {
       'api::item.item': ApiItemItem;
       'api::monster.monster': ApiMonsterMonster;
       'api::place.place': ApiPlacePlace;
+      'api::user-event.user-event': ApiUserEventUserEvent;
       'api::world.world': ApiWorldWorld;
       'plugin::content-releases.release': PluginContentReleasesRelease;
       'plugin::content-releases.release-action': PluginContentReleasesReleaseAction;

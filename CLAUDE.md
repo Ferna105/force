@@ -42,11 +42,87 @@ The per-app npm scripts below are still the way to run a single service directly
 ### Backend — Strapi content types
 All API resources live under `force-back/src/api/<name>/` and are scaffolded with Strapi factories — controllers (`createCoreController`), routes (`createCoreRouter`), and services (`createCoreService`) are unmodified boilerplate. **Behavior is driven almost entirely by the `content-types/<name>/schema.json` files, not by code.** To change the API, edit the schema (or use the admin panel, which writes these files).
 
-Content types: `world`, `place`, `monster`, `item`. Note the field-naming inconsistency — `world`/`place`/`monster` use PascalCase attributes (`Name`, `Description`, `Image`), while `item` uses snake_case (`name`, `slug`, `type`, `rarity`). Relations: `world` 1—N `place`; `item` N—N `user` (the Items relation is added to the user schema in `src/extensions/users-permissions/content-types/user/schema.json`, marked `private`).
+Content types: `world`, `place`, `monster`, `item`, `companion` (user↔monster care bond), `inventory-entry` (user's item + quantity), `user-event` (activity log feeding the discovery engine — see below). Note the field-naming inconsistency — `world`/`place`/`monster` use PascalCase attributes (`Name`, `Description`, `Image`), while `item` uses snake_case (`name`, `slug`, `type`, `rarity`). Relations: `world` 1—N `place`; `item` N—N `user` (the Items relation is added to the user schema in `src/extensions/users-permissions/content-types/user/schema.json`, marked `private`). The user schema also has `discoveredMonsters` (M2N → monster), `balance`, `companions` and `inventoryEntries`.
+
+There are also two custom **code-only** APIs (controller + routes, no content-type, like the `shop` pattern): `shop` (`POST /shop/buy`) and `discovery` (`POST /discovery/event`, `POST /discovery/sync`).
 
 Auth is the standard `users-permissions` plugin (local provider, JWT). Endpoint permissions per role are configured in the admin panel, not in code.
 
 DB client is selected by `DATABASE_CLIENT` env var (`config/database.js`), defaulting to **sqlite** at `.tmp/data.db`; postgres/mysql are also wired up. Required secrets (`APP_KEYS`, `JWT_SECRET`, etc.) come from `.env` — see `force-back/.env.example`.
+
+### Backend — Monster discovery engine
+
+Users **discover** monsters by completing each monster's **discovery strategy**. The
+strategy lives in a single JSON field `DiscoveryStrategy` on the monster schema:
+
+```json
+{ "ordered": true,
+  "tasks": [ { "type": "visit_all_places_in_world",
+               "params": { "worldName": "Egea" },
+               "label": "Recorré todos los lugares de Egea" } ] }
+```
+
+- `ordered: true` ⇒ tasks must be completed in sequence (each evaluated only over
+  events at/after the previous **event-based** task's completion time; state-based
+  tasks like inventory ownership don't advance that cursor). `ordered: false` ⇒ each
+  task is evaluated over the full history independently.
+- `label` is the human-readable text; `type` selects the evaluator; `params` is free-form
+  per type and references entities **by name or id** (`worldName`/`worldId`,
+  `placeName`/`placeId`, `itemName`/`itemId`, `monsterName`/`monsterId`).
+
+**Task types** (all in `src/api/discovery/engine.js`, map `EVALUATORS`):
+
+| `type` | `params` | Completa cuando… |
+|---|---|---|
+| `visit_place` | `placeName`/`placeId` | visitó ese lugar |
+| `play_place` | `placeName`/`placeId` | jugó en ese lugar |
+| `visit_all_places_in_world` | `worldName`/`worldId` | visitó **todos** los places publicados de ese mundo |
+| `play_in_world` | `worldName`/`worldId` | jugó en algún lugar de ese mundo |
+| `buy_in_world` | `worldName`/`worldId` | compró un objeto en una tienda de ese mundo |
+| `buy_item` | `itemName`/`itemId` | compró ese objeto puntual |
+| `own_item` | `itemName`/`itemId` | tiene ese objeto en inventario (qty>0) |
+| `own_item_of_rarity` | `rarity` (p. ej. `legendary`) | tiene algún objeto de esa rareza |
+| `own_item_of_type` | `type` (p. ej. `weapon`) | tiene algún objeto de ese tipo |
+| `enter_place_in_time_range` | `placeName`/`placeId`, `fromHour`, `toHour` | visitó ese lugar en ese rango horario (cruza medianoche si `from>to`) |
+| `discover_monster` | `monsterName`/`monsterId` | ya descubrió ese otro monstruo (prerequisito) |
+
+**Data flow.** Activity is recorded in the `user-event` content type (`type` ∈
+`visit_place`/`play_place`/`buy_item`, plus oneWay relations `user`/`place`/`world`/`item`;
+`createdAt` is the timestamp). Events are created server-side via:
+- `POST /discovery/event { type, placeId?, itemId? }` (the controller derives `world` from
+  the place), and
+- `shop.buy` (records a `buy_item` event automatically when given `placeId`).
+
+After recording, the controller calls `evaluateUser(strapi, userId)` (in `engine.js`),
+which loads the user's events + inventory + already-discovered monsters, evaluates every
+not-yet-discovered monster's strategy, **connects** the completed ones to the user's
+`discoveredMonsters`, and returns them as `{ newlyDiscovered: [...] }` in REST shape
+(`{ id, attributes: { …, Image: { data } } }`, via the same `monsterToRest` helper used by
+the companion controller) so the frontend can render the modal directly.
+`POST /discovery/sync` runs the same evaluation without recording an event (used on login
+to resolve inventory-based tasks).
+
+**Authoring & seeding.** Edit `DiscoveryStrategy` directly in the Strapi admin (it's a raw
+JSON field). `src/seed.js` (idempotent, runs on `bootstrap`) grants the `discovery`
+permissions to the Authenticated role and **seeds a strategy onto every monster**: explicit
+hand-authored ones per name in `MONSTER_STRATEGIES` (Tronc/Serpi/Triso/Raya/Terri — designed
+to be completable by a fresh user with 500 F), falling back to `buildGenericStrategy` (world
+anchored) for any other monster. Seeded strategies carry a `seeded: true` marker: the seed
+**re-applies** them on each boot (so example edits ship via re-deploy) but **never overwrites
+a manually-edited strategy** (one without the marker). Set `RESEED_STRATEGIES=true` to force
+overwrite even manual edits. Adding a new task type = add one function to `EVALUATORS` and
+document it here; no schema change.
+
+### Frontend — discovery UX
+
+`src/hooks/useDiscovery.tsx` — `DiscoveryProvider` (mounted in `layout.tsx` inside
+`AuthProvider`) holds a queue of newly-discovered monsters and renders `DiscoveryModal`
+(styles `.disc-*` in `globals.css`). It exposes `recordEvent(type, {placeId,itemId})`,
+`reportDiscoveries(monsters)` and `sync()`. The place page
+(`app/explore/[worldId]/places/[placeId]/page.tsx`) records `visit_place` on mount,
+`play_place` on the "Jugar ahora" button, and `inventoryService.buy(itemId, placeId)` reports
+discoveries from the buy response. The bestiary (`/monsters`) only lists discovered monsters,
+so a newly discovered one shows up there after the modal.
 
 ### Frontend — API layer
 All Strapi communication is centralized in `force-front/src/api/`, re-exported through `index.ts`:

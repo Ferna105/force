@@ -14,6 +14,11 @@ export type {
   Companion,
   InventoryEntry,
   BuyResponse,
+  DiscoveryTask,
+  DiscoveryStrategy,
+  DiscoveryEventType,
+  DiscoveryEventRequest,
+  DiscoveryResponse,
   MonstersResponse,
   WorldsResponse,
   PlacesResponse,
@@ -41,6 +46,7 @@ export {
   itemsService,
   companionsService,
   inventoryService,
+  discoveryService,
   dataService,
   authService
 } from './services';
