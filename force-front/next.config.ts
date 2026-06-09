@@ -10,6 +10,12 @@ const nextConfig: NextConfig = {
         port: '1337',
         pathname: '/uploads/**',
       },
+      {
+        // Strapi en producción (Railway sirve por HTTPS en un dominio dinámico)
+        protocol: 'https',
+        hostname: '**',
+        pathname: '/uploads/**',
+      },
     ],
   },
 };
