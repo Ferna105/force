@@ -23,6 +23,7 @@ services:
   back:
     build:
       context: ./force-back
+      target: dev   # stage de hot-reload; Railway usa el stage "prod" del mismo Dockerfile
     restart: unless-stopped
     depends_on:
       db:
@@ -52,6 +53,7 @@ services:
   front:
     build:
       context: ./force-front
+      target: dev   # stage de hot-reload; Railway usa el stage "prod" del mismo Dockerfile
     restart: unless-stopped
     depends_on:
       - back
