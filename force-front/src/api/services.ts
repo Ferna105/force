@@ -17,6 +17,9 @@ import {
   RegisterRequest,
   AuthResponse,
   AuthUser,
+  CompanionsResponse,
+  InventoryEntriesResponse,
+  BuyResponse,
 } from './types';
 
 // Función helper para construir query parameters
@@ -336,22 +339,23 @@ export const dataService = {
     }
   },
 
-  // Obtener datos para la página de exploración
+  // Obtener datos para la página de exploración (mundos + lugares + criaturas)
   async getExploreData() {
     try {
-      const worlds = await worldsService.getAll({
-        populate: '*',
-        sort: 'Name:asc'
-      });
+      const [worlds, places, monsters] = await Promise.all([
+        worldsService.getAll({ populate: '*', sort: 'Name:asc' }),
+        placesService.getAll({ populate: '*', sort: 'Name:asc' }),
+        monstersService.getAll({ populate: '*', sort: 'Name:asc' }),
+      ]);
 
       return {
-        worlds: worlds.data || []
+        worlds: worlds.data || [],
+        places: places.data || [],
+        monsters: monsters.data || [],
       };
     } catch (error) {
       console.error('Error fetching explore data:', error);
-      return {
-        worlds: []
-      };
+      return { worlds: [], places: [], monsters: [] };
     }
   }
 };
@@ -397,5 +401,78 @@ export const authService = {
     // En el frontend, simplemente removemos el token del localStorage
     localStorage.removeItem('authToken');
     localStorage.removeItem('authUser');
+  },
+
+  // Usuario actual con relaciones pobladas (saldo + monstruos descubiertos)
+  async getMeFull(): Promise<AuthUser> {
+    try {
+      const response = await apiClient.get('/users/me?populate[discoveredMonsters][fields][0]=id');
+      return response.data;
+    } catch (error) {
+      throw new Error(`Error obteniendo el usuario: ${error}`);
+    }
   }
+};
+
+// Servicio de compañeros (relación usuario ↔ monstruo + cuidados).
+// Usa el endpoint /companions/mine scopeado por el token (la relación a user
+// no es filtrable por el content API estándar).
+export const companionsService = {
+  // Compañero(s) activo(s) del usuario autenticado
+  async getActive(): Promise<CompanionsResponse> {
+    try {
+      const response = await apiClient.get('/companions/mine');
+      const active = (response.data?.data ?? []).filter((c: { attributes: { isActive: boolean } }) => c.attributes.isActive);
+      return { data: active, meta: {} };
+    } catch (error) {
+      throw new Error(`Error fetching active companion: ${error}`);
+    }
+  },
+
+  // Todos los compañeros del usuario autenticado
+  async getMine(): Promise<CompanionsResponse> {
+    try {
+      const response = await apiClient.get('/companions/mine');
+      return { data: response.data?.data ?? [], meta: {} };
+    } catch (error) {
+      throw new Error(`Error fetching companions: ${error}`);
+    }
+  },
+
+  // Acciones de cuidado (devuelven el compañero actualizado, shape aplanado)
+  async feed(id: number) {
+    const response = await apiClient.post(`/companions/${id}/feed`);
+    return response.data;
+  },
+  async play(id: number) {
+    const response = await apiClient.post(`/companions/${id}/play`);
+    return response.data;
+  },
+  async pet(id: number) {
+    const response = await apiClient.post(`/companions/${id}/pet`);
+    return response.data;
+  },
+};
+
+// Servicio de inventario (entradas con cantidad) + tienda
+export const inventoryService = {
+  // Inventario del usuario autenticado (objetos + cantidades)
+  async getMine(): Promise<InventoryEntriesResponse> {
+    try {
+      const response = await apiClient.get('/inventory-entries/mine');
+      return { data: response.data?.data ?? [], meta: {} };
+    } catch (error) {
+      throw new Error(`Error fetching inventory: ${error}`);
+    }
+  },
+
+  // Comprar un objeto (descuenta saldo y suma al inventario)
+  async buy(itemId: number): Promise<BuyResponse> {
+    try {
+      const response = await apiClient.post('/shop/buy', { itemId });
+      return response.data;
+    } catch (error) {
+      throw new Error(`Error al comprar: ${error}`);
+    }
+  },
 }; 

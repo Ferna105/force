@@ -34,6 +34,18 @@
       "relation": "oneToMany",
       "target": "api::place.place",
       "mappedBy": "World"
+    },
+    "Biome": {
+      "type": "enumeration",
+      "enum": [
+        "forest",
+        "aqua",
+        "volcanic",
+        "space",
+        "snow",
+        "arid"
+      ],
+      "required": false
     }
   }
 }

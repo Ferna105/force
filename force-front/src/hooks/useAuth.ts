@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, createContext, useContext } from 'react';
-import { authService } from '@/api';
 import type { AuthUser } from '@/api';
 
 // Usar el tipo AuthUser de la API
@@ -12,6 +11,7 @@ interface AuthContextType {
   token: string | null;
   login: (token: string, user: User) => void;
   logout: () => void;
+  updateUser: (patch: Partial<User>) => void;
   isLoading: boolean;
 }
 
@@ -53,11 +53,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('authUser');
   };
 
+  // Actualiza campos del usuario en memoria + localStorage (p. ej. el saldo tras comprar)
+  const updateUser = (patch: Partial<User>) => {
+    setUser(prev => {
+      if (!prev) return prev;
+      const next = { ...prev, ...patch };
+      localStorage.setItem('authUser', JSON.stringify(next));
+      return next;
+    });
+  };
+
   const value = {
     user,
     token,
     login,
     logout,
+    updateUser,
     isLoading
   };
 

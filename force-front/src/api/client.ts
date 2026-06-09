@@ -12,11 +12,17 @@ const apiClient = axios.create({
   },
 });
 
-// Interceptor para requests
+// Interceptor para requests: adjunta el JWT del localStorage si existe,
+// salvo que la llamada ya traiga su propio header Authorization.
 apiClient.interceptors.request.use(
   (config) => {
-    // Aquí puedes agregar headers de autorización si es necesario
-    // config.headers.Authorization = `Bearer ${token}`;
+    if (typeof window !== 'undefined' && !config.headers?.Authorization) {
+      const token = localStorage.getItem('authToken');
+      if (token) {
+        config.headers = config.headers ?? {};
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    }
     return config;
   },
   (error) => {

@@ -1,23 +1,31 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Cinzel, Fredoka, Mulish } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/hooks/useAuth";
-import Navigation from "@/components/Navigation";
-import Footer from "@/components/Footer";
+import AppShell from "@/components/shell/AppShell";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const cinzel = Cinzel({
+  variable: "--font-cinzel",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800", "900"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const fredoka = Fredoka({
+  variable: "--font-fredoka",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
+
+const mulish = Mulish({
+  variable: "--font-mulish",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  style: ["normal", "italic"],
 });
 
 export const metadata: Metadata = {
-  title: "Force Front",
-  description: "Aplicación de mundos y monstruos",
+  title: "Force — Mundos vivos",
+  description: "Un universo coleccionable de criaturas reales, mundos vivos y reliquias.",
 };
 
 export default function RootLayout({
@@ -27,17 +35,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className={`${cinzel.variable} ${fredoka.variable} ${mulish.variable}`}>
         <AuthProvider>
-          <div className="min-h-screen flex flex-col">
-            <Navigation />
-            <main className="flex-1">
-              {children}
-            </main>
-            <Footer />
-          </div>
+          <AppShell>{children}</AppShell>
         </AuthProvider>
       </body>
     </html>

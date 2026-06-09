@@ -70,6 +70,28 @@
       "relation": "manyToMany",
       "target": "api::item.item",
       "inversedBy": "users"
+    },
+    "balance": {
+      "type": "integer",
+      "default": 500,
+      "min": 0
+    },
+    "discoveredMonsters": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::monster.monster"
+    },
+    "inventoryEntries": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::inventory-entry.inventory-entry",
+      "mappedBy": "user"
+    },
+    "companions": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::companion.companion",
+      "mappedBy": "user"
     }
   }
 }

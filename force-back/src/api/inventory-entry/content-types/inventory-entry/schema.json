@@ -1,0 +1,31 @@
+{
+  "kind": "collectionType",
+  "collectionName": "inventory_entries",
+  "info": {
+    "singularName": "inventory-entry",
+    "pluralName": "inventory-entries",
+    "displayName": "Inventory Entry",
+    "description": "Entrada de inventario de un usuario: relaciona un objeto con una cantidad"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "inventoryEntries"
+    },
+    "item": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::item.item"
+    },
+    "quantity": {
+      "type": "integer",
+      "default": 1,
+      "min": 0
+    }
+  }
+}

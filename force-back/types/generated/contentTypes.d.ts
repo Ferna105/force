@@ -362,6 +362,121 @@ export interface AdminUser extends Schema.CollectionType {
   };
 }
 
+export interface ApiCompanionCompanion extends Schema.CollectionType {
+  collectionName: 'companions';
+  info: {
+    description: 'V\u00EDnculo entre un usuario y un monstruo que cuida, con sus stats de cuidado';
+    displayName: 'Companion';
+    pluralName: 'companions';
+    singularName: 'companion';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    bond: Attribute.Integer &
+      Attribute.SetMinMax<
+        {
+          max: 100;
+          min: 0;
+        },
+        number
+      > &
+      Attribute.DefaultTo<0>;
+    createdAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<
+      'api::companion.companion',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    energy: Attribute.Integer &
+      Attribute.SetMinMax<
+        {
+          max: 100;
+          min: 0;
+        },
+        number
+      > &
+      Attribute.DefaultTo<50>;
+    happiness: Attribute.Integer &
+      Attribute.SetMinMax<
+        {
+          max: 100;
+          min: 0;
+        },
+        number
+      > &
+      Attribute.DefaultTo<50>;
+    isActive: Attribute.Boolean & Attribute.DefaultTo<false>;
+    lastInteraction: Attribute.DateTime;
+    monster: Attribute.Relation<
+      'api::companion.companion',
+      'manyToOne',
+      'api::monster.monster'
+    >;
+    updatedAt: Attribute.DateTime;
+    updatedBy: Attribute.Relation<
+      'api::companion.companion',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    user: Attribute.Relation<
+      'api::companion.companion',
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+  };
+}
+
+export interface ApiInventoryEntryInventoryEntry extends Schema.CollectionType {
+  collectionName: 'inventory_entries';
+  info: {
+    description: 'Entrada de inventario de un usuario: relaciona un objeto con una cantidad';
+    displayName: 'Inventory Entry';
+    pluralName: 'inventory-entries';
+    singularName: 'inventory-entry';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<
+      'api::inventory-entry.inventory-entry',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    item: Attribute.Relation<
+      'api::inventory-entry.inventory-entry',
+      'manyToOne',
+      'api::item.item'
+    >;
+    quantity: Attribute.Integer &
+      Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      > &
+      Attribute.DefaultTo<1>;
+    updatedAt: Attribute.DateTime;
+    updatedBy: Attribute.Relation<
+      'api::inventory-entry.inventory-entry',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    user: Attribute.Relation<
+      'api::inventory-entry.inventory-entry',
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+  };
+}
+
 export interface ApiItemItem extends Schema.CollectionType {
   collectionName: 'items';
   info: {
@@ -462,6 +577,9 @@ export interface ApiMonsterMonster extends Schema.CollectionType {
         },
         number
       >;
+    Biome: Attribute.Enumeration<
+      ['forest', 'aqua', 'volcanic', 'space', 'snow', 'arid']
+    >;
     createdAt: Attribute.DateTime;
     createdBy: Attribute.Relation<
       'api::monster.monster',
@@ -498,6 +616,9 @@ export interface ApiPlacePlace extends Schema.CollectionType {
   };
   attributes: {
     Banner: Attribute.Media<'images'>;
+    Biome: Attribute.Enumeration<
+      ['forest', 'aqua', 'volcanic', 'space', 'snow', 'arid']
+    >;
     createdAt: Attribute.DateTime;
     createdBy: Attribute.Relation<
       'api::place.place',
@@ -506,6 +627,22 @@ export interface ApiPlacePlace extends Schema.CollectionType {
     > &
       Attribute.Private;
     Description: Attribute.Text;
+    HotspotX: Attribute.Decimal &
+      Attribute.SetMinMax<
+        {
+          max: 100;
+          min: 0;
+        },
+        number
+      >;
+    HotspotY: Attribute.Decimal &
+      Attribute.SetMinMax<
+        {
+          max: 100;
+          min: 0;
+        },
+        number
+      >;
     Name: Attribute.String & Attribute.Required & Attribute.Unique;
     publishedAt: Attribute.DateTime;
     Type: Attribute.Enumeration<['shop', 'game', 'information']> &
@@ -537,6 +674,9 @@ export interface ApiWorldWorld extends Schema.CollectionType {
     draftAndPublish: true;
   };
   attributes: {
+    Biome: Attribute.Enumeration<
+      ['forest', 'aqua', 'volcanic', 'space', 'snow', 'arid']
+    >;
     createdAt: Attribute.DateTime;
     createdBy: Attribute.Relation<
       'api::world.world',
@@ -945,7 +1085,20 @@ export interface PluginUsersPermissionsUser extends Schema.CollectionType {
     draftAndPublish: false;
   };
   attributes: {
+    balance: Attribute.Integer &
+      Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      > &
+      Attribute.DefaultTo<500>;
     blocked: Attribute.Boolean & Attribute.DefaultTo<false>;
+    companions: Attribute.Relation<
+      'plugin::users-permissions.user',
+      'oneToMany',
+      'api::companion.companion'
+    >;
     confirmationToken: Attribute.String & Attribute.Private;
     confirmed: Attribute.Boolean & Attribute.DefaultTo<false>;
     createdAt: Attribute.DateTime;
@@ -955,11 +1108,21 @@ export interface PluginUsersPermissionsUser extends Schema.CollectionType {
       'admin::user'
     > &
       Attribute.Private;
+    discoveredMonsters: Attribute.Relation<
+      'plugin::users-permissions.user',
+      'manyToMany',
+      'api::monster.monster'
+    >;
     email: Attribute.Email &
       Attribute.Required &
       Attribute.SetMinMaxLength<{
         minLength: 6;
       }>;
+    inventoryEntries: Attribute.Relation<
+      'plugin::users-permissions.user',
+      'oneToMany',
+      'api::inventory-entry.inventory-entry'
+    >;
     items: Attribute.Relation<
       'plugin::users-permissions.user',
       'manyToMany',
@@ -1003,6 +1166,8 @@ declare module '@strapi/types' {
       'admin::transfer-token': AdminTransferToken;
       'admin::transfer-token-permission': AdminTransferTokenPermission;
       'admin::user': AdminUser;
+      'api::companion.companion': ApiCompanionCompanion;
+      'api::inventory-entry.inventory-entry': ApiInventoryEntryInventoryEntry;
       'api::item.item': ApiItemItem;
       'api::monster.monster': ApiMonsterMonster;
       'api::place.place': ApiPlacePlace;

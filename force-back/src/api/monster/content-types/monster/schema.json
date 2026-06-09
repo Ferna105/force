@@ -45,6 +45,18 @@
     "InnateAbility": {
       "type": "text",
       "required": false
+    },
+    "Biome": {
+      "type": "enumeration",
+      "enum": [
+        "forest",
+        "aqua",
+        "volcanic",
+        "space",
+        "snow",
+        "arid"
+      ],
+      "required": false
     }
   }
 }

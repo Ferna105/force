@@ -5,14 +5,21 @@ export { default as apiClient } from './client';
 export type {
   StrapiResponse,
   StrapiEntity,
+  StrapiImage,
+  BiomeName,
   Monster,
   World,
   Place,
   Item,
+  Companion,
+  InventoryEntry,
+  BuyResponse,
   MonstersResponse,
   WorldsResponse,
   PlacesResponse,
   ItemsResponse,
+  CompanionsResponse,
+  InventoryEntriesResponse,
   MonsterResponse,
   WorldResponse,
   PlaceResponse,
@@ -32,6 +39,8 @@ export {
   worldsService,
   placesService,
   itemsService,
+  companionsService,
+  inventoryService,
   dataService,
   authService
 } from './services';
@@ -44,10 +53,16 @@ export {
   useWorlds,
   usePlaces,
   usePlacesByWorld,
+  useWorld,
+  usePlace,
+  useMonster,
   useItems,
   useItemsByType,
   useItemsByRarity,
+  useActiveCompanion,
+  useInventory,
+  useDiscoveredMonsters,
   useLogin,
   useRegister,
   useGetMe
-} from './hooks'; 
+} from './hooks';

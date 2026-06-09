@@ -43,6 +43,30 @@
       "relation": "manyToOne",
       "target": "api::world.world",
       "inversedBy": "places"
+    },
+    "Biome": {
+      "type": "enumeration",
+      "enum": [
+        "forest",
+        "aqua",
+        "volcanic",
+        "space",
+        "snow",
+        "arid"
+      ],
+      "required": false
+    },
+    "HotspotX": {
+      "type": "decimal",
+      "required": false,
+      "min": 0,
+      "max": 100
+    },
+    "HotspotY": {
+      "type": "decimal",
+      "required": false,
+      "min": 0,
+      "max": 100
     }
   }
 }

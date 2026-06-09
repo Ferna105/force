@@ -1,235 +1,153 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import Image from 'next/image';
+/* eslint-disable @next/next/no-img-element */
 import Link from 'next/link';
-import { monstersService } from '../../../api/services';
-import { Monster } from '../../../api/types';
+import { useParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useMonster, useMonsters, useWorlds, usePlaces, companionsService } from '@/api';
+import type { Monster } from '@/api/types';
+import { useAuth } from '@/hooks/useAuth';
+import { BIOME, mediaUrl, monsterArtFallback } from '@/lib/design';
+import Topbar from '@/components/shell/Topbar';
+import { Loading, ErrorState } from '@/components/ui/states';
+import { BiomeTag, Meter, SectionTitle } from '@/components/ui/tags';
+import { WorldCard, PlaceBanner, MonsterCard } from '@/components/ui/cards';
 
-export default function MonsterDetailPage() {
+export default function MonsterPage() {
   const params = useParams();
-  const router = useRouter();
-  const [monster, setMonster] = useState<Monster | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const id = Number(params.id);
+  const { data: monster, loading, error } = useMonster(id);
+  const { data: monsters } = useMonsters({ populate: '*' });
+  const { data: worlds } = useWorlds({ populate: '*' });
+  const { data: places } = usePlaces({ populate: '*' });
 
-  useEffect(() => {
-    const fetchMonster = async () => {
-      try {
-        setLoading(true);
-        const id = Number(params.id);
-        if (isNaN(id)) {
-          setError('ID de monstruo inválido');
-          return;
-        }
+  if (loading) return <><Topbar crumb="Bestiario" /><div className="page"><Loading /></div></>;
+  if (error || !monster) return <><Topbar crumb="Bestiario" /><div className="page"><ErrorState message={error ?? undefined} /></div></>;
 
-        const response = await monstersService.getById(id, {
-          populate: '*'
-        });
-        setMonster(response.data);
-      } catch (err) {
-        console.error('Error fetching monster:', err);
-        setError('Error al cargar el monstruo');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (params.id) {
-      fetchMonster();
-    }
-  }, [params.id]);
-
-  const getImageUrl = (monster: Monster) => {
-    if (monster.attributes.Image?.data?.attributes?.url) {
-      return `${process.env.NEXT_PUBLIC_STRAPI_URL}${monster.attributes.Image.data.attributes.url}`;
-    }
-    return '/next.svg'; // Imagen por defecto
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white">
-        <div className="container mx-auto px-4 py-8">
-          <div className="flex items-center justify-center min-h-[60vh]">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-              <p className="text-lg">Cargando monstruo...</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error || !monster) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white">
-        <div className="container mx-auto px-4 py-8">
-          <div className="flex items-center justify-center min-h-[60vh]">
-            <div className="text-center">
-              <div className="text-6xl mb-4">🐉</div>
-              <h2 className="text-2xl font-bold mb-4">Monstruo no encontrado</h2>
-              <p className="text-gray-400 mb-6">{error || 'El monstruo que buscas no existe'}</p>
-              <div className="space-x-4">
-                <button 
-                  onClick={() => router.back()}
-                  className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-colors"
-                >
-                  Volver
-                </button>
-                <Link 
-                  href="/monsters"
-                  className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg transition-colors inline-block"
-                >
-                  Ver todos los monstruos
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const a = monster.attributes;
+  const biome = a.Biome;
+  const art = mediaUrl(a.Image, monsterArtFallback(a.Name));
+  const habitatWorld = biome ? (worlds ?? []).find((w) => w.attributes.Biome === biome) : undefined;
+  const habitatPlace = biome ? (places ?? []).find((p) => p.attributes.Biome === biome) : undefined;
+  const kin = (monsters ?? []).filter((m) => m.id !== monster.id && (!biome || m.attributes.Biome === biome)).slice(0, 4);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 dark:from-purple-950 dark:via-pink-950 dark:to-blue-950 relative overflow-hidden">
-      <div className="container mx-auto px-8 py-6 relative z-10 max-w-6xl">
-        {/* Botón de volver */}
-        <div className="mb-6">
-          <button 
-            onClick={() => router.back()}
-            className="flex items-center text-gray-300 hover:text-white transition-colors"
-          >
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            Volver
-          </button>
-        </div>
-
-        {/* Header del monstruo */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
-            {monster.attributes.Name}
-          </h1>
-          {monster.attributes.Nature && (
-            <p className="text-xl text-gray-300 mb-4">{monster.attributes.Nature}</p>
-          )}
-        </div>
-
-        <div className="max-w-6xl mx-auto">
-          {/* Layout principal: Imagen a la izquierda, información a la derecha */}
-          <div className="grid lg:grid-cols-2 gap-8 items-start">
-            {/* Columna izquierda - Imagen */}
-            <div>
-              <div className="relative aspect-square rounded-xl overflow-hidden bg-gradient-to-br from-purple-500/20 to-blue-500/20">
-                <Image
-                  src={getImageUrl(monster)}
-                  alt={monster.attributes.Name}
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 1024px) 100vw, 50vw"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-              </div>
+    <>
+      <Topbar crumb={<><Link href="/monsters" style={{ color: 'var(--gold-soft)' }}>Bestiario</Link> · <b>{a.Name}</b></>} />
+      <div className="page">
+        <div className="mon-top">
+          <div className="mon-stage-big">
+            {biome && <span className="biome-abs"><BiomeTag biome={biome} /></span>}
+            {art && <img src={art} alt={a.Name} />}
+            <div className="quick">
+              {a.AverageHeight != null && <div className="q"><b>{a.AverageHeight.toLocaleString('es')} m</b><span>Altura prom.</span></div>}
+              {a.AverageWeight != null && <div className="q"><b>{a.AverageWeight.toLocaleString('es')} kg</b><span>Peso prom.</span></div>}
+              {biome && <div className="q"><b>{BIOME[biome].label}</b><span>Ecosistema</span></div>}
             </div>
+          </div>
 
-            {/* Columna derecha - Información */}
-            <div className="space-y-6">
-              {/* Información básica */}
-              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20">
-                <h3 className="text-xl font-semibold mb-4 text-purple-300">Información Básica</h3>
-                
-                {monster.attributes.Origin && (
-                  <div className="mb-4">
-                    <h4 className="text-sm font-medium text-gray-400 mb-1">Origen</h4>
-                    <p className="text-gray-200">{monster.attributes.Origin}</p>
-                  </div>
-                )}
-
-                {monster.attributes.AverageHeight && (
-                  <div className="mb-4">
-                    <h4 className="text-sm font-medium text-gray-400 mb-1">Altura Promedio</h4>
-                    <p className="text-gray-200">{monster.attributes.AverageHeight} metros</p>
-                  </div>
-                )}
-
-                {monster.attributes.AverageWeight && (
-                  <div className="mb-4">
-                    <h4 className="text-sm font-medium text-gray-400 mb-1">Peso Promedio</h4>
-                    <p className="text-gray-200">{monster.attributes.AverageWeight} kg</p>
-                  </div>
-                )}
+          <div>
+            <div className="kicker">Criatura del bestiario</div>
+            <h1 className="cinzel" style={{ fontSize: 'clamp(40px,6vw,64px)', color: '#F6ECD7', margin: '8px 0 4px', letterSpacing: '.03em', lineHeight: '.95' }}>{a.Name}</h1>
+            {a.InnateAbility && (
+              <div className="ability">
+                <div className="lbl">✦ Habilidad innata</div>
+                <p>{a.InnateAbility}</p>
               </div>
+            )}
+            <CareSection monsterId={monster.id} />
+          </div>
+        </div>
 
-              {/* Habilidad innata */}
-              {monster.attributes.InnateAbility && (
-                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20">
-                  <h3 className="text-xl font-semibold mb-4 text-purple-300">Habilidad Innata</h3>
-                  <p className="text-gray-200 leading-relaxed">{monster.attributes.InnateAbility}</p>
+        {(a.Nature || a.Origin) && (
+          <>
+            <SectionTitle title="Naturaleza & origen" />
+            <div className="grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
+              {a.Nature && (
+                <div className="panel" style={{ padding: '26px 30px' }}>
+                  <div className="kicker">Naturaleza</div>
+                  <p style={{ margin: '10px 0 0', color: '#EFE3CE' }}>{a.Nature}</p>
                 </div>
               )}
-
-              {/* Sobre el monstruo */}
-              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20">
-                <h3 className="text-xl font-semibold mb-4 text-purple-300">Sobre {monster.attributes.Name}</h3>
-                <p className="text-gray-200 leading-relaxed">
-                  {monster.attributes.Nature && (
-                    <>
-                      <strong>Naturaleza:</strong> {monster.attributes.Nature}
-                      <br /><br />
-                    </>
-                  )}
-                  {monster.attributes.Origin && (
-                    <>
-                      <strong>Origen:</strong> {monster.attributes.Origin}
-                      <br /><br />
-                    </>
-                  )}
-                  Esta criatura mágica forma parte del bestiario de nuestros mundos. 
-                  Cada monstruo tiene características únicas que los hacen especiales 
-                  en el universo de Force.
-                </p>
-              </div>
-
-              {/* Estadísticas */}
-              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20">
-                <h3 className="text-xl font-semibold mb-4 text-purple-300">Estadísticas</h3>
-                <div className="space-y-3">
-                  {monster.attributes.AverageHeight && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-300">Altura</span>
-                      <span className="text-purple-300 font-semibold">{monster.attributes.AverageHeight}m</span>
-                    </div>
-                  )}
-                  {monster.attributes.AverageWeight && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-300">Peso</span>
-                      <span className="text-purple-300 font-semibold">{monster.attributes.AverageWeight}kg</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-300">Tipo</span>
-                    <span className="text-purple-300 font-semibold">Criatura Mágica</span>
-                  </div>
+              {a.Origin && (
+                <div className="panel" style={{ padding: '26px 30px' }}>
+                  <div className="kicker">Origen</div>
+                  <p style={{ margin: '10px 0 0', color: '#EFE3CE' }}>{a.Origin}</p>
                 </div>
-              </div>
+              )}
             </div>
-          </div>
+          </>
+        )}
 
-          {/* Botón para ver todos los monstruos */}
-          <div className="text-center mt-12">
-            <Link 
-              href="/monsters"
-              className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 px-8 py-3 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 inline-block"
-            >
-              Ver todos los monstruos
-            </Link>
-          </div>
-        </div>
+        {(habitatWorld || habitatPlace) && (
+          <>
+            <SectionTitle title="Hábitat" />
+            <div className="habitat">
+              {habitatWorld && <WorldCard world={habitatWorld} />}
+              {habitatPlace && <PlaceBanner place={habitatPlace} />}
+            </div>
+          </>
+        )}
+
+        {kin.length > 0 && (
+          <>
+            <SectionTitle title="Criaturas afines" href="/monsters" action="Bestiario →" />
+            <div className="grid" style={{ gridTemplateColumns: 'repeat(4,1fr)' }}>
+              {kin.map((m: Monster) => <MonsterCard key={m.id} monster={m} />)}
+            </div>
+          </>
+        )}
       </div>
-    </div>
+    </>
   );
-} 
+}
+
+/* Cuidados: busca el compañero del usuario para este monstruo y permite
+   alimentar / jugar / acariciar (sube stats vía endpoints custom). */
+function CareSection({ monsterId }: { monsterId: number }) {
+  const { user } = useAuth();
+  const [comp, setComp] = useState<{ id: number; happiness: number; energy: number; bond: number } | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    if (!user) { setComp(null); return; }
+    companionsService.getMine().then((res) => {
+      if (!active) return;
+      const found = res.data.find((c) => c.attributes.monster?.data?.id === monsterId);
+      if (found) setComp({ id: found.id, happiness: found.attributes.happiness, energy: found.attributes.energy, bond: found.attributes.bond });
+      else setComp(null);
+    }).catch(() => {});
+    return () => { active = false; };
+  }, [user, monsterId]);
+
+  const act = async (kind: 'feed' | 'play' | 'pet') => {
+    if (!comp) return;
+    setBusy(true);
+    try {
+      const res = await companionsService[kind](comp.id);
+      setComp((c) => (c ? { ...c, happiness: res.happiness, energy: res.energy, bond: res.bond } : c));
+    } catch { /* noop */ } finally { setBusy(false); }
+  };
+
+  const stats = comp ?? { happiness: 50, energy: 50, bond: 0 };
+
+  return (
+    <>
+      <div className="kicker" style={{ margin: '22px 0 12px' }}>Cuidados</div>
+      <Meter label="Felicidad" value={stats.happiness} fill="fill-gold" />
+      <Meter label="Energía" value={stats.energy} fill="fill-verd" />
+      <div style={{ marginBottom: 22 }}><Meter label="Vínculo" value={stats.bond} fill="fill-rare" last /></div>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        <button className="btn btn-verdant btn-lg" disabled={!comp || busy} onClick={() => act('feed')}>Alimentar 🍃</button>
+        <button className="btn btn-primary btn-lg" disabled={!comp || busy} onClick={() => act('play')}>Jugar ✦</button>
+        <button className="btn btn-secondary btn-lg" disabled={!comp || busy} onClick={() => act('pet')}>Acariciar</button>
+      </div>
+      {!comp && (
+        <p className="sub" style={{ fontSize: 13, marginTop: 12 }}>
+          {user ? 'Todavía no cuidás a esta criatura.' : 'Iniciá sesión para cuidar a esta criatura.'}
+        </p>
+      )}
+    </>
+  );
+}

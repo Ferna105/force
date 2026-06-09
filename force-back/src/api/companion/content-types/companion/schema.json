@@ -1,0 +1,51 @@
+{
+  "kind": "collectionType",
+  "collectionName": "companions",
+  "info": {
+    "singularName": "companion",
+    "pluralName": "companions",
+    "displayName": "Companion",
+    "description": "Vínculo entre un usuario y un monstruo que cuida, con sus stats de cuidado"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "companions"
+    },
+    "monster": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::monster.monster"
+    },
+    "happiness": {
+      "type": "integer",
+      "default": 50,
+      "min": 0,
+      "max": 100
+    },
+    "energy": {
+      "type": "integer",
+      "default": 50,
+      "min": 0,
+      "max": 100
+    },
+    "bond": {
+      "type": "integer",
+      "default": 0,
+      "min": 0,
+      "max": 100
+    },
+    "isActive": {
+      "type": "boolean",
+      "default": false
+    },
+    "lastInteraction": {
+      "type": "datetime"
+    }
+  }
+}

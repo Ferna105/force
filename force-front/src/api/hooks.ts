@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { dataService, monstersService, worldsService, placesService, itemsService, authService } from './services';
-import type { Monster, World, Place, Item, QueryParams, LoginRequest, RegisterRequest, AuthUser } from './types';
+import { dataService, monstersService, worldsService, placesService, itemsService, authService, companionsService, inventoryService } from './services';
+import type { Monster, World, Place, Item, Companion, InventoryEntry, QueryParams, LoginRequest, RegisterRequest, AuthUser } from './types';
 
 // Hook para manejar estados de carga y error
 interface UseApiState<T> {
@@ -47,6 +47,8 @@ export function useHomeData() {
 export function useExploreData() {
   const [state, setState] = useState<UseApiState<{
     worlds: World[];
+    places: Place[];
+    monsters: Monster[];
   }>>({
     data: null,
     loading: true,
@@ -357,4 +359,77 @@ export function useItemsByRarity(rarity: string, params?: QueryParams) {
   }, [rarity, params]);
 
   return state;
-} 
+}
+
+// ============ Hooks de entidad individual ============
+
+// Hook genérico de fetch con dependencia simple
+function useEntity<T>(fetcher: () => Promise<T>, deps: unknown[]) {
+  const [state, setState] = useState<UseApiState<T>>({ data: null, loading: true, error: null });
+  useEffect(() => {
+    let active = true;
+    setState(prev => ({ ...prev, loading: true, error: null }));
+    fetcher()
+      .then(data => { if (active) setState({ data, loading: false, error: null }); })
+      .catch(error => {
+        if (active) setState({ data: null, loading: false, error: error instanceof Error ? error.message : 'Error desconocido' });
+      });
+    return () => { active = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
+  return state;
+}
+
+// Un mundo por ID (con lugares poblados)
+export function useWorld(id: number | null) {
+  return useEntity<World | null>(
+    async () => (id ? (await worldsService.getById(id, { populate: '*' })).data : null),
+    [id]
+  );
+}
+
+// Un lugar por ID (con mundo + banner poblados)
+export function usePlace(id: number | null) {
+  return useEntity<Place | null>(
+    async () => (id ? (await placesService.getById(id, { populate: '*' })).data : null),
+    [id]
+  );
+}
+
+// Un monstruo por ID
+export function useMonster(id: number | null) {
+  return useEntity<Monster | null>(
+    async () => (id ? (await monstersService.getById(id, { populate: '*' })).data : null),
+    [id]
+  );
+}
+
+// ============ Compañero, inventario, descubrimiento ============
+
+// Compañero activo del usuario
+export function useActiveCompanion(userId: number | null) {
+  return useEntity<Companion | null>(
+    async () => (userId ? (await companionsService.getActive()).data[0] ?? null : null),
+    [userId]
+  );
+}
+
+// Inventario del usuario
+export function useInventory(userId: number | null) {
+  return useEntity<InventoryEntry[]>(
+    async () => (userId ? (await inventoryService.getMine()).data : []),
+    [userId]
+  );
+}
+
+// IDs de monstruos descubiertos por el usuario (para el bestiario)
+export function useDiscoveredMonsters(enabled: boolean) {
+  return useEntity<number[]>(
+    async () => {
+      if (!enabled) return [];
+      const me = await authService.getMeFull();
+      return (me.discoveredMonsters ?? []).map(m => m.id);
+    },
+    [enabled]
+  );
+}

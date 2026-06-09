@@ -63,6 +63,9 @@ export interface StrapiImageFormat {
   url: string;
 }
 
+// Unión de biomas/ecosistemas (debe coincidir con el enum del backend)
+export type BiomeName = 'forest' | 'aqua' | 'volcanic' | 'space' | 'snow' | 'arid';
+
 // Tipos específicos para cada entidad basados en la respuesta real
 export interface Monster extends StrapiEntity {
   attributes: {
@@ -73,6 +76,7 @@ export interface Monster extends StrapiEntity {
     AverageHeight: number | null;
     AverageWeight: number | null;
     InnateAbility: string | null;
+    Biome: BiomeName | null;
     createdAt: string;
     updatedAt: string;
     publishedAt: string;
@@ -85,6 +89,10 @@ export interface Place extends StrapiEntity {
     Description: string | null;
     Banner: StrapiImage | null;
     Type: 'shop' | 'game' | 'information';
+    Biome: BiomeName | null;
+    HotspotX: number | null;
+    HotspotY: number | null;
+    World?: { data: World | null };
     createdAt: string;
     updatedAt: string;
     publishedAt: string;
@@ -96,6 +104,7 @@ export interface World extends StrapiEntity {
     Name: string;
     Description: string | null;
     Image: StrapiImage | null;
+    Biome: BiomeName | null;
     places: {
       data: Place[];
     };
@@ -142,6 +151,9 @@ export interface AuthUser {
   provider: string;
   confirmed: boolean;
   blocked: boolean;
+  balance?: number;
+  // Solo presente cuando se pide con populate (shape aplanado de users-permissions)
+  discoveredMonsters?: { id: number }[];
   createdAt: string;
   updatedAt: string;
 }
@@ -193,4 +205,39 @@ export interface Item extends StrapiEntity {
 
 // Tipos para las respuestas de Item
 export type ItemsResponse = StrapiResponse<Item[]>;
-export type ItemResponse = StrapiResponse<Item>; 
+export type ItemResponse = StrapiResponse<Item>;
+
+// ============ Compañero (relación usuario ↔ monstruo + cuidados) ============
+export interface Companion extends StrapiEntity {
+  attributes: {
+    happiness: number;
+    energy: number;
+    bond: number;
+    isActive: boolean;
+    lastInteraction: string | null;
+    monster?: { data: Monster | null };
+    createdAt: string;
+    updatedAt: string;
+    publishedAt: string;
+  };
+}
+export type CompanionsResponse = StrapiResponse<Companion[]>;
+export type CompanionResponse = StrapiResponse<Companion>;
+
+// ============ Entrada de inventario (objeto + cantidad) ============
+export interface InventoryEntry extends StrapiEntity {
+  attributes: {
+    quantity: number;
+    item?: { data: Item | null };
+    createdAt: string;
+    updatedAt: string;
+    publishedAt: string;
+  };
+}
+export type InventoryEntriesResponse = StrapiResponse<InventoryEntry[]>;
+
+// Respuesta del endpoint de compra (POST /shop/buy)
+export interface BuyResponse {
+  balance: number;
+  entry: { id: number; quantity: number };
+}
