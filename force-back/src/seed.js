@@ -10,6 +10,8 @@
  * Se ejecuta en bootstrap y es seguro re-ejecutarlo: solo crea lo que falta.
  */
 
+const seedBibliotecaItems = require('../scripts/biblioteca/seed-items-core');
+
 const WORLD_BIOME = { Eryndor: 'volcanic', Koril: 'forest', Deo: 'arid', Egea: 'space' };
 const MONSTER_BIOME = { Tronc: 'forest', Serpi: 'aqua', Triso: 'volcanic', Raya: 'arid', Terri: 'space' };
 const PLACE_BIOME = {
@@ -201,6 +203,13 @@ module.exports = async function seed({ strapi }) {
       if (Object.keys(data).length) {
         await strapi.db.query('api::item.item').update({ where: { id: it.id }, data });
       }
+    }
+
+    // 5b) Catálogo "Biblioteca de objetos": crea los items que falten (con su
+    //     imagen subida vía el plugin de upload). Idempotente: saltea existentes.
+    //     Se puede desactivar con SEED_BIBLIOTECA=false.
+    if (process.env.SEED_BIBLIOTECA !== 'false') {
+      await seedBibliotecaItems(strapi);
     }
 
     // 6) Usuario demo
