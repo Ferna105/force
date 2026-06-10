@@ -489,6 +489,18 @@ export interface ApiItemItem extends Schema.CollectionType {
     draftAndPublish: true;
   };
   attributes: {
+    category: Attribute.Enumeration<
+      [
+        'fruit',
+        'vegetable',
+        'meat',
+        'seafood',
+        'legume',
+        'totem',
+        'weapon',
+        'armor'
+      ]
+    >;
     cooldown: Attribute.Integer &
       Attribute.SetMinMax<
         {
@@ -646,6 +658,8 @@ export interface ApiPlacePlace extends Schema.CollectionType {
       >;
     Name: Attribute.String & Attribute.Required & Attribute.Unique;
     publishedAt: Attribute.DateTime;
+    RestockAt: Attribute.DateTime;
+    ShopConfig: Attribute.JSON;
     Type: Attribute.Enumeration<['shop', 'game', 'information']> &
       Attribute.Required;
     updatedAt: Attribute.DateTime;
@@ -660,6 +674,53 @@ export interface ApiPlacePlace extends Schema.CollectionType {
       'manyToOne',
       'api::world.world'
     >;
+  };
+}
+
+export interface ApiShopStockShopStock extends Schema.CollectionType {
+  collectionName: 'shop_stocks';
+  info: {
+    description: 'Stock vivo de una tienda: relaciona un lugar (tienda) con un objeto y su cantidad disponible';
+    displayName: 'Shop Stock';
+    pluralName: 'shop-stocks';
+    singularName: 'shop-stock';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<
+      'api::shop-stock.shop-stock',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    item: Attribute.Relation<
+      'api::shop-stock.shop-stock',
+      'manyToOne',
+      'api::item.item'
+    >;
+    place: Attribute.Relation<
+      'api::shop-stock.shop-stock',
+      'manyToOne',
+      'api::place.place'
+    >;
+    quantity: Attribute.Integer &
+      Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      > &
+      Attribute.DefaultTo<0>;
+    updatedAt: Attribute.DateTime;
+    updatedBy: Attribute.Relation<
+      'api::shop-stock.shop-stock',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
   };
 }
 
@@ -1223,6 +1284,7 @@ declare module '@strapi/types' {
       'api::item.item': ApiItemItem;
       'api::monster.monster': ApiMonsterMonster;
       'api::place.place': ApiPlacePlace;
+      'api::shop-stock.shop-stock': ApiShopStockShopStock;
       'api::user-event.user-event': ApiUserEventUserEvent;
       'api::world.world': ApiWorldWorld;
       'plugin::content-releases.release': PluginContentReleasesRelease;

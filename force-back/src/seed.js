@@ -11,6 +11,24 @@
  */
 
 const seedBibliotecaItems = require('../scripts/biblioteca/seed-items-core');
+const BIBLIOTECA_ITEMS = require('../scripts/biblioteca/items.json');
+const { restockDueShops } = require('./api/shop/stock');
+
+// Mapa nombre→category del catálogo, para backfillear items ya creados sin categoría.
+const ITEM_CATEGORY = Object.fromEntries(
+  BIBLIOTECA_ITEMS.filter((i) => i.category).map((i) => [i.name, i.category])
+);
+
+// Config de tienda por nombre de lugar: qué objetos vende cada una.
+// `seeded:true` marca lo sembrado para no pisar una edición manual del admin.
+const SHOP_CONFIGS = {
+  // Mercado de fruta del valle fértil: solo fruta.
+  'Verdant Hollow': { categories: ['fruit'] },
+  // Mercado isleño: pescados/mariscos, fruta y verdura, y baratijas (tótems).
+  "Serpent's Rest Island": { categories: ['seafood', 'fruit', 'vegetable', 'totem'] },
+};
+// Config genérica para cualquier otra tienda sin entrada explícita (vende de todo).
+const GENERIC_SHOP_CONFIG = {};
 
 const WORLD_BIOME = { Eryndor: 'volcanic', Koril: 'forest', Deo: 'arid', Egea: 'space' };
 const MONSTER_BIOME = { Tronc: 'forest', Serpi: 'aqua', Triso: 'volcanic', Raya: 'arid', Terri: 'space' };
@@ -40,6 +58,8 @@ const PUBLIC_ACTIONS = [
   'api::place.place.find', 'api::place.place.findOne',
   'api::monster.monster.find', 'api::monster.monster.findOne',
   'api::item.item.find', 'api::item.item.findOne',
+  // Stock de una tienda (solo lectura): visible sin sesión.
+  'api::shop.shop.stock',
 ];
 const AUTH_ACTIONS = [
   ...PUBLIC_ACTIONS,
@@ -175,7 +195,7 @@ module.exports = async function seed({ strapi }) {
       }
     }
 
-    // 4) Biomas + hotspots de lugares
+    // 4) Biomas + hotspots de lugares + config de tienda (ShopConfig)
     const places = await strapi.db.query('api::place.place').findMany({ populate: { World: true } });
     for (const p of places) {
       const biome = PLACE_BIOME[p.Name] || WORLD_BIOME[p.World?.Name] || null;
@@ -184,6 +204,16 @@ module.exports = async function seed({ strapi }) {
       if (biome && p.Biome !== biome) data.Biome = biome;
       if (p.HotspotX == null) data.HotspotX = hs.x;
       if (p.HotspotY == null) data.HotspotY = hs.y;
+      // ShopConfig: solo tiendas. Se (re)siembra si falta o si fue puesto por el
+      // seed (seeded:true), nunca si fue editado a mano en el admin.
+      if (p.Type === 'shop') {
+        const cur = p.ShopConfig;
+        const isManual = cur && typeof cur === 'object' && cur.seeded !== true;
+        if (!isManual) {
+          const base = SHOP_CONFIGS[p.Name] || GENERIC_SHOP_CONFIG;
+          data.ShopConfig = { ...base, seeded: true };
+        }
+      }
       if (Object.keys(data).length) {
         await strapi.db.query('api::place.place').update({ where: { id: p.id }, data });
       }
@@ -192,14 +222,17 @@ module.exports = async function seed({ strapi }) {
     // 5) Completar datos de items faltantes
     const items = await strapi.db.query('api::item.item').findMany({});
     for (const it of items) {
-      const d = ITEM_DATA[it.name];
-      if (!d) continue;
       const data = {};
-      if (!it.rarity) data.rarity = d.rarity;
-      if (it.value == null || it.value === 0) data.value = d.value;
-      if (!it.type) data.type = d.type;
-      if (d.is_stackable && !it.is_stackable) { data.is_stackable = true; data.max_stack = d.max_stack; }
-      if (d.usable && !it.usable) { data.usable = true; data.cooldown = d.cooldown; }
+      // Backfill de categoría desde el catálogo (para items creados antes del campo).
+      if (!it.category && ITEM_CATEGORY[it.name]) data.category = ITEM_CATEGORY[it.name];
+      const d = ITEM_DATA[it.name];
+      if (d) {
+        if (!it.rarity) data.rarity = d.rarity;
+        if (it.value == null || it.value === 0) data.value = d.value;
+        if (!it.type) data.type = d.type;
+        if (d.is_stackable && !it.is_stackable) { data.is_stackable = true; data.max_stack = d.max_stack; }
+        if (d.usable && !it.usable) { data.usable = true; data.cooldown = d.cooldown; }
+      }
       if (Object.keys(data).length) {
         await strapi.db.query('api::item.item').update({ where: { id: it.id }, data });
       }
@@ -301,6 +334,11 @@ module.exports = async function seed({ strapi }) {
       }
     }
     strapi.log.info(`[seed] Estrategias de descubrimiento sembradas: ${seededCount}`);
+
+    // 12) Stock inicial de tiendas. Corre en bootstrap (single-thread, sin race);
+    //     genera el stock de las tiendas vacías cuyo cooldown ya venció. El cron
+    //     (config/cron-tasks.js) se encarga de todos los restocks posteriores.
+    await restockDueShops(strapi);
 
     strapi.log.info('[seed] Force seed completado ✓');
   } catch (err) {

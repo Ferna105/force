@@ -48,6 +48,20 @@
       ],
       "required": true
     },
+    "category": {
+      "type": "enumeration",
+      "enum": [
+        "fruit",
+        "vegetable",
+        "meat",
+        "seafood",
+        "legume",
+        "totem",
+        "weapon",
+        "armor"
+      ],
+      "required": false
+    },
     "icon": {
       "type": "media",
       "multiple": false,

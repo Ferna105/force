@@ -1,0 +1,30 @@
+{
+  "kind": "collectionType",
+  "collectionName": "shop_stocks",
+  "info": {
+    "singularName": "shop-stock",
+    "pluralName": "shop-stocks",
+    "displayName": "Shop Stock",
+    "description": "Stock vivo de una tienda: relaciona un lugar (tienda) con un objeto y su cantidad disponible"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "place": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::place.place"
+    },
+    "item": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::item.item"
+    },
+    "quantity": {
+      "type": "integer",
+      "default": 0,
+      "min": 0
+    }
+  }
+}

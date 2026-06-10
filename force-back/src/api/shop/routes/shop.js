@@ -12,5 +12,11 @@ module.exports = {
       handler: 'shop.buy',
       config: { policies: [] },
     },
+    {
+      method: 'GET',
+      path: '/shop/:placeId/stock',
+      handler: 'shop.stock',
+      config: { policies: [] },
+    },
   ],
 };

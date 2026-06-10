@@ -14,6 +14,8 @@ export type {
   Companion,
   InventoryEntry,
   BuyResponse,
+  ShopStock,
+  ShopStockLine,
   DiscoveryTask,
   DiscoveryStrategy,
   DiscoveryEventType,
@@ -46,6 +48,7 @@ export {
   itemsService,
   companionsService,
   inventoryService,
+  shopService,
   discoveryService,
   dataService,
   authService

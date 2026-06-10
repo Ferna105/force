@@ -3,9 +3,9 @@
 /* eslint-disable @next/next/no-img-element */
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { usePlace, useItems, useMonsters, useDiscoveredMonsters, inventoryService } from '@/api';
-import type { Place, Item } from '@/api/types';
+import { useCallback, useEffect, useState } from 'react';
+import { usePlace, useMonsters, useDiscoveredMonsters, inventoryService, shopService } from '@/api';
+import type { Place, Item, ShopStock } from '@/api/types';
 import { useAuth } from '@/hooks/useAuth';
 import { useDiscovery } from '@/hooks/useDiscovery';
 import {
@@ -64,24 +64,66 @@ export default function PlacePage() {
 }
 
 /* ============ TIENDA ============ */
+// mm:ss a partir de segundos.
+function mmss(secs: number) {
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
 function ShopBody({ placeId }: { placeId: number }) {
   const { user, updateUser } = useAuth();
   const { reportDiscoveries } = useDiscovery();
-  const { data: items, loading } = useItems({ populate: '*' });
+  const [stock, setStock] = useState<ShopStock | null>(null);
+  const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<number | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  const [secsLeft, setSecsLeft] = useState<number | null>(null);
 
-  const buy = async (item: Item) => {
+  // Carga el stock de esta tienda (objetos disponibles + cantidades).
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const s = await shopService.getStock(placeId);
+      setStock(s);
+    } catch {
+      setMsg('No se pudo cargar la tienda.');
+    } finally {
+      setLoading(false);
+    }
+  }, [placeId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  // Si la tienda está agotada, cuenta regresiva hasta el reabastecimiento; al
+  // llegar a 0 recarga el stock (el cron del backend ya lo regeneró).
+  const depleted = !!stock && stock.items.length === 0 && stock.restockInSeconds != null;
+  useEffect(() => {
+    if (!depleted) { setSecsLeft(null); return; }
+    setSecsLeft(stock!.restockInSeconds!);
+    const t = setInterval(() => {
+      setSecsLeft((s) => {
+        if (s == null) return null;
+        if (s <= 1) { clearInterval(t); load(); return 0; }
+        return s - 1;
+      });
+    }, 1000);
+    return () => clearInterval(t);
+  }, [depleted, stock, load]);
+
+  const buy = async (line: { item: Item; quantity: number }) => {
+    const item = line.item;
     if (!user) { setMsg('Iniciá sesión para comprar.'); return; }
     setBusy(item.id); setMsg(null);
     try {
-      // Se pasa el lugar para habilitar tareas "comprar en una tienda de X".
+      // Se pasa el lugar: habilita tareas "comprar en X" y descuenta del stock.
       const res = await inventoryService.buy(item.id, placeId);
       updateUser({ balance: res.balance });
       reportDiscoveries(res.newlyDiscovered);
+      if (res.stock) setStock(res.stock);
       setMsg(`Compraste ${item.attributes.name}. Saldo: F ${fmt(res.balance)}.`);
     } catch {
-      setMsg('No se pudo completar la compra (¿saldo insuficiente?).');
+      setMsg('No se pudo completar la compra (¿saldo insuficiente o sin stock?).');
     } finally {
       setBusy(null);
     }
@@ -93,28 +135,43 @@ function ShopBody({ placeId }: { placeId: number }) {
         <h3 className="cinzel">Mercado</h3>
         <a>Saldo: <span className="coin" style={{ verticalAlign: 'middle' }}><span className="c">F</span> {fmt(user?.balance)}</span></a>
       </div>
-      <p className="sub" style={{ marginBottom: 22 }}>Reliquias rescatadas de las profundidades. La rareza marca el precio — y el brillo.</p>
+      <p className="sub" style={{ marginBottom: 22 }}>Mercancía fresca de la región. El stock es limitado: cuando se agota, tarda unos minutos en reponerse.</p>
       {msg && <p className="sub" style={{ marginBottom: 16, color: 'var(--gold-soft)' }}>{msg}</p>}
       {loading && <Loading />}
-      <div className="shop-grid">
-        {(items ?? []).map((it) => {
-          const i = it.attributes;
-          return (
-            <ItemSlot
-              key={it.id}
-              name={i.name}
-              img={mediaUrl(i.icon, thumbFallback(i.name))}
-              rarity={i.rarity}
-              type={i.type}
-              showValue={false}
-            >
-              <button className="btn btn-primary btn-sm buy" disabled={busy === it.id} onClick={() => buy(it)}>
-                <span style={{ fontWeight: 700 }}>F</span> {fmt(i.value)}
-              </button>
-            </ItemSlot>
-          );
-        })}
-      </div>
+      {!loading && depleted && (
+        <div className="panel" style={{ padding: '28px 32px', textAlign: 'center' }}>
+          <h3 className="cinzel" style={{ color: 'var(--gold-soft)', marginBottom: 8 }}>Tienda agotada</h3>
+          <p className="sub">Reabasteciendo… vuelve en <b style={{ color: 'var(--gold-soft)' }}>{mmss(secsLeft ?? 0)}</b></p>
+        </div>
+      )}
+      {!loading && !depleted && (
+        <div className="shop-grid">
+          {(stock?.items ?? []).map((line) => {
+            const it = line.item;
+            const i = it.attributes;
+            const soldOut = line.quantity <= 0;
+            return (
+              <ItemSlot
+                key={it.id}
+                name={i.name}
+                img={mediaUrl(i.icon, thumbFallback(i.name))}
+                rarity={i.rarity}
+                type={i.type}
+                qty={line.quantity}
+                showValue={false}
+              >
+                <button
+                  className="btn btn-primary btn-sm buy"
+                  disabled={busy === it.id || soldOut}
+                  onClick={() => buy(line)}
+                >
+                  <span style={{ fontWeight: 700 }}>F</span> {fmt(i.value)}
+                </button>
+              </ItemSlot>
+            );
+          })}
+        </div>
+      )}
     </>
   );
 }

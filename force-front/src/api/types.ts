@@ -204,6 +204,7 @@ export interface Item extends StrapiEntity {
     description: string | null;
     type: 'weapon' | 'armor' | 'consumable' | 'key' | 'misc';
     rarity: 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
+    category?: 'fruit' | 'vegetable' | 'meat' | 'seafood' | 'legume' | 'totem' | 'weapon' | 'armor' | null;
     icon: StrapiImage | null;
     weight: number | null;
     value: number | null;
@@ -250,12 +251,29 @@ export interface InventoryEntry extends StrapiEntity {
 }
 export type InventoryEntriesResponse = StrapiResponse<InventoryEntry[]>;
 
+// ============ Stock de tienda (place de tipo shop) ============
+// Una línea de stock: un objeto con su cantidad disponible en la tienda.
+export interface ShopStockLine {
+  quantity: number;
+  item: Item;
+}
+// Respuesta de GET /shop/:placeId/stock (y campo `stock` de la compra).
+export interface ShopStock {
+  items: ShopStockLine[];
+  total: number;
+  // Si la tienda está agotada, momento en que se reabastece y segundos restantes.
+  restockAt: string | null;
+  restockInSeconds: number | null;
+}
+
 // Respuesta del endpoint de compra (POST /shop/buy)
 export interface BuyResponse {
   balance: number;
   entry: { id: number; quantity: number };
   // Monstruos recién descubiertos por efecto de la compra (p. ej. "comprar en X").
   newlyDiscovered?: Monster[];
+  // Stock actualizado de la tienda tras la compra.
+  stock?: ShopStock;
 }
 
 // ============ Descubrimiento de monstruos ============

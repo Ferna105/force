@@ -67,6 +67,12 @@
       "required": false,
       "min": 0,
       "max": 100
+    },
+    "ShopConfig": {
+      "type": "json"
+    },
+    "RestockAt": {
+      "type": "datetime"
     }
   }
 }

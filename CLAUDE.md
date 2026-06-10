@@ -42,9 +42,9 @@ The per-app npm scripts below are still the way to run a single service directly
 ### Backend — Strapi content types
 All API resources live under `force-back/src/api/<name>/` and are scaffolded with Strapi factories — controllers (`createCoreController`), routes (`createCoreRouter`), and services (`createCoreService`) are unmodified boilerplate. **Behavior is driven almost entirely by the `content-types/<name>/schema.json` files, not by code.** To change the API, edit the schema (or use the admin panel, which writes these files).
 
-Content types: `world`, `place`, `monster`, `item`, `companion` (user↔monster care bond), `inventory-entry` (user's item + quantity), `user-event` (activity log feeding the discovery engine — see below). Note the field-naming inconsistency — `world`/`place`/`monster` use PascalCase attributes (`Name`, `Description`, `Image`), while `item` uses snake_case (`name`, `slug`, `type`, `rarity`). Relations: `world` 1—N `place`; `item` N—N `user` (the Items relation is added to the user schema in `src/extensions/users-permissions/content-types/user/schema.json`, marked `private`). The user schema also has `discoveredMonsters` (M2N → monster), `balance`, `companions` and `inventoryEntries`.
+Content types: `world`, `place`, `monster`, `item`, `companion` (user↔monster care bond), `inventory-entry` (user's item + quantity), `user-event` (activity log feeding the discovery engine — see below), `shop-stock` (a shop place's live stock: place + item + quantity — see the shop/stock engine). Note the field-naming inconsistency — `world`/`place`/`monster` use PascalCase attributes (`Name`, `Description`, `Image`), while `item` uses snake_case (`name`, `slug`, `type`, `rarity`). Relations: `world` 1—N `place`; `item` N—N `user` (the Items relation is added to the user schema in `src/extensions/users-permissions/content-types/user/schema.json`, marked `private`). The user schema also has `discoveredMonsters` (M2N → monster), `balance`, `companions` and `inventoryEntries`.
 
-There are also two custom **code-only** APIs (controller + routes, no content-type, like the `shop` pattern): `shop` (`POST /shop/buy`) and `discovery` (`POST /discovery/event`, `POST /discovery/sync`).
+There are also two custom **code-only** APIs (controller + routes, no content-type, like the `shop` pattern): `shop` (`POST /shop/buy`, `GET /shop/:placeId/stock`) and `discovery` (`POST /discovery/event`, `POST /discovery/sync`).
 
 Auth is the standard `users-permissions` plugin (local provider, JWT). Endpoint permissions per role are configured in the admin panel, not in code.
 
@@ -113,6 +113,37 @@ a manually-edited strategy** (one without the marker). Set `RESEED_STRATEGIES=tr
 overwrite even manual edits. Adding a new task type = add one function to `EVALUATORS` and
 document it here; no schema change.
 
+### Backend — Shop & stock engine
+
+Shop places (`place.Type === 'shop'`) sell a **themed, limited, auto-restocking** stock —
+e.g. Verdant Hollow sells only fruit, Serpent's Rest Island an island-market mix. All logic
+lives in `src/api/shop/stock.js`; the `place` schema gained `ShopConfig` (json) + `RestockAt`
+(datetime), the `item` schema gained `category` (a finer tag than `type`: `fruit`/`vegetable`/
+`meat`/`seafood`/`legume`/`totem`/`weapon`/`armor`), and live stock is rows in the `shop-stock`
+content type (`place` + `item` + `quantity`).
+
+- **What a shop sells** — `ShopConfig`, a declarative JSON filter: `{ categories?, types?,
+  rarities?, itemNames? }` (combined with AND; empty ⇒ sells everything). Seeded per place in
+  `SHOP_CONFIGS` (`src/seed.js`) with the same `seeded:true` marker convention as discovery
+  strategies (re-applied on boot, never overwrites a manual admin edit).
+- **Stock generation** — `generateStock(place)` lays down exactly **30 units** (`STOCK_SIZE`)
+  across the eligible items, picking each unit's rarity by weight (`RARITY_WEIGHTS` =
+  common 50 / uncommon 25 / rare 15 / epic 8 / legendary 2), so multiple units of the same
+  item are normal and rare items are scarce. If the chosen rarity has no eligible item it
+  falls back to whatever rarities exist in the pool.
+- **Restock cycle** — buying decrements stock atomically (`decrementStock`, a guarded
+  `UPDATE … WHERE quantity > 0` to avoid overselling the last unit). When a shop hits 0 it sets
+  `RestockAt = now + 5min` (`RESTOCK_MINUTES`). Regeneration runs **only** from
+  `restockDueShops()` — invoked by a **cron** (`config/cron-tasks.js`, `restockShops`, every
+  minute, enabled via `cron.enabled` in `config/server.js`; toggle `CRON_ENABLED`) and once by
+  the seed at bootstrap. It is deliberately kept **off the read path**: if two users hit a
+  depleted shop at once, lazy regen-on-read could double-generate stock — the cron is the
+  single generation point, so that race can't happen.
+- **Endpoints** — `GET /shop/:placeId/stock` (public, read-only, never generates) returns
+  `{ items:[{item, quantity}], total, restockAt, restockInSeconds }`. `POST /shop/buy` now
+  **requires** `placeId`, validates+decrements that shop's stock, and returns the updated
+  `stock` alongside `balance`/`entry`/`newlyDiscovered`.
+
 ### Frontend — discovery UX
 
 `src/hooks/useDiscovery.tsx` — `DiscoveryProvider` (mounted in `layout.tsx` inside
@@ -122,13 +153,17 @@ document it here; no schema change.
 (`app/explore/[worldId]/places/[placeId]/page.tsx`) records `visit_place` on mount,
 `play_place` on the "Jugar ahora" button, and `inventoryService.buy(itemId, placeId)` reports
 discoveries from the buy response. The bestiary (`/monsters`) only lists discovered monsters,
-so a newly discovered one shows up there after the modal.
+so a newly discovered one shows up there after the modal. The shop body of the place page
+(`ShopBody`) fetches that shop's stock via `shopService.getStock(placeId)`, renders each item
+with its remaining quantity (the `qty` badge on `ItemSlot`), updates stock from the buy
+response, and when the shop is sold out shows a "Reabasteciendo… mm:ss" countdown that refetches
+when it reaches 0 (the cron has regenerated it by then).
 
 ### Frontend — API layer
 All Strapi communication is centralized in `force-front/src/api/`, re-exported through `index.ts`:
 - `client.ts` — single axios instance, base URL `${NEXT_PUBLIC_STRAPI_URL}/api` (defaults to `http://localhost:1337`).
 - `types.ts` — TypeScript mirrors of the Strapi response envelope (`StrapiResponse`, `StrapiEntity`) and each content type.
-- `services.ts` — per-resource service objects (`monstersService`, `worldsService`, `placesService`, `itemsService`, `authService`) plus a `dataService` aggregator. `buildQueryParams()` here translates a `QueryParams` object into Strapi's `populate`/`sort`/`filters`/`pagination`/`fields` query string — use it rather than hand-building query strings.
+- `services.ts` — per-resource service objects (`monstersService`, `worldsService`, `placesService`, `itemsService`, `shopService`, `authService`) plus a `dataService` aggregator. `buildQueryParams()` here translates a `QueryParams` object into Strapi's `populate`/`sort`/`filters`/`pagination`/`fields` query string — use it rather than hand-building query strings.
 - `hooks.ts` — thin `use*` React hooks wrapping each service with `{ data, loading, error }` state. These are bespoke `useEffect` fetchers; there is **no** react-query/SWR.
 
 When adding a new resource, the pattern is: add the type to `types.ts`, a service to `services.ts`, a hook to `hooks.ts`, then re-export all three from `index.ts`.

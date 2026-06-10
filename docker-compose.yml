@@ -50,6 +50,9 @@ services:
       # Re-siembra las estrategias de descubrimiento de ejemplo aunque ya existan
       # (incluso si fueron editadas a mano). Útil tras cambiar MONSTER_STRATEGIES.
       RESEED_STRATEGIES: ${RESEED_STRATEGIES:-false}
+      # Cron de reabastecimiento de tiendas (cada minuto). Default activado;
+      # poner CRON_ENABLED=false para apagarlo.
+      CRON_ENABLED: ${CRON_ENABLED:-true}
     ports:
       - "1337:1337"
     volumes:

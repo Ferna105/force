@@ -22,6 +22,7 @@ import {
   BuyResponse,
   DiscoveryEventRequest,
   DiscoveryResponse,
+  ShopStock,
 } from './types';
 
 // Función helper para construir query parameters
@@ -477,6 +478,20 @@ export const inventoryService = {
       return response.data;
     } catch (error) {
       throw new Error(`Error al comprar: ${error}`);
+    }
+  },
+};
+
+// Servicio de tienda: stock por lugar (objetos disponibles + cantidades).
+export const shopService = {
+  // Stock actual de una tienda. Si está agotada, trae la cuenta regresiva de
+  // reabastecimiento (restockInSeconds).
+  async getStock(placeId: number): Promise<ShopStock> {
+    try {
+      const response = await apiClient.get(`/shop/${placeId}/stock`);
+      return response.data;
+    } catch (error) {
+      throw new Error(`Error obteniendo el stock de la tienda: ${error}`);
     }
   },
 };
