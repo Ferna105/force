@@ -390,7 +390,16 @@ function useEntity<T>(fetcher: () => Promise<T>, deps: unknown[]) {
 // Un mundo por ID (con lugares poblados)
 export function useWorld(id: number | null) {
   return useEntity<World | null>(
-    async () => (id ? (await worldsService.getById(id, { populate: '*' })).data : null),
+    async () =>
+      id
+        ? (
+            await worldsService.getById(id, {
+              // populate '*' es de un solo nivel: trae los places pero no su Banner.
+              // Poblamos el Banner de cada place para que las tarjetas muestren su imagen.
+              populate: { Image: true, places: { populate: ['Banner'] } },
+            })
+          ).data
+        : null,
     [id]
   );
 }

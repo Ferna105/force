@@ -140,7 +140,7 @@ export type PlaceResponse = StrapiResponse<Place>;
 
 // Tipos para parámetros de consulta
 export interface QueryParams {
-  populate?: string | string[];
+  populate?: string | string[] | Record<string, unknown>;
   sort?: string | string[];
   filters?: Record<string, string>;
   pagination?: {

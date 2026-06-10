@@ -25,6 +25,20 @@ import {
   ShopStock,
 } from './types';
 
+// Serializa un objeto/array anidado a la sintaxis de brackets de Strapi 4
+// (p. ej. populate[places][populate][0]=Banner).
+function appendNested(searchParams: URLSearchParams, key: string, value: unknown): void {
+  if (Array.isArray(value)) {
+    value.forEach((v, i) => appendNested(searchParams, `${key}[${i}]`, v));
+  } else if (value !== null && typeof value === 'object') {
+    Object.entries(value as Record<string, unknown>).forEach(([k, v]) =>
+      appendNested(searchParams, `${key}[${k}]`, v),
+    );
+  } else {
+    searchParams.append(key, String(value));
+  }
+}
+
 // Función helper para construir query parameters
 function buildQueryParams(params: QueryParams = {}): string {
   const searchParams = new URLSearchParams();
@@ -32,6 +46,9 @@ function buildQueryParams(params: QueryParams = {}): string {
   if (params.populate) {
     if (Array.isArray(params.populate)) {
       params.populate.forEach(item => searchParams.append('populate', item));
+    } else if (typeof params.populate === 'object') {
+      // populate anidado (Strapi 4): { places: { populate: ['Banner'] } } -> populate[places][populate][0]=Banner
+      appendNested(searchParams, 'populate', params.populate);
     } else {
       searchParams.append('populate', params.populate);
     }
