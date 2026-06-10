@@ -9,12 +9,12 @@ import {
 import { BiomeTag, TypePill, RarityPill } from './tags';
 
 /* ---- Tarjeta de Mundo ---- */
-export function WorldCard({ world, row = false }: { world: World; row?: boolean }) {
+export function WorldCard({ world, row = false, short = false }: { world: World; row?: boolean; short?: boolean }) {
   const a = world.attributes;
   const img = mediaUrl(a.Image, worldArtFallback(a.Name));
   const places = a.places?.data?.length ?? 0;
   return (
-    <Link className={`world${row ? ' wrow' : ''}`} href={`/explore/${world.id}`} data-biome={a.Biome ?? ''}>
+    <Link className={`world${row ? ' wrow' : ''}${short ? ' wshort' : ''}`} href={`/explore/${world.id}`} data-biome={a.Biome ?? ''}>
       <div className="orb">{img && <img src={img} alt={a.Name} />}</div>
       <BiomeTag biome={a.Biome} abs />
       <div className="wb">

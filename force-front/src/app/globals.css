@@ -175,6 +175,8 @@ h1,h2,h3,h4{margin:0;}
 .world.wrow .wb{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;padding:22px 28px;}
 .world.wrow .wb p{font-size:14px;}
 @media (max-width:760px){.world.wrow{display:block;}.world.wrow .orb{aspect-ratio:1;}}
+/* Descripción corta: recorta el texto a 3 líneas */
+.world.wshort .wb p{display:-webkit-box;-webkit-line-clamp:3;line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
 
 /* ============ CARDS: PLACE BANNER ============ */
 .place{position:relative;border-radius:var(--r-lg);overflow:hidden;border:1px solid var(--ink-line);box-shadow:var(--shadow-card);aspect-ratio:3/2;cursor:pointer;transition:transform .18s,box-shadow .25s;display:block;}

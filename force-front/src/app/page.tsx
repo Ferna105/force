@@ -36,7 +36,7 @@ export default function HomePage() {
 
             <SectionTitle title="Mundos para explorar" href="/explore" />
             <div className="grid" style={{ gridTemplateColumns: 'repeat(4,1fr)' }}>
-              {data.worlds.slice(0, 4).map((w) => <WorldCard key={w.id} world={w} />)}
+              {data.worlds.slice(0, 4).map((w) => <WorldCard key={w.id} world={w} short />)}
             </div>
 
             <SectionTitle title="Lugares destacados" href="/explore" />
