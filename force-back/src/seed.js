@@ -23,9 +23,9 @@ const ITEM_CATEGORY = Object.fromEntries(
 // `seeded:true` marca lo sembrado para no pisar una edición manual del admin.
 const SHOP_CONFIGS = {
   // Mercado de fruta del valle fértil: solo fruta.
-  'Verdant Hollow': { categories: ['fruit'] },
+  'Cañada Verdante': { categories: ['fruit'] },
   // Mercado isleño: pescados/mariscos, fruta y verdura, y baratijas (tótems).
-  "Serpent's Rest Island": { categories: ['seafood', 'fruit', 'vegetable', 'totem'] },
+  'Isla del Reposo de la Serpiente': { categories: ['seafood', 'fruit', 'vegetable', 'totem'] },
 };
 // Config genérica para cualquier otra tienda sin entrada explícita (vende de todo).
 const GENERIC_SHOP_CONFIG = {};
@@ -33,16 +33,16 @@ const GENERIC_SHOP_CONFIG = {};
 const WORLD_BIOME = { Eryndor: 'volcanic', Koril: 'forest', Deo: 'arid', Egea: 'space' };
 const MONSTER_BIOME = { Tronc: 'forest', Serpi: 'aqua', Triso: 'volcanic', Raya: 'arid', Terri: 'space' };
 const PLACE_BIOME = {
-  'Verdant Hollow': 'forest',
-  "Serpent's Rest Island": 'aqua',
-  'Frostpeak Citadel': 'snow',
-  'Obsidian Watchtower': 'volcanic',
+  'Cañada Verdante': 'forest',
+  'Isla del Reposo de la Serpiente': 'aqua',
+  'Ciudadela de la Cumbre Helada': 'snow',
+  'Atalaya de Obsidiana': 'volcanic',
 };
 const PLACE_HOTSPOT = {
-  'Verdant Hollow': { x: 38, y: 42 },
-  "Serpent's Rest Island": { x: 60, y: 55 },
-  'Frostpeak Citadel': { x: 64, y: 30 },
-  'Obsidian Watchtower': { x: 36, y: 62 },
+  'Cañada Verdante': { x: 38, y: 42 },
+  'Isla del Reposo de la Serpiente': { x: 60, y: 55 },
+  'Ciudadela de la Cumbre Helada': { x: 64, y: 30 },
+  'Atalaya de Obsidiana': { x: 36, y: 62 },
 };
 // Datos plausibles para items (solo se aplican si faltan)
 const ITEM_DATA = {
@@ -103,15 +103,15 @@ const MONSTER_STRATEGIES = {
   Tronc: {
     ordered: true,
     tasks: [
-      { type: 'visit_place', params: { placeName: 'Verdant Hollow' }, label: 'Primero adentrate en Verdant Hollow' },
-      { type: 'visit_place', params: { placeName: 'Obsidian Watchtower' }, label: 'Después subí a la Obsidian Watchtower' },
+      { type: 'visit_place', params: { placeName: 'Cañada Verdante' }, label: 'Primero adentrate en la Cañada Verdante' },
+      { type: 'visit_place', params: { placeName: 'Atalaya de Obsidiana' }, label: 'Después subí a la Atalaya de Obsidiana' },
     ],
   },
   // Sin orden: visitar su isla + tener cualquier objeto misceláneo en el inventario.
   Serpi: {
     ordered: false,
     tasks: [
-      { type: 'visit_place', params: { placeName: "Serpent's Rest Island" }, label: 'Visitá Serpent’s Rest Island' },
+      { type: 'visit_place', params: { placeName: 'Isla del Reposo de la Serpiente' }, label: 'Visitá la Isla del Reposo de la Serpiente' },
       { type: 'own_item_of_type', params: { type: 'misc' }, label: 'Tené un objeto misceláneo (p. ej. Moder Granite Table, 40 F)' },
     ],
   },
@@ -119,7 +119,7 @@ const MONSTER_STRATEGIES = {
   Triso: {
     ordered: false,
     tasks: [
-      { type: 'visit_place', params: { placeName: 'Frostpeak Citadel' }, label: 'Explorá la Frostpeak Citadel' },
+      { type: 'visit_place', params: { placeName: 'Ciudadela de la Cumbre Helada' }, label: 'Explorá la Ciudadela de la Cumbre Helada' },
       { type: 'own_item_of_rarity', params: { rarity: 'uncommon' }, label: 'Conseguí un objeto poco común (Bespoke Rubber Gloves, 95 F)' },
     ],
   },
@@ -135,7 +135,7 @@ const MONSTER_STRATEGIES = {
     ordered: false,
     tasks: [
       { type: 'own_item_of_rarity', params: { rarity: 'rare' }, label: 'Conseguí un objeto raro (Fanstastic Plastic Towels, 210 F)' },
-      { type: 'visit_place', params: { placeName: 'Obsidian Watchtower' }, label: 'Asomate a la Obsidian Watchtower' },
+      { type: 'visit_place', params: { placeName: 'Atalaya de Obsidiana' }, label: 'Asomate a la Atalaya de Obsidiana' },
     ],
   },
 };
