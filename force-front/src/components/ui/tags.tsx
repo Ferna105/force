@@ -73,6 +73,116 @@ export function CompanionStats({ stats }: {
   );
 }
 
+/* ============ Compañero — diseño de stats ============ */
+
+// Metadatos por stat de combate: etiqueta, tope para normalizar la barra,
+// clase de relleno e ícono. Los topes dejan margen para crecer (salud ~150,
+// el trío fuerza/defensa/velocidad ~20, acorde al presupuesto base por especie).
+const STAT_META = {
+  health:   { label: 'Salud',     max: 150, fill: 'cmp-fill-health', icon: <path d="M12 20s-7-4.4-9.2-8.2C1 8.6 2.7 5.3 6 5.3c2 0 3.2 1.3 4 2.6.8-1.3 2-2.6 4-2.6 3.3 0 5 3.3 3.2 6.5C19 15.6 12 20 12 20z" /> },
+  strength: { label: 'Fuerza',    max: 20,  fill: 'cmp-fill-str',    icon: <path d="M14.5 3.5l6 6-3 3-1.5-1.5-7 7 1.5 1.5-2 2-6-6 2-2 1.5 1.5 7-7-1.5-1.5z" /> },
+  defense:  { label: 'Defensa',   max: 20,  fill: 'cmp-fill-def',    icon: <path d="M12 3l7 2.5v5c0 4.6-3 8.4-7 10-4-1.6-7-5.4-7-10v-5L12 3z" /> },
+  speed:    { label: 'Velocidad', max: 20,  fill: 'cmp-fill-spd',    icon: <path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z" /> },
+} as const;
+
+type StatKind = keyof typeof STAT_META;
+
+/** Barra de una stat de combate real (valor absoluto + relleno normalizado al tope). */
+export function StatBar({ kind, value }: { kind: StatKind; value: number }) {
+  const m = STAT_META[kind];
+  const pct = Math.max(4, Math.min(100, (value / m.max) * 100));
+  return (
+    <div className="cmp-stat">
+      <div className="cmp-stat-h">
+        <svg className="cmp-stat-ic" viewBox="0 0 24 24">{m.icon}</svg>
+        <span className="lb">{m.label}</span>
+        <b className="vl">{value}</b>
+      </div>
+      <div className="cmp-bar"><i className={m.fill} style={{ width: `${pct}%` }} /></div>
+    </div>
+  );
+}
+
+/** Las 4 barras de combate del compañero (salud, fuerza, defensa, velocidad). */
+export function CompanionStatBars({ stats }: {
+  stats: { health: number; strength: number; defense: number; speed: number };
+}) {
+  return (
+    <div className="cmp-bars">
+      <StatBar kind="health" value={stats.health} />
+      <StatBar kind="strength" value={stats.strength} />
+      <StatBar kind="defense" value={stats.defense} />
+      <StatBar kind="speed" value={stats.speed} />
+    </div>
+  );
+}
+
+/**
+ * Nivel: número grande con una rueda (anillo de progreso) alrededor que se vacía
+ * en nivel 1 y se llena en `max` (100). El relleno es (level-1)/(max-1).
+ */
+export function LevelRing({ level, max = 100 }: { level: number; max?: number }) {
+  const size = 140, sw = 9, r = (size - sw) / 2 - 1, c = 2 * Math.PI * r;
+  const pct = Math.max(0, Math.min(1, (level - 1) / (max - 1)));
+  return (
+    <div className="cmp-ring">
+      <svg viewBox={`0 0 ${size} ${size}`}>
+        <defs>
+          <linearGradient id="lvlGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#F4C969" />
+            <stop offset="100%" stopColor="#BE801A" />
+          </linearGradient>
+        </defs>
+        <circle className="cmp-ring-track" cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={sw} />
+        <circle
+          className="cmp-ring-prog" cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={sw}
+          stroke="url(#lvlGrad)" strokeLinecap="round"
+          strokeDasharray={c} strokeDashoffset={c * (1 - pct)}
+          transform={`rotate(-90 ${size / 2} ${size / 2})`}
+        />
+      </svg>
+      <div className="cmp-ring-c">
+        <b>{level}</b>
+        <span>Nivel</span>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Suerte: diseño aparte del resto — un medallón-trébol con halo y destellos cuya
+ * intensidad escala con la suerte (no es una barra). El valor va dentro del trébol.
+ */
+export function LuckCharm({ luck, max = 20 }: { luck: number; max?: number }) {
+  const t = Math.max(0, Math.min(1, luck / max));
+  // 6 destellos en órbita; se "encienden" de forma proporcional a la suerte.
+  const sparks = Array.from({ length: 6 }, (_, i) => i);
+  const lit = Math.round(t * sparks.length);
+  return (
+    <div className="cmp-luck" style={{ ['--luck' as string]: t }}>
+      <div className="cmp-luck-orbit">
+        {sparks.map((i) => {
+          const a = (-90 + i * 60) * (Math.PI / 180);
+          return (
+            <span
+              key={i}
+              className={`cmp-luck-spark${i < lit ? ' on' : ''}`}
+              style={{ left: `${50 + 48 * Math.cos(a)}%`, top: `${50 + 48 * Math.sin(a)}%` }}
+            />
+          );
+        })}
+        <div className="cmp-luck-medal">
+          <svg viewBox="0 0 48 48" className="cmp-luck-clover" aria-hidden>
+            <path d="M24 24c0-5-3-8-3-11a4 4 0 1 1 8 0c0 3-2 6-2 8 2-2 5-4 8-4a4 4 0 1 1 0 8c-3 0-6-2-8-2 2 2 4 5 4 8a4 4 0 1 1-8 0c0-3 2-6 2-8-2 2-5 4-8 4a4 4 0 1 1 0-8c3 0 6 2 8 2-2-2-3-3-3-5z" />
+          </svg>
+          <span className="cmp-luck-num">{luck}</span>
+        </div>
+      </div>
+      <span className="cmp-luck-lab">Suerte</span>
+    </div>
+  );
+}
+
 // Ejes del radar de stats base, en el orden del diseño (Velocidad arriba, luego
 // horario). `max` normaliza el radio de cada stat a 0..1 dejando margen para el
 // crecimiento futuro; la etiqueta muestra el valor real de la especie.

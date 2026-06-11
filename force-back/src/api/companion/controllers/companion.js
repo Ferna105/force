@@ -99,8 +99,11 @@ module.exports = createCoreController(UID, () => ({
     const existing = await strapi.db.query(UID).findOne({ where: { user: user.id, monster: monsterId } });
     if (existing) return ctx.badRequest('Ya tenés a esta criatura como compañera.');
 
-    // El primer compañero del usuario queda activo por defecto.
+    // Solo se permite un compañero por usuario.
     const count = await strapi.db.query(UID).count({ where: { user: user.id } });
+    if (count > 0) return ctx.badRequest('Ya tenés un compañero. Solo podés tener uno.');
+
+    // El primer (y único) compañero del usuario queda activo por defecto.
     const created = await strapi.service(UID).createForUser(user.id, monsterId, { isActive: count === 0 });
 
     const full = await strapi.entityService.findOne(UID, created.id, {

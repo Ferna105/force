@@ -146,17 +146,17 @@ function AdoptSection({ monster }: { monster: Monster }) {
     level: a.BaseLevel ?? 1,
   };
 
-  // ¿el usuario ya tiene a esta criatura como compañera?
-  const [owned, setOwned] = useState<boolean | null>(null);
+  // ¿el usuario ya tiene un compañero? (solo se permite uno)
+  const [hasCompanion, setHasCompanion] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     let active = true;
-    if (!user) { setOwned(false); return; }
+    if (!user) { setHasCompanion(false); return; }
     companionsService.getMine().then((res) => {
       if (!active) return;
-      setOwned(res.data.some((c) => c.attributes.monster?.data?.id === monster.id));
-    }).catch(() => { if (active) setOwned(false); });
+      setHasCompanion(res.data.length > 0);
+    }).catch(() => { if (active) setHasCompanion(false); });
     return () => { active = false; };
   }, [user, monster.id]);
 
@@ -164,7 +164,7 @@ function AdoptSection({ monster }: { monster: Monster }) {
     setBusy(true);
     try {
       await companionsService.adopt(monster.id);
-      setOwned(true);
+      setHasCompanion(true);
       // Aviso efímero de éxito (tono verdant).
       toast.show({
         tone: 'verdant',
@@ -202,14 +202,11 @@ function AdoptSection({ monster }: { monster: Monster }) {
         <StatsRadar stats={baseStats} />
       </div>
 
-      {owned ? (
-        <p className="sub" style={{ fontSize: 14 }}>
-          ✓ {a.Name} ya es tu compañero. <Link href="/" style={{ color: 'var(--gold-soft)' }}>Verlo en inicio →</Link>
-        </p>
-      ) : (
+      {/* El botón solo aparece si el usuario todavía no tiene un compañero (se permite uno). */}
+      {hasCompanion === false && (
         <button
           className="btn btn-primary btn-lg"
-          disabled={owned === null || busy}
+          disabled={busy}
           onClick={confirmAdopt}
         >
           {busy ? 'Creando…' : 'Convertir en mi compañero ✦'}
