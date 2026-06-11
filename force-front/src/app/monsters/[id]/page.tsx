@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { useMonster, useMonsters, useWorlds, usePlaces, useDiscoveredMonsters, companionsService } from '@/api';
 import type { Monster } from '@/api/types';
 import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/useToast';
 import { BIOME, mediaUrl, monsterArtFallback } from '@/lib/design';
 import Topbar from '@/components/shell/Topbar';
 import ProtectedRoute from '@/components/ProtectedRoute';
@@ -134,6 +135,7 @@ export default function MonsterPage() {
    Crea el compañero con sus stats inicializados al base de la especie. */
 function AdoptSection({ monster }: { monster: Monster }) {
   const { user } = useAuth();
+  const toast = useToast();
   const a = monster.attributes;
   const baseStats = {
     health: a.BaseHealth ?? 100,
@@ -146,9 +148,7 @@ function AdoptSection({ monster }: { monster: Monster }) {
 
   // ¿el usuario ya tiene a esta criatura como compañera?
   const [owned, setOwned] = useState<boolean | null>(null);
-  const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -162,16 +162,37 @@ function AdoptSection({ monster }: { monster: Monster }) {
 
   const adopt = async () => {
     setBusy(true);
-    setError(null);
     try {
       await companionsService.adopt(monster.id);
       setOwned(true);
-      setConfirming(false);
+      // Aviso efímero de éxito (tono verdant).
+      toast.show({
+        tone: 'verdant',
+        icon: 'success',
+        message: <>¡Listo! <b>{a.Name}</b> ahora es tu compañero.</>,
+        duration: 3600,
+      });
     } catch {
-      setError('No se pudo crear el compañero. Intentá de nuevo.');
+      toast.show({
+        tone: 'danger',
+        icon: 'warning',
+        message: 'No se pudo crear el compañero. Intentá de nuevo.',
+        primary: { label: 'Entendido' },
+      });
     } finally {
       setBusy(false);
     }
+  };
+
+  // Toast de confirmación (tono gold, primario + secundario) antes de adoptar.
+  const confirmAdopt = () => {
+    toast.show({
+      tone: 'gold',
+      icon: 'question',
+      message: <>¿Seguro que querés convertir a <b>{a.Name}</b> en tu compañero?</>,
+      secondary: { label: 'Cancelar' },
+      primary: { label: 'Sí, convertir', onClick: adopt },
+    });
   };
 
   return (
@@ -185,28 +206,15 @@ function AdoptSection({ monster }: { monster: Monster }) {
         <p className="sub" style={{ fontSize: 14 }}>
           ✓ {a.Name} ya es tu compañero. <Link href="/" style={{ color: 'var(--gold-soft)' }}>Verlo en inicio →</Link>
         </p>
-      ) : confirming ? (
-        <div className="panel" style={{ padding: '20px 24px' }}>
-          <p style={{ margin: '0 0 16px', color: '#EFE3CE' }}>
-            ¿Seguro que querés convertir a <b>{a.Name}</b> en tu compañero?
-          </p>
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <button className="btn btn-primary btn-lg" disabled={busy} onClick={adopt}>
-              {busy ? 'Creando…' : 'Sí, convertir'}
-            </button>
-            <button className="btn btn-secondary btn-lg" disabled={busy} onClick={() => setConfirming(false)}>Cancelar</button>
-          </div>
-        </div>
       ) : (
         <button
           className="btn btn-primary btn-lg"
-          disabled={owned === null}
-          onClick={() => setConfirming(true)}
+          disabled={owned === null || busy}
+          onClick={confirmAdopt}
         >
-          Convertir en mi compañero ✦
+          {busy ? 'Creando…' : 'Convertir en mi compañero ✦'}
         </button>
       )}
-      {error && <p className="sub" style={{ fontSize: 13, marginTop: 12, color: '#E8A0A0' }}>{error}</p>}
     </>
   );
 }

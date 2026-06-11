@@ -336,6 +336,26 @@ h1,h2,h3,h4{margin:0;}
 .spinner{width:38px;height:38px;border-radius:50%;border:3px solid var(--ink-3);border-top-color:var(--gold);animation:spin .8s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg);}}
 
+/* ============ Toast (anclado al borde inferior) ============ */
+.btn-danger{background:linear-gradient(180deg,#e0685b,var(--danger));color:#fff;box-shadow:0 8px 20px -6px rgba(210,75,62,.5),0 1px 0 rgba(255,255,255,.2) inset;}
+.btn-danger:hover{filter:brightness(1.05);}
+
+.toast-host{position:fixed;left:0;right:0;bottom:0;z-index:300;display:flex;flex-direction:column;align-items:center;gap:12px;padding:0 18px 28px;pointer-events:none;}
+.toast{pointer-events:auto;width:100%;max-width:540px;display:flex;align-items:center;gap:15px;flex-wrap:wrap;
+  background:linear-gradient(180deg,var(--ink-2),#15110b);border:1px solid var(--ink-line);
+  border-radius:var(--r-lg);padding:15px 17px;box-shadow:var(--shadow-pop);
+  transform:translateY(160%);opacity:0;transition:transform .45s cubic-bezier(.22,1,.36,1),opacity .3s ease;}
+.toast.show{transform:none;opacity:1;}
+.toast.hide{transform:translateY(160%);opacity:0;}
+.toast .t-ic{width:42px;height:42px;flex:none;border-radius:50%;display:grid;place-items:center;
+  background:var(--tone-bg,rgba(230,166,48,.14));border:1px solid var(--tone-bd,rgba(230,166,48,.4));}
+.toast .t-ic svg{width:22px;height:22px;stroke:var(--tone,var(--gold));fill:none;stroke-width:2;}
+.toast .t-body{flex:1 1 220px;min-width:0;}
+.toast .t-msg{font-family:var(--font-mulish);font-size:14.5px;color:#EFE3CE;line-height:1.45;}
+.toast .t-msg b{color:#F6ECD7;font-weight:700;}
+.toast .t-acts{display:flex;gap:10px;flex:0 0 auto;margin-left:auto;}
+@media(max-width:520px){.toast .t-acts{flex:1 1 100%;margin-left:0;}.toast .t-acts .btn{flex:1;justify-content:center;}}
+
 /* ============ RESPONSIVE ============ */
 /* ============ Modal de descubrimiento de criaturas ============ */
 .disc-overlay{position:fixed;inset:0;z-index:200;display:grid;place-items:center;padding:24px;background:rgba(8,6,4,.74);backdrop-filter:blur(8px);animation:disc-fade .22s ease;}

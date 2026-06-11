@@ -3,6 +3,7 @@ import { Cinzel, Fredoka, Mulish } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/hooks/useAuth";
 import { DiscoveryProvider } from "@/hooks/useDiscovery";
+import { ToastProvider } from "@/hooks/useToast";
 import AppShell from "@/components/shell/AppShell";
 
 const cinzel = Cinzel({
@@ -38,9 +39,11 @@ export default function RootLayout({
     <html lang="es">
       <body className={`${cinzel.variable} ${fredoka.variable} ${mulish.variable}`}>
         <AuthProvider>
-          <DiscoveryProvider>
-            <AppShell>{children}</AppShell>
-          </DiscoveryProvider>
+          <ToastProvider>
+            <DiscoveryProvider>
+              <AppShell>{children}</AppShell>
+            </DiscoveryProvider>
+          </ToastProvider>
         </AuthProvider>
       </body>
     </html>
