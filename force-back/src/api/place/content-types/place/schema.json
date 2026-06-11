@@ -34,7 +34,8 @@
       "enum": [
         "shop",
         "game",
-        "information"
+        "information",
+        "battledome"
       ],
       "required": true
     },

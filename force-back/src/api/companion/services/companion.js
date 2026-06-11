@@ -50,6 +50,8 @@ module.exports = createCoreService(UID, ({ strapi }) => ({
         monster: monsterId,
         lastInteraction: new Date().toISOString(),
         ...base,
+        // La salud actual arranca llena (= salud máxima de la especie).
+        currentHealth: base.health,
         ...extra,
       },
     });

@@ -24,6 +24,8 @@ import {
   DiscoveryEventRequest,
   DiscoveryResponse,
   ShopStock,
+  DuelsLobby,
+  DuelDetail,
 } from './types';
 
 // Serializa un objeto/array anidado a la sintaxis de brackets de Strapi 4
@@ -490,6 +492,12 @@ export const companionsService = {
     const response = await apiClient.post(`/companions/${id}/unequip`, { itemId });
     return response.data;
   },
+
+  // Curar al compañero con una poción (consume 1 del inventario, sube currentHealth).
+  async heal(id: number, itemId: number): Promise<CompanionResponse> {
+    const response = await apiClient.post(`/companions/${id}/heal`, { itemId });
+    return response.data;
+  },
 };
 
 // Servicio de inventario (entradas con cantidad) + tienda
@@ -552,5 +560,34 @@ export const discoveryService = {
     } catch (error) {
       throw new Error(`Error sincronizando descubrimientos: ${error}`);
     }
+  },
+};
+
+// Servicio del battledome: lobby de duelos (el combate en vivo va por socket).
+export const battleService = {
+  // Duelos abiertos de otros + los propios (open/active) de este battledome.
+  async listDuels(placeId: number): Promise<DuelsLobby> {
+    const response = await apiClient.get(`/battle/duels?placeId=${placeId}`);
+    return { open: response.data?.open ?? [], mine: response.data?.mine ?? [] };
+  },
+  // Crear un duelo abierto (escrow del wager). Devuelve el id + saldo actualizado.
+  async create(placeId: number, companionId: number, wager: number): Promise<{ id: number; balance: number }> {
+    const response = await apiClient.post('/battle/duels', { placeId, companionId, wager });
+    return response.data;
+  },
+  // Inscribirse a un duelo abierto (escrow del wager).
+  async join(duelId: number, companionId: number): Promise<{ id: number; balance: number }> {
+    const response = await apiClient.post(`/battle/duels/${duelId}/join`, { companionId });
+    return response.data;
+  },
+  // Cancelar un duelo abierto propio (reintegra el wager).
+  async cancel(duelId: number): Promise<{ id: number; balance: number }> {
+    const response = await apiClient.post(`/battle/duels/${duelId}/cancel`);
+    return response.data;
+  },
+  // Cargar un duelo (para la pantalla de batalla).
+  async get(duelId: number): Promise<DuelDetail> {
+    const response = await apiClient.get(`/battle/duels/${duelId}`);
+    return response.data.duel;
   },
 };

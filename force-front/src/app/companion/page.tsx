@@ -2,9 +2,9 @@
 
 /* eslint-disable @next/next/no-img-element */
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
-import { useActiveCompanion, companionsService } from '@/api';
-import type { Companion, Item } from '@/api/types';
+import { useCallback, useEffect, useState } from 'react';
+import { useActiveCompanion, companionsService, inventoryService } from '@/api';
+import type { Companion, Item, InventoryEntry } from '@/api/types';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/useToast';
 import { mediaUrl, monsterArtFallback, thumbFallback, type Rarity } from '@/lib/design';
@@ -24,7 +24,18 @@ function CompanionView() {
   // Copia local para reflejar quitar equipamiento sin recargar.
   const [companion, setCompanion] = useState<Companion | null>(null);
   const [busyItem, setBusyItem] = useState<number | null>(null);
+  const [potions, setPotions] = useState<InventoryEntry[]>([]);
   useEffect(() => { setCompanion(fetched ?? null); }, [fetched]);
+
+  // Pociones del inventario (item.heal > 0 con stock) para curar al compañero.
+  const loadPotions = useCallback(async () => {
+    if (!user) return;
+    try {
+      const inv = await inventoryService.getMine();
+      setPotions(inv.data.filter((e) => (e.attributes.item?.data?.attributes.heal ?? 0) > 0 && e.attributes.quantity > 0));
+    } catch { /* noop */ }
+  }, [user]);
+  useEffect(() => { loadPotions(); }, [loadPotions]);
 
   const monster = companion?.attributes.monster?.data;
 
@@ -72,6 +83,25 @@ function CompanionView() {
     }
   };
 
+  // Curar al compañero con una poción del inventario (consume 1).
+  const heal = async (it: Item) => {
+    setBusyItem(it.id);
+    try {
+      const res = await companionsService.heal(companion.id, it.id);
+      setCompanion(res.data);
+      await loadPotions();
+      toast.show({ tone: 'verdant', icon: 'success', duration: 3000, message: <>Usaste <b>{it.attributes.name}</b>. {monster?.attributes.Name} recuperó salud.</> });
+    } catch {
+      toast.show({ tone: 'danger', icon: 'warning', message: 'No se pudo curar al compañero.', primary: { label: 'Entendido' } });
+    } finally {
+      setBusyItem(null);
+    }
+  };
+
+  const curHp = a.currentHealth ?? a.health;
+  const hpPct = Math.max(0, Math.min(100, (curHp / (a.health || 1)) * 100));
+  const fullHp = curHp >= (a.health || 0);
+
   return (
     <>
       <Topbar crumb="Mi compañero" />
@@ -97,6 +127,57 @@ function CompanionView() {
               <Link className="btn btn-primary" href="/inventory">Cuidar a {m.Name} ✦</Link>
               <Link className="btn btn-secondary" href={`/monsters/${monster.id}`}>Ver ficha</Link>
             </div>
+          </div>
+        </section>
+
+        {/* Salud: baja en los duelos del battledome; se restaura con pociones. */}
+        <section className="panel" style={{ padding: '28px 32px', marginTop: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', marginBottom: 16 }}>
+            <div>
+              <div className="kicker">Salud</div>
+              <h3 className="cinzel" style={{ fontSize: 24, color: '#F6ECD7', margin: '6px 0 0' }}>
+                {fullHp ? 'En plena forma' : curHp <= 0 ? 'Debilitado' : 'Necesita descanso'}
+              </h3>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <b style={{ fontFamily: 'var(--font-cinzel)', fontSize: 22, color: 'var(--gold-soft)' }}>{Math.max(0, curHp)} / {a.health}</b>
+              <div style={{ fontFamily: 'var(--font-fredoka)', fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--mist-2)' }}>Puntos de vida</div>
+            </div>
+          </div>
+          <div style={{ height: 14, borderRadius: 'var(--r-pill)', background: 'var(--ink-3)', overflow: 'hidden', border: '1px solid var(--ink-line)' }}>
+            <div style={{ height: '100%', width: `${hpPct}%`, borderRadius: 'var(--r-pill)', transition: 'width .5s', background: hpPct <= 30 ? 'linear-gradient(90deg,#9f2c22,#e6a630)' : 'linear-gradient(90deg,#3c7a36,#6cc063)' }} />
+          </div>
+          {curHp <= 0 && (
+            <p className="sub" style={{ fontSize: 14, marginTop: 14, color: 'var(--danger)' }}>
+              {m.Name} está debilitado y no puede pelear. Usá una poción para curarlo.
+            </p>
+          )}
+
+          <div style={{ marginTop: 18 }}>
+            <div className="kicker" style={{ marginBottom: 12 }}>Pociones</div>
+            {potions.length === 0 ? (
+              <p className="sub" style={{ fontSize: 14 }}>No tenés pociones. Conseguilas en la <Link href="/explore" style={{ color: 'var(--gold-soft)' }}>tienda isleña</Link>.</p>
+            ) : (
+              <div className="inv-grid">
+                {potions.map((e) => {
+                  const it = e.attributes.item!.data!;
+                  const at = it.attributes;
+                  return (
+                    <ItemSlot key={e.id} name={at.name} img={mediaUrl(at.icon, thumbFallback(at.name))} rarity={at.rarity as Rarity} type={at.type} qty={e.attributes.quantity} showValue={false}>
+                      <button
+                        className="btn btn-verdant"
+                        style={{ width: '100%', justifyContent: 'center', marginTop: 8, padding: '6px 10px', fontSize: 13 }}
+                        disabled={busyItem === it.id || fullHp}
+                        onClick={() => heal(it)}
+                        title={fullHp ? 'La salud ya está completa' : `Cura ${at.heal} PV`}
+                      >
+                        {busyItem === it.id ? '…' : `Curar +${at.heal}`}
+                      </button>
+                    </ItemSlot>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </section>
 

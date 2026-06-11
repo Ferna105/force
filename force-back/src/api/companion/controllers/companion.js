@@ -12,6 +12,8 @@
 const { createCoreController } = require('@strapi/strapi').factories;
 
 const UID = 'api::companion.companion';
+const ITEM_UID = 'api::item.item';
+const ENTRY_UID = 'api::inventory-entry.inventory-entry';
 
 // Tope de objetos equipados por compañero.
 const MAX_EQUIP = 5;
@@ -47,6 +49,8 @@ const companionToRest = (c) => ({
     lastInteraction: c.lastInteraction,
     // Stats de progresión/combate (arrancan en el base de la especie)
     health: c.health,
+    // Salud actual: baja en los duelos del battledome; 0 = debilitado (no pelea).
+    currentHealth: c.currentHealth ?? c.health,
     strength: c.strength,
     defense: c.defense,
     speed: c.speed,
@@ -201,6 +205,42 @@ module.exports = createCoreController(UID, () => ({
     await strapi.entityService.update(UID, id, {
       data: { equippedItems: { disconnect: [itemId] } },
     });
+    return sendCompanion(ctx, id);
+  },
+
+  // Curar al compañero con un objeto poción (heal>0). Consume 1 del inventario
+  // y sube currentHealth (tope = health máxima). Reactiva compañeros debilitados.
+  async heal(ctx) {
+    const user = ctx.state.user;
+    if (!user) return ctx.unauthorized('Debés iniciar sesión.');
+
+    const { id } = ctx.params;
+    const body = ctx.request.body || {};
+    const itemId = body.itemId ?? body.data?.itemId;
+    if (!itemId) return ctx.badRequest('Falta itemId.');
+
+    const companion = await loadOwnedCompanion(ctx, id);
+    if (!companion) return;
+
+    const item = await strapi.entityService.findOne(ITEM_UID, itemId, { fields: ['heal', 'name'] });
+    if (!item) return ctx.notFound('Objeto no encontrado.');
+    if (!item.heal || item.heal <= 0) return ctx.badRequest('Ese objeto no cura.');
+
+    const max = companion.health || 100;
+    const cur = companion.currentHealth ?? max;
+    if (cur >= max) return ctx.badRequest('Tu compañero ya tiene la salud completa.');
+
+    // Debe poseer la poción (entrada de inventario con cantidad > 0).
+    const entry = await strapi.db.query(ENTRY_UID).findOne({
+      where: { user: user.id, item: itemId, quantity: { $gt: 0 } },
+    });
+    if (!entry) return ctx.badRequest('No tenés esa poción en tu inventario.');
+
+    // Consumir 1 unidad y aplicar la curación.
+    await strapi.entityService.update(ENTRY_UID, entry.id, { data: { quantity: entry.quantity - 1 } });
+    const next = Math.min(max, cur + item.heal);
+    await strapi.entityService.update(UID, id, { data: { currentHealth: next } });
+
     return sendCompanion(ctx, id);
   },
 

@@ -2,14 +2,15 @@
 
 /* eslint-disable @next/next/no-img-element */
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
-import { usePlace, useMonsters, useDiscoveredMonsters, inventoryService, shopService } from '@/api';
-import type { Place, Item, ShopStock } from '@/api/types';
+import { usePlace, useMonsters, useDiscoveredMonsters, useActiveCompanion, inventoryService, shopService, battleService } from '@/api';
+import type { Place, Item, ShopStock, DuelsLobby } from '@/api/types';
 import { useAuth } from '@/hooks/useAuth';
 import { useDiscovery } from '@/hooks/useDiscovery';
+import { useToast } from '@/hooks/useToast';
 import {
-  PLACE_TYPE, mediaUrl, placeBannerFallback, thumbFallback, fmt,
+  PLACE_TYPE, mediaUrl, strapiMedia, placeBannerFallback, thumbFallback, fmt,
 } from '@/lib/design';
 import Topbar from '@/components/shell/Topbar';
 import { Loading, ErrorState } from '@/components/ui/states';
@@ -58,6 +59,7 @@ export default function PlacePage() {
         {a.Type === 'shop' && <ShopBody placeId={placeId} />}
         {a.Type === 'game' && <GameBody place={place} />}
         {a.Type === 'information' && <InfoBody place={place} />}
+        {a.Type === 'battledome' && <BattledomeBody placeId={placeId} />}
       </div>
     </>
   );
@@ -270,6 +272,210 @@ function InfoBody({ place }: { place: Place }) {
           </div>
         </>
       )}
+    </>
+  );
+}
+
+/* ============ BATTLEDOME (lobby de duelos) ============ */
+const WAGERS = [100, 250, 500, 1000];
+
+function BattledomeBody({ placeId }: { placeId: number }) {
+  const { user, updateUser } = useAuth();
+  const toast = useToast();
+  const router = useRouter();
+  const { data: companion } = useActiveCompanion(user?.id ?? null);
+
+  const [lobby, setLobby] = useState<DuelsLobby>({ open: [], mine: [] });
+  const [composing, setComposing] = useState(false);
+  const [wager, setWager] = useState(250);
+  const [busy, setBusy] = useState(false);
+
+  // Carga (y repolea) el lobby para reflejar inscripciones en vivo.
+  const load = useCallback(async () => {
+    if (!user) return;
+    try { setLobby(await battleService.listDuels(placeId)); } catch { /* noop */ }
+  }, [user, placeId]);
+  useEffect(() => {
+    if (!user) return;
+    load();
+    const t = setInterval(load, 4000);
+    return () => clearInterval(t);
+  }, [user, load]);
+
+  if (!user) {
+    return (
+      <div className="panel" style={{ padding: '34px 36px', marginTop: 26, textAlign: 'center' }}>
+        <h3 className="cinzel" style={{ color: '#F6ECD7', marginBottom: 8 }}>Arena de duelos</h3>
+        <p className="sub" style={{ margin: '0 auto 18px' }}>Iniciá sesión para crear duelos o inscribirte a uno.</p>
+        <Link className="btn btn-primary" href="/login">Iniciar sesión</Link>
+      </div>
+    );
+  }
+
+  const comp = companion?.attributes;
+  const monsterName = comp?.monster?.data?.attributes.Name ?? null;
+  const cur = comp?.currentHealth ?? 0;
+  const max = comp?.health ?? 100;
+  const fainted = !!comp && cur <= 0;
+  const canWager = (w: number) => (user.balance ?? 0) >= w;
+
+  const create = async () => {
+    if (!companion || fainted) return;
+    if (!canWager(wager)) { toast.show({ tone: 'danger', icon: 'warning', message: 'No te alcanza el saldo para esa apuesta.' }); return; }
+    setBusy(true);
+    try {
+      const res = await battleService.create(placeId, companion.id, wager);
+      updateUser({ balance: res.balance });
+      router.push(`/battle/${res.id}`);
+    } catch {
+      toast.show({ tone: 'danger', icon: 'warning', message: 'No se pudo crear el duelo.' });
+      setBusy(false);
+    }
+  };
+
+  const join = (d: DuelsLobby['open'][number]) => {
+    if (!companion || fainted) { toast.show({ tone: 'danger', icon: 'warning', message: 'Tu compañero está debilitado. Curalo con una poción antes de pelear.' }); return; }
+    if (!canWager(d.wager)) { toast.show({ tone: 'danger', icon: 'warning', message: 'No te alcanza el saldo para esa apuesta.' }); return; }
+    toast.show({
+      tone: 'gold', icon: 'question',
+      message: <>¿Inscribirte al duelo de <b>{d.creator?.username}</b>? Apostás <b>F {fmt(d.wager)}</b>.</>,
+      secondary: { label: 'Cancelar' },
+      primary: {
+        label: 'Sí, pelear',
+        onClick: async () => {
+          try {
+            const res = await battleService.join(d.id, companion.id);
+            updateUser({ balance: res.balance });
+            router.push(`/battle/${res.id}`);
+          } catch {
+            toast.show({ tone: 'danger', icon: 'warning', message: 'No se pudo inscribir (¿saldo o compañero ocupado?).' });
+          }
+        },
+      },
+    });
+  };
+
+  const cancel = async (id: number) => {
+    try {
+      const res = await battleService.cancel(id);
+      updateUser({ balance: res.balance });
+      load();
+    } catch { /* noop */ }
+  };
+
+  const pot = lobby.open.reduce((s, d) => s + d.wager, 0);
+  const duelImg = (d: { monsterImageUrl: string | null; monsterName: string }) =>
+    d.monsterImageUrl ? strapiMedia(d.monsterImageUrl) : thumbFallback(d.monsterName);
+
+  return (
+    <>
+      <div className="col-intro">
+        <div>
+          <div className="kicker">Coliseo · duelos por turnos</div>
+          <h3 className="cinzel">Arena de duelos</h3>
+          <p className="sub">Inscribite a un duelo abierto creado por otra domadora, o creá el tuyo y esperá a que un rival se anote a pelear. El ganador se lleva el pozo.</p>
+        </div>
+        <button
+          className="btn btn-primary btn-lg"
+          disabled={!companion || fainted}
+          onClick={() => setComposing((v) => !v)}
+        >
+          ⚔ Crear duelo
+        </button>
+      </div>
+
+      {!companion && (
+        <div className="d-empty" style={{ marginTop: 18 }}>Todavía no tenés compañero. Adoptá una criatura desde su ficha para poder pelear.</div>
+      )}
+      {fainted && (
+        <div className="d-empty" style={{ marginTop: 18, color: 'var(--danger)' }}>
+          <b style={{ color: 'var(--danger)' }}>{monsterName}</b> está debilitado. Curalo con una poción en <Link href="/companion" style={{ color: 'var(--gold-soft)' }}>tu compañero</Link> para volver a pelear.
+        </div>
+      )}
+
+      <div className="col-stats">
+        <div className="col-stat"><div className="n">{lobby.open.length}</div><div className="l">Duelos abiertos</div></div>
+        <div className="col-stat"><div className="n">{comp ? `${Math.max(0, cur)} / ${max}` : '—'}</div><div className="l">Salud de tu compañero</div></div>
+        <div className="col-stat"><div className="n"><span style={{ fontFamily: 'var(--font-fredoka)' }}>F</span> {fmt(pot)}</div><div className="l">En juego ahora</div></div>
+      </div>
+
+      {/* composer */}
+      {companion && comp && (
+        <div className={`panel col-composer${composing ? ' show' : ''}`}>
+          <div className="cf-row">
+            <div className="kicker">Tu criatura</div>
+            <div className="cf-mons">
+              <div className="cf-mon sel">
+                <img src={mediaUrl(comp.monster?.data?.attributes.Image, thumbFallback(monsterName ?? 'Tronc'))} alt={monsterName ?? ''} />
+                <div className="nm">{monsterName}</div>
+              </div>
+            </div>
+          </div>
+          <div className="cf-row">
+            <div className="kicker">Apuesta</div>
+            <div className="cf-chips">
+              {WAGERS.map((w) => (
+                <button key={w} className={`cf-w${w === wager ? ' on' : ''}`} disabled={!canWager(w)} onClick={() => setWager(w)}>
+                  <span className="c">F</span> {fmt(w)}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="cf-actions">
+            <button className="btn btn-primary" disabled={busy} onClick={create}>Publicar duelo</button>
+            <button className="btn btn-ghost" onClick={() => setComposing(false)}>Cancelar</button>
+          </div>
+        </div>
+      )}
+
+      {/* tus duelos */}
+      <div className="sec-title"><h3 className="cinzel">Tus duelos</h3></div>
+      <div className="duel-list">
+        {lobby.mine.length === 0 && (
+          <div className="d-empty">Todavía no creaste ningún duelo. Tocá «Crear duelo» para abrir uno.</div>
+        )}
+        {lobby.mine.map((d) => (
+          <div key={d.id} className={`duel ${d.status === 'active' ? 'ready' : 'mine'}`}>
+            <div className="d-av">{(user.username?.[0] ?? 'N').toUpperCase()}</div>
+            <img className="d-mon" src={duelImg(d)} alt={d.monsterName} />
+            <div className="d-info">
+              <div className="d-top"><b>Tu duelo</b><span className="d-lvl">Nv. {d.level}</span></div>
+              <div className="d-sub">con <b style={{ color: '#F6ECD7' }}>{d.monsterName}</b></div>
+              {d.status === 'active'
+                ? <div className="d-wait ok">✓ Un rival aceptó tu duelo</div>
+                : <div className="d-wait"><span className="spinner-sm" /> Esperando rival…</div>}
+            </div>
+            <div className="d-right">
+              <span className="d-wager"><span className="c">F</span> {fmt(d.wager)}</span>
+              {d.status === 'active'
+                ? <Link className="btn btn-verdant btn-sm" href={`/battle/${d.id}`}>Entrar a la arena</Link>
+                : <button className="btn btn-ghost btn-sm" onClick={() => cancel(d.id)}>Cancelar</button>}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* duelos abiertos */}
+      <div className="sec-title"><h3 className="cinzel">Duelos abiertos</h3><a>{lobby.open.length} esperando rival</a></div>
+      <div className="duel-list">
+        {lobby.open.length === 0 && (
+          <div className="d-empty">No hay duelos abiertos por ahora. ¡Creá el primero!</div>
+        )}
+        {lobby.open.map((d) => (
+          <div key={d.id} className="duel">
+            <div className="d-av">{(d.creator?.username?.[0] ?? '?').toUpperCase()}</div>
+            <img className="d-mon" src={duelImg(d)} alt={d.monsterName} />
+            <div className="d-info">
+              <div className="d-top"><b>{d.creator?.username}</b><span className="d-lvl">Nv. {d.level}</span></div>
+              <div className="d-sub">con <b style={{ color: '#F6ECD7' }}>{d.monsterName}</b></div>
+            </div>
+            <div className="d-right">
+              <span className="d-wager"><span className="c">F</span> {fmt(d.wager)}</span>
+              <button className="btn btn-primary btn-sm" disabled={fainted || !companion} onClick={() => join(d)}>Inscribirse</button>
+            </div>
+          </div>
+        ))}
+      </div>
     </>
   );
 }

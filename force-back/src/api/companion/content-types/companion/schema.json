@@ -57,6 +57,11 @@
       "default": 100,
       "min": 0
     },
+    "currentHealth": {
+      "type": "integer",
+      "default": 100,
+      "min": 0
+    },
     "strength": {
       "type": "integer",
       "default": 10,

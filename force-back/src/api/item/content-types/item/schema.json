@@ -58,7 +58,8 @@
         "legume",
         "totem",
         "weapon",
-        "armor"
+        "armor",
+        "potion"
       ],
       "required": false
     },
@@ -87,6 +88,12 @@
       "default": 0
     },
     "defense": {
+      "type": "integer",
+      "required": false,
+      "min": 0,
+      "default": 0
+    },
+    "heal": {
       "type": "integer",
       "required": false,
       "min": 0,

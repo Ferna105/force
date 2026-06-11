@@ -390,6 +390,14 @@ export interface ApiCompanionCompanion extends Schema.CollectionType {
       'admin::user'
     > &
       Attribute.Private;
+    currentHealth: Attribute.Integer &
+      Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      > &
+      Attribute.DefaultTo<100>;
     defense: Attribute.Integer &
       Attribute.SetMinMax<
         {
@@ -483,6 +491,65 @@ export interface ApiCompanionCompanion extends Schema.CollectionType {
   };
 }
 
+export interface ApiDuelDuel extends Schema.CollectionType {
+  collectionName: 'duels';
+  info: {
+    description: 'Duelo por turnos entre dos compa\u00F1eros en un lugar de tipo battledome';
+    displayName: 'Duel';
+    pluralName: 'duels';
+    singularName: 'duel';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<'api::duel.duel', 'oneToOne', 'admin::user'> &
+      Attribute.Private;
+    creator: Attribute.Relation<
+      'api::duel.duel',
+      'oneToOne',
+      'plugin::users-permissions.user'
+    >;
+    creatorCompanion: Attribute.Relation<
+      'api::duel.duel',
+      'oneToOne',
+      'api::companion.companion'
+    >;
+    opponent: Attribute.Relation<
+      'api::duel.duel',
+      'oneToOne',
+      'plugin::users-permissions.user'
+    >;
+    opponentCompanion: Attribute.Relation<
+      'api::duel.duel',
+      'oneToOne',
+      'api::companion.companion'
+    >;
+    place: Attribute.Relation<'api::duel.duel', 'oneToOne', 'api::place.place'>;
+    result: Attribute.JSON;
+    status: Attribute.Enumeration<['open', 'active', 'finished', 'cancelled']> &
+      Attribute.Required &
+      Attribute.DefaultTo<'open'>;
+    updatedAt: Attribute.DateTime;
+    updatedBy: Attribute.Relation<'api::duel.duel', 'oneToOne', 'admin::user'> &
+      Attribute.Private;
+    wager: Attribute.Integer &
+      Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      > &
+      Attribute.DefaultTo<0>;
+    winner: Attribute.Relation<
+      'api::duel.duel',
+      'oneToOne',
+      'plugin::users-permissions.user'
+    >;
+  };
+}
+
 export interface ApiInventoryEntryInventoryEntry extends Schema.CollectionType {
   collectionName: 'inventory_entries';
   info: {
@@ -559,7 +626,8 @@ export interface ApiItemItem extends Schema.CollectionType {
         'legume',
         'totem',
         'weapon',
-        'armor'
+        'armor',
+        'potion'
       ]
     >;
     cooldown: Attribute.Integer &
@@ -582,6 +650,14 @@ export interface ApiItemItem extends Schema.CollectionType {
       > &
       Attribute.DefaultTo<0>;
     description: Attribute.RichText;
+    heal: Attribute.Integer &
+      Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      > &
+      Attribute.DefaultTo<0>;
     icon: Attribute.Media<'images'>;
     is_stackable: Attribute.Boolean & Attribute.DefaultTo<false>;
     max_stack: Attribute.Integer &
@@ -777,7 +853,7 @@ export interface ApiPlacePlace extends Schema.CollectionType {
     publishedAt: Attribute.DateTime;
     RestockAt: Attribute.DateTime;
     ShopConfig: Attribute.JSON;
-    Type: Attribute.Enumeration<['shop', 'game', 'information']> &
+    Type: Attribute.Enumeration<['shop', 'game', 'information', 'battledome']> &
       Attribute.Required;
     updatedAt: Attribute.DateTime;
     updatedBy: Attribute.Relation<
@@ -1397,6 +1473,7 @@ declare module '@strapi/types' {
       'admin::transfer-token-permission': AdminTransferTokenPermission;
       'admin::user': AdminUser;
       'api::companion.companion': ApiCompanionCompanion;
+      'api::duel.duel': ApiDuelDuel;
       'api::inventory-entry.inventory-entry': ApiInventoryEntryInventoryEntry;
       'api::item.item': ApiItemItem;
       'api::monster.monster': ApiMonsterMonster;

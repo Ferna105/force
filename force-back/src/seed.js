@@ -24,11 +24,30 @@ const ITEM_CATEGORY = Object.fromEntries(
 const SHOP_CONFIGS = {
   // Mercado de fruta del valle fértil: solo fruta.
   'Cañada Verdante': { categories: ['fruit'] },
-  // Mercado isleño: pescados/mariscos, fruta y verdura, y baratijas (tótems).
-  'Isla del Reposo de la Serpiente': { categories: ['seafood', 'fruit', 'vegetable', 'totem'] },
+  // Mercado isleño: pescados/mariscos, fruta y verdura, baratijas (tótems) y pociones.
+  'Isla del Reposo de la Serpiente': { categories: ['seafood', 'fruit', 'vegetable', 'totem', 'potion'] },
 };
 // Config genérica para cualquier otra tienda sin entrada explícita (vende de todo).
 const GENERIC_SHOP_CONFIG = {};
+
+// Lugares que el seed convierte en battledome (arena de duelos por turnos).
+const BATTLEDOME_PLACES = new Set(['Atalaya de Obsidiana']);
+
+// Pociones de curación del battledome (campo `heal` en item). Se crean si faltan
+// (idempotente por nombre) y se venden en la tienda isleña (categoría `potion`).
+const POTIONS = [
+  { name: 'Poción Menor', rarity: 'common', value: 60, heal: 40 },
+  { name: 'Poción de Vida', rarity: 'uncommon', value: 140, heal: 80 },
+  { name: 'Poción Mayor', rarity: 'rare', value: 280, heal: 140 },
+  { name: 'Elixir Curativo', rarity: 'epic', value: 520, heal: 220 },
+  { name: 'Elixir Divino', rarity: 'legendary', value: 1000, heal: 400 },
+];
+
+// Slug kebab-case a partir del nombre (sin acentos), para el uid del item.
+function slugify(name) {
+  return name.normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
 
 const WORLD_BIOME = { Eryndor: 'volcanic', Koril: 'forest', Deo: 'arid', Egea: 'space' };
 const MONSTER_BIOME = { Tronc: 'forest', Serpi: 'aqua', Triso: 'volcanic', Raya: 'arid', Terri: 'space' };
@@ -139,7 +158,14 @@ const AUTH_ACTIONS = [
   'api::companion.companion.adopt',
   'api::companion.companion.feed', 'api::companion.companion.play', 'api::companion.companion.pet',
   'api::companion.companion.equip', 'api::companion.companion.unequip',
+  'api::companion.companion.heal',
   'api::shop.shop.buy',
+  // Battledome: lobby de duelos (el combate en vivo va por sockets).
+  'api::battle.battle.duels',
+  'api::battle.battle.create',
+  'api::battle.battle.join',
+  'api::battle.battle.cancel',
+  'api::battle.battle.get',
   // Motor de descubrimiento: registrar eventos + reevaluar estrategias.
   'api::discovery.discovery.event',
   'api::discovery.discovery.sync',
@@ -285,6 +311,8 @@ module.exports = async function seed({ strapi }) {
       if (biome && p.Biome !== biome) data.Biome = biome;
       if (p.HotspotX == null) data.HotspotX = hs.x;
       if (p.HotspotY == null) data.HotspotY = hs.y;
+      // Convertir el/los lugares designados en battledome (arena de duelos).
+      if (BATTLEDOME_PLACES.has(p.Name) && p.Type !== 'battledome') data.Type = 'battledome';
       // ShopConfig: solo tiendas. Se (re)siembra si falta o si fue puesto por el
       // seed (seeded:true), nunca si fue editado a mano en el admin.
       if (p.Type === 'shop') {
@@ -330,6 +358,33 @@ module.exports = async function seed({ strapi }) {
     //     Se puede desactivar con SEED_BIBLIOTECA=false.
     if (process.env.SEED_BIBLIOTECA !== 'false') {
       await seedBibliotecaItems(strapi);
+    }
+
+    // 5c) Pociones de curación del battledome (idempotente por nombre).
+    for (const p of POTIONS) {
+      const exists = await strapi.db.query('api::item.item').findOne({ where: { name: p.name } });
+      if (exists) {
+        // Backfill del campo heal si quedó en 0 (p. ej. poción creada antes del campo).
+        if (!exists.heal) {
+          await strapi.db.query('api::item.item').update({ where: { id: exists.id }, data: { heal: p.heal } });
+        }
+        continue;
+      }
+      await strapi.entityService.create('api::item.item', {
+        data: {
+          name: p.name,
+          slug: slugify(p.name),
+          type: 'consumable',
+          category: 'potion',
+          rarity: p.rarity,
+          value: p.value,
+          heal: p.heal,
+          is_stackable: true,
+          max_stack: 20,
+          usable: true,
+          publishedAt: new Date(),
+        },
+      });
     }
 
     // 6) Usuario demo
@@ -380,6 +435,24 @@ module.exports = async function seed({ strapi }) {
     } else if (companions.length > 1) {
       for (const extra of companions.slice(1)) {
         await strapi.db.query('api::companion.companion').delete({ where: { id: extra.id } });
+      }
+    }
+
+    // 9b) Backfill de stats de progresión/combate de compañeros previos al sistema
+    //     de stats (health/strength/... en null): se completan campo a campo desde
+    //     el base de la especie. Luego la salud actual arranca llena (= health).
+    const companionSvc = strapi.service('api::companion.companion');
+    const allCompanions = await strapi.db.query('api::companion.companion').findMany({ populate: { monster: true } });
+    for (const c of allCompanions) {
+      const base = companionSvc.baseStatsFor(c.monster);
+      const data = {};
+      for (const [field, value] of Object.entries(base)) {
+        if (c[field] == null) data[field] = value;
+      }
+      // Salud actual: completa si falta (= health ya backfilleada o la existente).
+      if (c.currentHealth == null) data.currentHealth = data.health ?? c.health ?? base.health;
+      if (Object.keys(data).length) {
+        await strapi.db.query('api::companion.companion').update({ where: { id: c.id }, data });
       }
     }
 

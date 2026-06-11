@@ -1,6 +1,8 @@
 'use strict';
 
+const { Server } = require('socket.io');
 const seed = require('./seed');
+const initSockets = require('./socket');
 
 module.exports = {
   /**
@@ -24,5 +26,15 @@ module.exports = {
     if (process.env.SEED !== 'false') {
       await seed({ strapi });
     }
+
+    // Servidor de sockets del Battledome (combate en vivo). Se adjunta al
+    // httpServer de Strapi. CORS hacia el frontend (FRONTEND_URL).
+    const io = new Server(strapi.server.httpServer, {
+      cors: {
+        origin: process.env.FRONTEND_URL || '*',
+        methods: ['GET', 'POST'],
+      },
+    });
+    initSockets(strapi, io);
   },
 };

@@ -10,7 +10,6 @@
     "strapi": "strapi",
     "deploy": "strapi deploy"
   },
-  "devDependencies": {},
   "dependencies": {
     "@strapi/plugin-cloud": "4.25.23",
     "@strapi/plugin-i18n": "4.25.23",
@@ -21,6 +20,7 @@
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
     "react-router-dom": "5.3.4",
+    "socket.io": "^4.8.3",
     "strapi-plugin-import-export-entries": "^1.23.1",
     "styled-components": "5.3.3"
   },

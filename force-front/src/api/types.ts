@@ -65,6 +65,8 @@ export interface StrapiImageFormat {
 
 // Unión de biomas/ecosistemas (debe coincidir con el enum del backend)
 export type BiomeName = 'forest' | 'aqua' | 'volcanic' | 'space' | 'snow' | 'arid';
+// Unión de rarezas (debe coincidir con el enum del backend)
+export type RarityName = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
 
 // Estrategia de descubrimiento de un monstruo (campo json en el backend).
 // Una tarea queda definida por su `type` + `params` libres; el motor server-side
@@ -109,7 +111,7 @@ export interface Place extends StrapiEntity {
     Name: string;
     Description: string | null;
     Banner: StrapiImage | null;
-    Type: 'shop' | 'game' | 'information';
+    Type: 'shop' | 'game' | 'information' | 'battledome';
     Biome: BiomeName | null;
     HotspotX: number | null;
     HotspotY: number | null;
@@ -210,14 +212,16 @@ export interface Item extends StrapiEntity {
     slug: string;
     description: string | null;
     type: 'weapon' | 'armor' | 'consumable' | 'key' | 'misc';
-    rarity: 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
-    category?: 'fruit' | 'vegetable' | 'meat' | 'seafood' | 'legume' | 'totem' | 'weapon' | 'armor' | null;
+    rarity: RarityName;
+    category?: 'fruit' | 'vegetable' | 'meat' | 'seafood' | 'legume' | 'totem' | 'weapon' | 'armor' | 'potion' | null;
     icon: StrapiImage | null;
     weight: number | null;
     value: number | null;
     // Stats de equipamiento (0 por defecto; >0 en armas/armaduras/tótems).
     attack: number;
     defense: number;
+    // Curación (0 por defecto; >0 en pociones — restaura salud del compañero).
+    heal: number;
     is_stackable: boolean;
     max_stack: number;
     usable: boolean;
@@ -242,6 +246,8 @@ export interface Companion extends StrapiEntity {
     lastInteraction: string | null;
     // Stats de progresión/combate (arrancan en el base de la especie)
     health: number;
+    // Salud actual: baja en los duelos; 0 = debilitado (no puede pelear hasta curarse).
+    currentHealth: number;
     strength: number;
     defense: number;
     speed: number;
@@ -307,4 +313,119 @@ export interface DiscoveryEventRequest {
 // Respuesta de /discovery/event y /discovery/sync
 export interface DiscoveryResponse {
   newlyDiscovered: Monster[];
+}
+
+// ============ Battledome (duelos por turnos en vivo) ============
+export type DuelStatus = 'open' | 'active' | 'finished' | 'cancelled';
+export type DuelSide = 'creator' | 'opponent';
+export type BattleAction = 'atacar' | 'defender' | 'esquivar';
+
+// Resumen de un duelo en el lobby del battledome.
+export interface DuelSummary {
+  id: number;
+  status: DuelStatus;
+  wager: number;
+  creator: { userId: number; username: string } | null;
+  monsterName: string;
+  monsterImageUrl: string | null;
+  level: number;
+}
+export interface DuelsLobby {
+  open: DuelSummary[];
+  mine: DuelSummary[];
+}
+
+// Objeto equipado (aplanado) que el peleador puede usar en su turno.
+export interface BattleItem {
+  id: number;
+  name: string;
+  rarity: RarityName;
+  type: string;
+  category: string | null;
+  attack: number;
+  defense: number;
+  heal: number;
+  iconUrl: string | null;
+}
+// Compañero preparado para la pantalla de batalla.
+export interface BattleCompanion {
+  id: number;
+  monsterName: string;
+  biome: BiomeName | null;
+  imageUrl: string | null;
+  level: number;
+  maxHp: number;
+  currentHealth: number;
+  strength: number;
+  defense: number;
+  speed: number;
+  luck: number;
+  items: BattleItem[];
+}
+// Duelo poblado (GET /battle/duels/:id → { duel }).
+export interface DuelDetail {
+  id: number;
+  status: DuelStatus;
+  wager: number;
+  arena: BiomeName;
+  place: { id: number; name: string; worldId: number | null; worldName: string | null } | null;
+  creator: { userId: number; username: string } | null;
+  opponent: { userId: number; username: string } | null;
+  winner: { userId: number; username: string } | null;
+  creatorCompanion: BattleCompanion | null;
+  opponentCompanion: BattleCompanion | null;
+  result: BattleResult | null;
+}
+
+// Estado de combate difundido por el socket (server-authoritative).
+export interface BattleFighter {
+  side: DuelSide;
+  userId: number;
+  username: string;
+  companionId: number;
+  monsterName: string;
+  biome: BiomeName | null;
+  level: number;
+  maxHp: number;
+  hp: number;
+  strength: number;
+  defense: number;
+  speed: number;
+  luck: number;
+  guard: { type: 'defend' | 'dodge'; mult?: number; chance?: number } | null;
+  items: BattleItem[];
+}
+export interface BattleState {
+  duelId: number;
+  arena: BiomeName;
+  wager: number;
+  round: number;
+  firstMover: DuelSide;
+  turn: DuelSide;
+  over: boolean;
+  winner: DuelSide | null;
+  creator: BattleFighter;
+  opponent: BattleFighter;
+}
+// Entrada estructurada del historial de jugadas (el front la formatea).
+export interface BattleLogEntry {
+  round: number;
+  side: DuelSide;
+  actorName: string;
+  action: BattleAction;
+  item: { name: string; rarity: RarityName } | null;
+  dmg?: number;
+  crit?: boolean;
+  miss?: boolean;
+  heal?: number;
+  chance?: number;
+}
+export interface BattleResult {
+  winner: DuelSide;
+  winnerUserId: number | null;
+  reason: 'ko' | 'forfeit';
+  creatorHp: number;
+  opponentHp: number;
+  wager: number;
+  rounds: number | null;
 }

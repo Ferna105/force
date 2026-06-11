@@ -34,6 +34,12 @@ module.exports = {
     },
     {
       method: 'POST',
+      path: '/companions/:id/heal',
+      handler: 'companion.heal',
+      config: { policies: [] },
+    },
+    {
+      method: 'POST',
       path: '/companions/:id/feed',
       handler: 'companion.feed',
       config: { policies: [] },

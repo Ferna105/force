@@ -1,0 +1,64 @@
+{
+  "kind": "collectionType",
+  "collectionName": "duels",
+  "info": {
+    "singularName": "duel",
+    "pluralName": "duels",
+    "displayName": "Duel",
+    "description": "Duelo por turnos entre dos compañeros en un lugar de tipo battledome"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "wager": {
+      "type": "integer",
+      "default": 0,
+      "min": 0
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "open",
+        "active",
+        "finished",
+        "cancelled"
+      ],
+      "default": "open",
+      "required": true
+    },
+    "place": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::place.place"
+    },
+    "creator": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "opponent": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "winner": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "creatorCompanion": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::companion.companion"
+    },
+    "opponentCompanion": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::companion.companion"
+    },
+    "result": {
+      "type": "json"
+    }
+  }
+}

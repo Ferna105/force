@@ -9,7 +9,7 @@ import type { StrapiImage } from '@/api/types';
 /* ============ TIPOS ============ */
 export type Biome = 'forest' | 'aqua' | 'volcanic' | 'space' | 'snow' | 'arid';
 export type Rarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
-export type PlaceType = 'shop' | 'game' | 'information';
+export type PlaceType = 'shop' | 'game' | 'information' | 'battledome';
 export type ItemType = 'weapon' | 'armor' | 'consumable' | 'key' | 'misc';
 
 /* ============ RAREZA ============ */
@@ -58,12 +58,14 @@ export const PLACE_TYPE: Record<PlaceType, { label: string; pill: string }> = {
   shop:        { label: 'Tienda',      pill: 'tp-shop' },
   game:        { label: 'Juego',       pill: 'tp-game' },
   information: { label: 'Información', pill: 'tp-info' },
+  battledome:  { label: 'Battledome',  pill: 'tp-battledome' },
 };
 
 const PLACE_TYPE_PATHS: Record<PlaceType, React.ReactNode> = {
   shop:        <path d="M3 9l1-5h16l1 5M5 9v10h14V9M9 13h6" />,
   game:        <><rect x="2" y="7" width="20" height="11" rx="4" /><path d="M7 12h3M8.5 10.5v3M16 11h.01M18 13h.01" /></>,
   information: <><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 7.5h.01" /></>,
+  battledome:  <><path d="M14.5 14.5 20 20l1-3-3-1-5.5-5.5M9.5 14.5 4 20l-1-3 3-1 5.5-5.5" /><path d="M13 11l6.5-6.5 1.5 0 0 1.5L14.5 12.5M11 11 4.5 4.5 3 4.5 3 6l6.5 6.5" /></>,
 };
 
 export function PlaceTypeIcon({ type }: { type: PlaceType }) {
@@ -77,6 +79,24 @@ export function PlaceTypeIcon({ type }: { type: PlaceType }) {
 /* Verbo del CTA según el tipo de lugar */
 export const PLACE_CTA: Record<PlaceType, string> = {
   shop: 'Visitar mercado →', game: 'Jugar →', information: 'Explorar →',
+  battledome: 'Entrar a la arena →',
+};
+
+/* Bioma del lugar → clase de arena del battledome (fondo animado). */
+export const ARENA_CLASS: Record<Biome, string> = {
+  arid: 'arena--arido', snow: 'arena--nevado', volcanic: 'arena--volcanico',
+  forest: 'arena--bosque', space: 'arena--espacial', aqua: 'arena--acuatico',
+};
+/* Bioma del lugar → etiqueta de la arena. */
+export const ARENA_LABEL: Record<Biome, string> = {
+  arid: 'Arena Árida', snow: 'Arena Nevada', volcanic: 'Arena Volcánica',
+  forest: 'Arena Boscosa', space: 'Arena Espacial', aqua: 'Arena Acuática',
+};
+/* Bioma → tipo de partícula del fondo de la arena. */
+export const ARENA_PARTICLE: Record<Biome, { kind: string; n: number }> = {
+  arid: { kind: 'dust', n: 26 }, snow: { kind: 'snow', n: 34 },
+  volcanic: { kind: 'ember', n: 30 }, forest: { kind: 'leaf', n: 24 },
+  space: { kind: 'star', n: 46 }, aqua: { kind: 'bubble', n: 28 },
 };
 
 /* ============ MEDIA ============ */
@@ -116,6 +136,10 @@ export function worldArtFallback(name: string): string {
 /** Arte grande de monstruo (ficha). */
 export function monsterArtFallback(name: string): string {
   return `/design/art/mon-${encodeURIComponent(name)}.png`;
+}
+/** Recorte transparente del monstruo (peleador en la arena del battledome). */
+export function monsterCutoutFallback(name: string): string {
+  return `/design/art/cut-${encodeURIComponent(name)}.png`;
 }
 /** Miniatura (monstruo en tarjeta u objeto en slot). */
 export function thumbFallback(name: string): string {
