@@ -32,6 +32,30 @@ const GENERIC_SHOP_CONFIG = {};
 
 const WORLD_BIOME = { Eryndor: 'volcanic', Koril: 'forest', Deo: 'arid', Egea: 'space' };
 const MONSTER_BIOME = { Tronc: 'forest', Serpi: 'aqua', Triso: 'volcanic', Raya: 'arid', Terri: 'space' };
+
+// Stats base de progresión/combate por especie. Presupuesto parejo (STR+DEF+SPD≈30,
+// health≈100) con reparto por arquetipo de bioma, para que estén equilibrados.
+// Se backfillean campo a campo SOLO si faltan (no pisan ediciones del admin).
+const MONSTER_BASE_STATS = {
+  Tronc: { BaseHealth: 110, BaseStrength: 10, BaseDefense: 14, BaseSpeed: 6, BaseLuck: 5, BaseLevel: 1 }, // tanque
+  Serpi: { BaseHealth: 95, BaseStrength: 9, BaseDefense: 8, BaseSpeed: 13, BaseLuck: 5, BaseLevel: 1 }, // ágil
+  Triso: { BaseHealth: 100, BaseStrength: 14, BaseDefense: 9, BaseSpeed: 7, BaseLuck: 5, BaseLevel: 1 }, // ofensivo
+  Raya: { BaseHealth: 100, BaseStrength: 10, BaseDefense: 10, BaseSpeed: 10, BaseLuck: 8, BaseLevel: 1 }, // equilibrado/afortunado
+  Terri: { BaseHealth: 90, BaseStrength: 11, BaseDefense: 6, BaseSpeed: 13, BaseLuck: 7, BaseLevel: 1 }, // veloz frágil
+};
+// Arquetipo por bioma para monstruos sin entrada explícita en MONSTER_BASE_STATS.
+// Mismo presupuesto (STR+DEF+SPD≈30, health≈100) que los anclas a medida, del que
+// cada bioma deriva su sabor — así dos monstruos del mismo bioma comparten arquetipo.
+const BIOME_BASE_STATS = {
+  forest: { BaseHealth: 110, BaseStrength: 10, BaseDefense: 14, BaseSpeed: 6, BaseLuck: 5, BaseLevel: 1 }, // tanque (cf. Tronc)
+  aqua: { BaseHealth: 95, BaseStrength: 9, BaseDefense: 8, BaseSpeed: 13, BaseLuck: 5, BaseLevel: 1 }, // ágil (cf. Serpi)
+  volcanic: { BaseHealth: 100, BaseStrength: 14, BaseDefense: 9, BaseSpeed: 7, BaseLuck: 5, BaseLevel: 1 }, // ofensivo (cf. Triso)
+  arid: { BaseHealth: 100, BaseStrength: 10, BaseDefense: 10, BaseSpeed: 10, BaseLuck: 8, BaseLevel: 1 }, // equilibrado/afortunado (cf. Raya)
+  space: { BaseHealth: 90, BaseStrength: 11, BaseDefense: 6, BaseSpeed: 13, BaseLuck: 7, BaseLevel: 1 }, // veloz frágil (cf. Terri)
+  snow: { BaseHealth: 105, BaseStrength: 9, BaseDefense: 13, BaseSpeed: 8, BaseLuck: 5, BaseLevel: 1 }, // defensivo/resistente
+};
+// Genérico final para monstruos sin entrada a medida y sin bioma (equilibrado).
+const GENERIC_BASE_STATS = { BaseHealth: 100, BaseStrength: 10, BaseDefense: 10, BaseSpeed: 10, BaseLuck: 5, BaseLevel: 1 };
 const PLACE_BIOME = {
   'Cañada Verdante': 'forest',
   'Isla del Reposo de la Serpiente': 'aqua',
@@ -186,12 +210,22 @@ module.exports = async function seed({ strapi }) {
       }
     }
 
-    // 3) Biomas de monstruos
+    // 3) Biomas + stats base de monstruos.
+    //    Los Base* se rellenan campo a campo SOLO si están null (no pisan una
+    //    edición manual del admin), igual que el backfill de items/hotspots.
     const monsters = await strapi.db.query('api::monster.monster').findMany({});
     for (const m of monsters) {
+      const data = {};
       const biome = MONSTER_BIOME[m.Name];
-      if (biome && m.Biome !== biome) {
-        await strapi.db.query('api::monster.monster').update({ where: { id: m.id }, data: { Biome: biome } });
+      if (biome && m.Biome !== biome) data.Biome = biome;
+      // Stats base: a medida por nombre → arquetipo del bioma → genérico.
+      const effBiome = biome || m.Biome;
+      const baseStats = MONSTER_BASE_STATS[m.Name] || BIOME_BASE_STATS[effBiome] || GENERIC_BASE_STATS;
+      for (const [field, value] of Object.entries(baseStats)) {
+        if (m[field] == null) data[field] = value;
+      }
+      if (Object.keys(data).length) {
+        await strapi.db.query('api::monster.monster').update({ where: { id: m.id }, data });
       }
     }
 
@@ -286,8 +320,9 @@ module.exports = async function seed({ strapi }) {
     const companions = await strapi.db.query('api::companion.companion').findMany({ where: { user: { id: demo.id } } });
     if (companions.length === 0 && monsters.length) {
       const tronc = monsters.find((m) => m.Name === 'Tronc') || monsters[0];
-      await strapi.entityService.create('api::companion.companion', {
-        data: { user: demo.id, monster: tronc.id, happiness: 82, energy: 64, bond: 45, isActive: true, lastInteraction: new Date().toISOString() },
+      // Usa el service para que los stats de progresión arranquen en el base de la especie.
+      await strapi.service('api::companion.companion').createForUser(demo.id, tronc.id, {
+        happiness: 82, energy: 64, bond: 45, isActive: true,
       });
     } else if (companions.length > 1) {
       for (const extra of companions.slice(1)) {

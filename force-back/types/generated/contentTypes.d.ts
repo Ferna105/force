@@ -390,6 +390,14 @@ export interface ApiCompanionCompanion extends Schema.CollectionType {
       'admin::user'
     > &
       Attribute.Private;
+    defense: Attribute.Integer &
+      Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      > &
+      Attribute.DefaultTo<10>;
     energy: Attribute.Integer &
       Attribute.SetMinMax<
         {
@@ -408,13 +416,53 @@ export interface ApiCompanionCompanion extends Schema.CollectionType {
         number
       > &
       Attribute.DefaultTo<50>;
+    health: Attribute.Integer &
+      Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      > &
+      Attribute.DefaultTo<100>;
     isActive: Attribute.Boolean & Attribute.DefaultTo<false>;
     lastInteraction: Attribute.DateTime;
+    level: Attribute.Integer &
+      Attribute.SetMinMax<
+        {
+          min: 1;
+        },
+        number
+      > &
+      Attribute.DefaultTo<1>;
+    luck: Attribute.Integer &
+      Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      > &
+      Attribute.DefaultTo<5>;
     monster: Attribute.Relation<
       'api::companion.companion',
       'manyToOne',
       'api::monster.monster'
     >;
+    speed: Attribute.Integer &
+      Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      > &
+      Attribute.DefaultTo<10>;
+    strength: Attribute.Integer &
+      Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      > &
+      Attribute.DefaultTo<10>;
     updatedAt: Attribute.DateTime;
     updatedBy: Attribute.Relation<
       'api::companion.companion',
@@ -589,6 +637,54 @@ export interface ApiMonsterMonster extends Schema.CollectionType {
         },
         number
       >;
+    BaseDefense: Attribute.Integer &
+      Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      > &
+      Attribute.DefaultTo<10>;
+    BaseHealth: Attribute.Integer &
+      Attribute.SetMinMax<
+        {
+          min: 1;
+        },
+        number
+      > &
+      Attribute.DefaultTo<100>;
+    BaseLevel: Attribute.Integer &
+      Attribute.SetMinMax<
+        {
+          min: 1;
+        },
+        number
+      > &
+      Attribute.DefaultTo<1>;
+    BaseLuck: Attribute.Integer &
+      Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      > &
+      Attribute.DefaultTo<5>;
+    BaseSpeed: Attribute.Integer &
+      Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      > &
+      Attribute.DefaultTo<10>;
+    BaseStrength: Attribute.Integer &
+      Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      > &
+      Attribute.DefaultTo<10>;
     Biome: Attribute.Enumeration<
       ['forest', 'aqua', 'volcanic', 'space', 'snow', 'arid']
     >;

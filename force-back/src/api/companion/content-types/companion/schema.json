@@ -46,6 +46,36 @@
     },
     "lastInteraction": {
       "type": "datetime"
+    },
+    "health": {
+      "type": "integer",
+      "default": 100,
+      "min": 0
+    },
+    "strength": {
+      "type": "integer",
+      "default": 10,
+      "min": 0
+    },
+    "defense": {
+      "type": "integer",
+      "default": 10,
+      "min": 0
+    },
+    "speed": {
+      "type": "integer",
+      "default": 10,
+      "min": 0
+    },
+    "luck": {
+      "type": "integer",
+      "default": 5,
+      "min": 0
+    },
+    "level": {
+      "type": "integer",
+      "default": 1,
+      "min": 1
     }
   }
 }

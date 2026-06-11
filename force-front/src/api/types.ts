@@ -230,6 +230,13 @@ export interface Companion extends StrapiEntity {
     bond: number;
     isActive: boolean;
     lastInteraction: string | null;
+    // Stats de progresión/combate (arrancan en el base de la especie)
+    health: number;
+    strength: number;
+    defense: number;
+    speed: number;
+    luck: number;
+    level: number;
     monster?: { data: Monster | null };
     createdAt: string;
     updatedAt: string;

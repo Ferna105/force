@@ -11,7 +11,7 @@ import { BIOME, mediaUrl, monsterArtFallback } from '@/lib/design';
 import Topbar from '@/components/shell/Topbar';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { Loading, ErrorState } from '@/components/ui/states';
-import { BiomeTag, Meter, SectionTitle } from '@/components/ui/tags';
+import { BiomeTag, Meter, CompanionStats, SectionTitle } from '@/components/ui/tags';
 import { WorldCard, PlaceBanner, MonsterCard } from '@/components/ui/cards';
 
 function MonsterView() {
@@ -134,7 +134,10 @@ export default function MonsterPage() {
    alimentar / jugar / acariciar (sube stats vía endpoints custom). */
 function CareSection({ monsterId }: { monsterId: number }) {
   const { user } = useAuth();
-  const [comp, setComp] = useState<{ id: number; happiness: number; energy: number; bond: number } | null>(null);
+  const [comp, setComp] = useState<{
+    id: number; happiness: number; energy: number; bond: number;
+    health: number; strength: number; defense: number; speed: number; luck: number; level: number;
+  } | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -143,8 +146,13 @@ function CareSection({ monsterId }: { monsterId: number }) {
     companionsService.getMine().then((res) => {
       if (!active) return;
       const found = res.data.find((c) => c.attributes.monster?.data?.id === monsterId);
-      if (found) setComp({ id: found.id, happiness: found.attributes.happiness, energy: found.attributes.energy, bond: found.attributes.bond });
-      else setComp(null);
+      if (found) {
+        const at = found.attributes;
+        setComp({
+          id: found.id, happiness: at.happiness, energy: at.energy, bond: at.bond,
+          health: at.health, strength: at.strength, defense: at.defense, speed: at.speed, luck: at.luck, level: at.level,
+        });
+      } else setComp(null);
     }).catch(() => {});
     return () => { active = false; };
   }, [user, monsterId]);
@@ -165,7 +173,8 @@ function CareSection({ monsterId }: { monsterId: number }) {
       <div className="kicker" style={{ margin: '22px 0 12px' }}>Cuidados</div>
       <Meter label="Felicidad" value={stats.happiness} fill="fill-gold" />
       <Meter label="Energía" value={stats.energy} fill="fill-verd" />
-      <div style={{ marginBottom: 22 }}><Meter label="Vínculo" value={stats.bond} fill="fill-rare" last /></div>
+      <div style={{ marginBottom: 18 }}><Meter label="Vínculo" value={stats.bond} fill="fill-rare" last /></div>
+      {comp && <CompanionStats stats={comp} />}
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         <button className="btn btn-verdant btn-lg" disabled={!comp || busy} onClick={() => act('feed')}>Alimentar 🍃</button>
         <button className="btn btn-primary btn-lg" disabled={!comp || busy} onClick={() => act('play')}>Jugar ✦</button>

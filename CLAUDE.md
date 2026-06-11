@@ -144,6 +144,39 @@ content type (`place` + `item` + `quantity`).
   **requires** `placeId`, validates+decrements that shop's stock, and returns the updated
   `stock` alongside `balance`/`entry`/`newlyDiscovered`.
 
+### Backend — Companion stats
+
+A `companion` (user↔monster bond) carries two independent groups of stats:
+
+- **Care stats** — `happiness`/`energy`/`bond` (0..100), moved by the `feed`/`play`/`pet`
+  actions (controller `care()`), unchanged by this engine.
+- **Progression/combat stats** — `health`, `strength`, `defense`, `speed`, `luck`, `level`
+  (integers on the companion schema). When a companion is created they're initialized to the
+  **species base**, read from the monster's `Base*` fields (`BaseHealth`/`BaseStrength`/
+  `BaseDefense`/`BaseSpeed`/`BaseLuck`/`BaseLevel` on the monster schema). The methods to
+  **raise** these stats are not implemented yet — the stats are stored as the mutable current
+  values, ready to be bumped later.
+
+**Base stats are balanced per species** (budget STR+DEF+SPD≈30, health≈100, varied by biome
+archetype). Seeded in `src/seed.js` with a cascade: `MONSTER_BASE_STATS[name]` (hand-authored
+anchors: Tronc tank / Serpi agile / Triso offense / Raya balanced+lucky / Terri fast-fragile)
+→ `BIOME_BASE_STATS[biome]` (per-biome archetype each anchor derives from, so any monster
+inherits its biome's flavor: forest tank / aqua agile / volcanic offense / arid balanced /
+space fast-fragile / snow defensive) → `GENERIC_BASE_STATS` (for monsters with no biome). The
+seed **backfills each `Base*` field only when it's null**
+(step 3, same "fill-if-missing" convention as item/hotspot backfill) — so it never overwrites
+an admin edit, and because `seed.js` runs on `bootstrap` it populates **both local and prod**
+(prod on the next redeploy). No per-field `seeded` marker is needed since it never overwrites.
+
+**Creation seam.** `companion.service` exposes `baseStatsFor(monster)` (Base* → the 6
+progression stats, with generic fallback) and `createForUser(userId, monsterId, extra)`, which
+creates the companion with stats copied from the species base. The future "obtain a companion"
+flow should call `createForUser` rather than creating the row directly. The seed's demo
+companion (step 9) already uses it. The controller's `companionToRest` returns all six
+progression stats; the frontend `Companion` type mirrors them and `CompanionStats`
+(`components/ui/tags.tsx`) renders them as numeric chips (not `%` meters) on the home hero and
+`monsters/[id]` care section.
+
 ### Frontend — discovery UX
 
 `src/hooks/useDiscovery.tsx` — `DiscoveryProvider` (mounted in `layout.tsx` inside

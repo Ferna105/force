@@ -7,7 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { mediaUrl, monsterArtFallback } from '@/lib/design';
 import Topbar from '@/components/shell/Topbar';
 import { Loading, ErrorState } from '@/components/ui/states';
-import { BiomeTag, Meter, SectionTitle } from '@/components/ui/tags';
+import { BiomeTag, Meter, CompanionStats, SectionTitle } from '@/components/ui/tags';
 import { WorldCard, PlaceBanner, MonsterCard } from '@/components/ui/cards';
 
 export default function HomePage() {
@@ -106,7 +106,8 @@ function CompanionHero({
         <div style={{ maxWidth: 440 }}>
           <Meter label="Felicidad" value={a.happiness} fill="fill-gold" />
           <Meter label="Energía" value={a.energy} fill="fill-verd" />
-          <div style={{ marginBottom: 24 }}><Meter label="Vínculo" value={a.bond} fill="fill-rare" last /></div>
+          <div style={{ marginBottom: 18 }}><Meter label="Vínculo" value={a.bond} fill="fill-rare" last /></div>
+          <CompanionStats stats={a} />
         </div>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           <Link className="btn btn-primary" href={`/monsters/${monster.id}`}>Cuidar a {m.Name} ✦</Link>

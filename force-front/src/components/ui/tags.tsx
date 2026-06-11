@@ -43,6 +43,36 @@ export function Meter({
   );
 }
 
+/** Ficha numérica de un stat de progresión/combate (valor absoluto, no %). */
+export function StatChip({ label, value }: { label: string; value: number }) {
+  return (
+    <div style={{
+      display: 'flex', flexDirection: 'column', gap: 2, padding: '8px 12px',
+      borderRadius: 12, background: 'rgba(0,0,0,.18)',
+      border: '1px solid rgba(214,181,130,.25)', minWidth: 64,
+    }}>
+      <span style={{ fontSize: 11, letterSpacing: '.06em', textTransform: 'uppercase', color: '#C9B48E', opacity: .85 }}>{label}</span>
+      <b style={{ fontSize: 20, color: '#F6ECD7', fontVariantNumeric: 'tabular-nums' }}>{value}</b>
+    </div>
+  );
+}
+
+/** Grilla de stats base de progresión/combate del compañero. */
+export function CompanionStats({ stats }: {
+  stats: { health: number; strength: number; defense: number; speed: number; luck: number; level: number };
+}) {
+  return (
+    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 22 }}>
+      <StatChip label="Nivel" value={stats.level} />
+      <StatChip label="Salud" value={stats.health} />
+      <StatChip label="Fuerza" value={stats.strength} />
+      <StatChip label="Defensa" value={stats.defense} />
+      <StatChip label="Velocidad" value={stats.speed} />
+      <StatChip label="Suerte" value={stats.luck} />
+    </div>
+  );
+}
+
 /** Encabezado de sección con link opcional a la derecha. */
 export function SectionTitle({ title, href, action }: { title: string; href?: string; action?: string }) {
   return (

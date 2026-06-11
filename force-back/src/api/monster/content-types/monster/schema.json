@@ -60,6 +60,36 @@
     },
     "DiscoveryStrategy": {
       "type": "json"
+    },
+    "BaseHealth": {
+      "type": "integer",
+      "default": 100,
+      "min": 1
+    },
+    "BaseStrength": {
+      "type": "integer",
+      "default": 10,
+      "min": 0
+    },
+    "BaseDefense": {
+      "type": "integer",
+      "default": 10,
+      "min": 0
+    },
+    "BaseSpeed": {
+      "type": "integer",
+      "default": 10,
+      "min": 0
+    },
+    "BaseLuck": {
+      "type": "integer",
+      "default": 5,
+      "min": 0
+    },
+    "BaseLevel": {
+      "type": "integer",
+      "default": 1,
+      "min": 1
     }
   }
 }

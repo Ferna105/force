@@ -34,6 +34,13 @@ const companionToRest = (c) => ({
     bond: c.bond,
     isActive: c.isActive,
     lastInteraction: c.lastInteraction,
+    // Stats de progresión/combate (arrancan en el base de la especie)
+    health: c.health,
+    strength: c.strength,
+    defense: c.defense,
+    speed: c.speed,
+    luck: c.luck,
+    level: c.level,
     monster: monsterToRest(c.monster),
   },
 });
