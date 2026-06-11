@@ -22,6 +22,18 @@ module.exports = {
     },
     {
       method: 'POST',
+      path: '/companions/:id/equip',
+      handler: 'companion.equip',
+      config: { policies: [] },
+    },
+    {
+      method: 'POST',
+      path: '/companions/:id/unequip',
+      handler: 'companion.unequip',
+      config: { policies: [] },
+    },
+    {
+      method: 'POST',
       path: '/companions/:id/feed',
       handler: 'companion.feed',
       config: { policies: [] },

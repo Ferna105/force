@@ -22,6 +22,11 @@
       "relation": "manyToOne",
       "target": "api::monster.monster"
     },
+    "equippedItems": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::item.item"
+    },
     "happiness": {
       "type": "integer",
       "default": 50,

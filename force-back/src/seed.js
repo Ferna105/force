@@ -77,6 +77,51 @@ const ITEM_DATA = {
   'Moder Granite Table': { rarity: 'common', value: 40, type: 'misc' },
 };
 
+// Ataque/Defensa de equipamiento por familia × rareza. La familia se deriva de
+// `category` (con fallback a `type`): armas (espadas) pegan, armaduras (escudos,
+// yelmos, guantes, chalecos, corazas) aguantan, tótems dan un buff balanceado.
+// Los alimentos / el resto quedan en 0/0. Se backfillea solo si el valor está en 0.
+const EQUIP_STATS = {
+  weapon: {
+    common: { attack: 6, defense: 0 },
+    uncommon: { attack: 11, defense: 0 },
+    rare: { attack: 17, defense: 1 },
+    epic: { attack: 25, defense: 2 },
+    legendary: { attack: 35, defense: 3 },
+  },
+  armor: {
+    common: { attack: 0, defense: 6 },
+    uncommon: { attack: 0, defense: 11 },
+    rare: { attack: 1, defense: 17 },
+    epic: { attack: 2, defense: 25 },
+    legendary: { attack: 3, defense: 35 },
+  },
+  totem: {
+    common: { attack: 4, defense: 4 },
+    uncommon: { attack: 7, defense: 7 },
+    rare: { attack: 11, defense: 11 },
+    epic: { attack: 16, defense: 16 },
+    legendary: { attack: 24, defense: 24 },
+  },
+};
+
+// Familia de equipamiento de un item (o null si no es equipable: comida, etc.).
+function equipFamily(item) {
+  const cat = item.category;
+  if (cat === 'weapon' || cat === 'armor' || cat === 'totem') return cat;
+  // Fallback por tipo para items sin categoría cargada.
+  if (item.type === 'weapon') return 'weapon';
+  if (item.type === 'armor') return 'armor';
+  return null;
+}
+
+// Ataque/Defensa deseados de un item según su familia y rareza (0/0 si no aplica).
+function equipStatsFor(item) {
+  const fam = equipFamily(item);
+  if (!fam) return { attack: 0, defense: 0 };
+  return EQUIP_STATS[fam]?.[item.rarity] || { attack: 0, defense: 0 };
+}
+
 const PUBLIC_ACTIONS = [
   'api::world.world.find', 'api::world.world.findOne',
   'api::place.place.find', 'api::place.place.findOne',
@@ -93,6 +138,7 @@ const AUTH_ACTIONS = [
   'api::companion.companion.mine',
   'api::companion.companion.adopt',
   'api::companion.companion.feed', 'api::companion.companion.play', 'api::companion.companion.pet',
+  'api::companion.companion.equip', 'api::companion.companion.unequip',
   'api::shop.shop.buy',
   // Motor de descubrimiento: registrar eventos + reevaluar estrategias.
   'api::discovery.discovery.event',
@@ -260,6 +306,12 @@ module.exports = async function seed({ strapi }) {
       const data = {};
       // Backfill de categoría desde el catálogo (para items creados antes del campo).
       if (!it.category && ITEM_CATEGORY[it.name]) data.category = ITEM_CATEGORY[it.name];
+      // Ataque/Defensa por familia × rareza. Solo se completan si están en 0/null
+      // (preserva ediciones del admin; los alimentos se quedan en 0). Usa la
+      // categoría ya backfilleada en `data` si vino vacía.
+      const stats = equipStatsFor({ ...it, category: it.category || data.category });
+      if ((it.attack == null || it.attack === 0) && stats.attack) data.attack = stats.attack;
+      if ((it.defense == null || it.defense === 0) && stats.defense) data.defense = stats.defense;
       const d = ITEM_DATA[it.name];
       if (d) {
         if (!it.rarity) data.rarity = d.rarity;

@@ -479,6 +479,17 @@ export const companionsService = {
     const response = await apiClient.post(`/companions/${id}/pet`);
     return response.data;
   },
+
+  // Equipar / quitar un objeto del compañero (devuelven el compañero actualizado,
+  // con equippedItems poblado).
+  async equip(id: number, itemId: number): Promise<CompanionResponse> {
+    const response = await apiClient.post(`/companions/${id}/equip`, { itemId });
+    return response.data;
+  },
+  async unequip(id: number, itemId: number): Promise<CompanionResponse> {
+    const response = await apiClient.post(`/companions/${id}/unequip`, { itemId });
+    return response.data;
+  },
 };
 
 // Servicio de inventario (entradas con cantidad) + tienda

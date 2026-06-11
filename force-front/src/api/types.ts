@@ -215,6 +215,9 @@ export interface Item extends StrapiEntity {
     icon: StrapiImage | null;
     weight: number | null;
     value: number | null;
+    // Stats de equipamiento (0 por defecto; >0 en armas/armaduras/tótems).
+    attack: number;
+    defense: number;
     is_stackable: boolean;
     max_stack: number;
     usable: boolean;
@@ -245,6 +248,8 @@ export interface Companion extends StrapiEntity {
     luck: number;
     level: number;
     monster?: { data: Monster | null };
+    // Objetos equipados (hasta 5). Suman su ataque/defensa al total efectivo.
+    equippedItems?: { data: Item[] };
     createdAt: string;
     updatedAt: string;
     publishedAt: string;

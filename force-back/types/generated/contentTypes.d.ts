@@ -407,6 +407,11 @@ export interface ApiCompanionCompanion extends Schema.CollectionType {
         number
       > &
       Attribute.DefaultTo<50>;
+    equippedItems: Attribute.Relation<
+      'api::companion.companion',
+      'manyToMany',
+      'api::item.item'
+    >;
     happiness: Attribute.Integer &
       Attribute.SetMinMax<
         {
@@ -537,6 +542,14 @@ export interface ApiItemItem extends Schema.CollectionType {
     draftAndPublish: true;
   };
   attributes: {
+    attack: Attribute.Integer &
+      Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      > &
+      Attribute.DefaultTo<0>;
     category: Attribute.Enumeration<
       [
         'fruit',
@@ -560,6 +573,14 @@ export interface ApiItemItem extends Schema.CollectionType {
     createdAt: Attribute.DateTime;
     createdBy: Attribute.Relation<'api::item.item', 'oneToOne', 'admin::user'> &
       Attribute.Private;
+    defense: Attribute.Integer &
+      Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      > &
+      Attribute.DefaultTo<0>;
     description: Attribute.RichText;
     icon: Attribute.Media<'images'>;
     is_stackable: Attribute.Boolean & Attribute.DefaultTo<false>;

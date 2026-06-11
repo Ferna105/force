@@ -42,7 +42,7 @@ The per-app npm scripts below are still the way to run a single service directly
 ### Backend — Strapi content types
 All API resources live under `force-back/src/api/<name>/` and are scaffolded with Strapi factories — controllers (`createCoreController`), routes (`createCoreRouter`), and services (`createCoreService`) are unmodified boilerplate. **Behavior is driven almost entirely by the `content-types/<name>/schema.json` files, not by code.** To change the API, edit the schema (or use the admin panel, which writes these files).
 
-Content types: `world`, `place`, `monster`, `item`, `companion` (user↔monster care bond), `inventory-entry` (user's item + quantity), `user-event` (activity log feeding the discovery engine — see below), `shop-stock` (a shop place's live stock: place + item + quantity — see the shop/stock engine). Note the field-naming inconsistency — `world`/`place`/`monster` use PascalCase attributes (`Name`, `Description`, `Image`), while `item` uses snake_case (`name`, `slug`, `type`, `rarity`). Relations: `world` 1—N `place`; `item` N—N `user` (the Items relation is added to the user schema in `src/extensions/users-permissions/content-types/user/schema.json`, marked `private`). The user schema also has `discoveredMonsters` (M2N → monster), `balance`, `companions` and `inventoryEntries`.
+Content types: `world`, `place`, `monster`, `item`, `companion` (user↔monster care bond), `inventory-entry` (user's item + quantity), `user-event` (activity log feeding the discovery engine — see below), `shop-stock` (a shop place's live stock: place + item + quantity — see the shop/stock engine). Note the field-naming inconsistency — `world`/`place`/`monster` use PascalCase attributes (`Name`, `Description`, `Image`), while `item` uses snake_case (`name`, `slug`, `type`, `rarity`). Relations: `world` 1—N `place`; `item` N—N `user` (the Items relation is added to the user schema in `src/extensions/users-permissions/content-types/user/schema.json`, marked `private`); `companion` N—N `item` (`equippedItems`, the companion's equipment — see the equipment engine). The user schema also has `discoveredMonsters` (M2N → monster), `balance`, `companions` and `inventoryEntries`. The `item` schema also carries `attack`/`defense` (equipment stats, default 0).
 
 There are also two custom **code-only** APIs (controller + routes, no content-type, like the `shop` pattern): `shop` (`POST /shop/buy`, `GET /shop/:placeId/stock`) and `discovery` (`POST /discovery/event`, `POST /discovery/sync`).
 
@@ -176,6 +176,38 @@ companion (step 9) already uses it. The controller's `companionToRest` returns a
 progression stats; the frontend `Companion` type mirrors them and `CompanionStats`
 (`components/ui/tags.tsx`) renders them as numeric chips (not `%` meters) on the home hero and
 `monsters/[id]` care section.
+
+### Backend — Companion equipment
+
+A companion can carry **up to 5 equipped items** (`MAX_EQUIP` in the controller), held in a
+`equippedItems` M2N relation (`companion` → `item`). Equipping does **not** consume the
+inventory entry — the item stays in the bag (shown as "Equipado") and unequip just breaks the
+relation.
+
+Every `item` now has `attack`/`defense` integer fields (default 0). Equipped items sum their
+attack/defense into the companion's **effective combat totals** shown on `/companion`:
+`Ataque = strength + Σ item.attack`, `Defensa = defense + Σ item.defense`.
+
+- **Endpoints** (custom routes on the companion router, same ownership-validation pattern as
+  `care`): `POST /companions/:id/equip { itemId }` and `POST /companions/:id/unequip { itemId }`.
+  `equip` validates: companion belongs to the user, the user **owns** the item (an
+  `inventory-entry` with `quantity>0`), it isn't already equipped, and there are `< MAX_EQUIP`
+  equipped. Both return the updated companion via `companionToRest` (now including
+  `equippedItems`, each flattened with its `icon` like the inventory controller's `itemToRest`).
+- **Stat seeding** — `src/seed.js` has an `EQUIP_STATS` table keyed by **family × rarity**.
+  Family is derived from `item.category` (with a `type` fallback): `weapon` (swords → high
+  attack, ~0 defense), `armor` (shields/helmets/gloves/vests/cuirasses → high defense, ~0
+  attack), `totem` (balanced buff to both); food/everything else stays `0/0`. The item backfill
+  (step 5) writes attack/defense **only when the current value is 0/null** (same
+  "fill-if-missing" convention) — preserves admin edits, leaves food at 0, idempotent, and
+  populates **both local and prod** (prod on the next redeploy, which the new schema fields
+  require anyway).
+- **Frontend** — equip/unequip from the inventory (`/inventory`): the `Detail` panel shows
+  Ataque/Defensa rows and an **Equipar/Quitar** button for equippable items (`attack>0 ||
+  defense>0`), disabled when there's no companion or the 5-slot cap is full. `/companion` adds
+  an **Equipamiento** section (5 slots + per-item Quitar) and the effective Ataque/Defensa
+  chips with the equipment bonus. Both pages keep a local copy of the companion and update it
+  from the equip/unequip response (`companionsService.equip/unequip`).
 
 ### Frontend — discovery UX
 
