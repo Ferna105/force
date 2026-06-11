@@ -14,6 +14,13 @@ module.exports = {
       config: { policies: [] },
     },
     {
+      // Adoptar un monstruo como compañero del usuario autenticado.
+      method: 'POST',
+      path: '/companions/adopt',
+      handler: 'companion.adopt',
+      config: { policies: [] },
+    },
+    {
       method: 'POST',
       path: '/companions/:id/feed',
       handler: 'companion.feed',

@@ -11,7 +11,7 @@ import { BIOME, mediaUrl, monsterArtFallback } from '@/lib/design';
 import Topbar from '@/components/shell/Topbar';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { Loading, ErrorState } from '@/components/ui/states';
-import { BiomeTag, Meter, CompanionStats, SectionTitle } from '@/components/ui/tags';
+import { BiomeTag, StatsRadar, SectionTitle } from '@/components/ui/tags';
 import { WorldCard, PlaceBanner, MonsterCard } from '@/components/ui/cards';
 
 function MonsterView() {
@@ -75,7 +75,7 @@ function MonsterView() {
                 <p>{a.InnateAbility}</p>
               </div>
             )}
-            <CareSection monsterId={monster.id} />
+            <AdoptSection monster={monster} />
           </div>
         </div>
 
@@ -130,61 +130,83 @@ export default function MonsterPage() {
   );
 }
 
-/* Cuidados: busca el compañero del usuario para este monstruo y permite
-   alimentar / jugar / acariciar (sube stats vía endpoints custom). */
-function CareSection({ monsterId }: { monsterId: number }) {
+/* Stats base (radar) + adopción: convierte al monstruo en compañero del usuario.
+   Crea el compañero con sus stats inicializados al base de la especie. */
+function AdoptSection({ monster }: { monster: Monster }) {
   const { user } = useAuth();
-  const [comp, setComp] = useState<{
-    id: number; happiness: number; energy: number; bond: number;
-    health: number; strength: number; defense: number; speed: number; luck: number; level: number;
-  } | null>(null);
+  const a = monster.attributes;
+  const baseStats = {
+    health: a.BaseHealth ?? 100,
+    strength: a.BaseStrength ?? 10,
+    defense: a.BaseDefense ?? 10,
+    speed: a.BaseSpeed ?? 10,
+    luck: a.BaseLuck ?? 5,
+    level: a.BaseLevel ?? 1,
+  };
+
+  // ¿el usuario ya tiene a esta criatura como compañera?
+  const [owned, setOwned] = useState<boolean | null>(null);
+  const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
-    if (!user) { setComp(null); return; }
+    if (!user) { setOwned(false); return; }
     companionsService.getMine().then((res) => {
       if (!active) return;
-      const found = res.data.find((c) => c.attributes.monster?.data?.id === monsterId);
-      if (found) {
-        const at = found.attributes;
-        setComp({
-          id: found.id, happiness: at.happiness, energy: at.energy, bond: at.bond,
-          health: at.health, strength: at.strength, defense: at.defense, speed: at.speed, luck: at.luck, level: at.level,
-        });
-      } else setComp(null);
-    }).catch(() => {});
+      setOwned(res.data.some((c) => c.attributes.monster?.data?.id === monster.id));
+    }).catch(() => { if (active) setOwned(false); });
     return () => { active = false; };
-  }, [user, monsterId]);
+  }, [user, monster.id]);
 
-  const act = async (kind: 'feed' | 'play' | 'pet') => {
-    if (!comp) return;
+  const adopt = async () => {
     setBusy(true);
+    setError(null);
     try {
-      const res = await companionsService[kind](comp.id);
-      setComp((c) => (c ? { ...c, happiness: res.happiness, energy: res.energy, bond: res.bond } : c));
-    } catch { /* noop */ } finally { setBusy(false); }
+      await companionsService.adopt(monster.id);
+      setOwned(true);
+      setConfirming(false);
+    } catch {
+      setError('No se pudo crear el compañero. Intentá de nuevo.');
+    } finally {
+      setBusy(false);
+    }
   };
-
-  const stats = comp ?? { happiness: 50, energy: 50, bond: 0 };
 
   return (
     <>
-      <div className="kicker" style={{ margin: '22px 0 12px' }}>Cuidados</div>
-      <Meter label="Felicidad" value={stats.happiness} fill="fill-gold" />
-      <Meter label="Energía" value={stats.energy} fill="fill-verd" />
-      <div style={{ marginBottom: 18 }}><Meter label="Vínculo" value={stats.bond} fill="fill-rare" last /></div>
-      {comp && <CompanionStats stats={comp} />}
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-        <button className="btn btn-verdant btn-lg" disabled={!comp || busy} onClick={() => act('feed')}>Alimentar 🍃</button>
-        <button className="btn btn-primary btn-lg" disabled={!comp || busy} onClick={() => act('play')}>Jugar ✦</button>
-        <button className="btn btn-secondary btn-lg" disabled={!comp || busy} onClick={() => act('pet')}>Acariciar</button>
+      <div className="kicker" style={{ margin: '22px 0 4px' }}>Estadísticas base</div>
+      <div style={{ display: 'flex', justifyContent: 'center', margin: '0 0 18px' }}>
+        <StatsRadar stats={baseStats} />
       </div>
-      {!comp && (
-        <p className="sub" style={{ fontSize: 13, marginTop: 12 }}>
-          {user ? 'Todavía no cuidás a esta criatura.' : 'Iniciá sesión para cuidar a esta criatura.'}
+
+      {owned ? (
+        <p className="sub" style={{ fontSize: 14 }}>
+          ✓ {a.Name} ya es tu compañero. <Link href="/" style={{ color: 'var(--gold-soft)' }}>Verlo en inicio →</Link>
         </p>
+      ) : confirming ? (
+        <div className="panel" style={{ padding: '20px 24px' }}>
+          <p style={{ margin: '0 0 16px', color: '#EFE3CE' }}>
+            ¿Seguro que querés convertir a <b>{a.Name}</b> en tu compañero?
+          </p>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <button className="btn btn-primary btn-lg" disabled={busy} onClick={adopt}>
+              {busy ? 'Creando…' : 'Sí, convertir'}
+            </button>
+            <button className="btn btn-secondary btn-lg" disabled={busy} onClick={() => setConfirming(false)}>Cancelar</button>
+          </div>
+        </div>
+      ) : (
+        <button
+          className="btn btn-primary btn-lg"
+          disabled={owned === null}
+          onClick={() => setConfirming(true)}
+        >
+          Convertir en mi compañero ✦
+        </button>
       )}
+      {error && <p className="sub" style={{ fontSize: 13, marginTop: 12, color: '#E8A0A0' }}>{error}</p>}
     </>
   );
 }

@@ -91,6 +91,7 @@ const AUTH_ACTIONS = [
   // users-permissions.user no se pueden filtrar por el content API).
   'api::inventory-entry.inventory-entry.mine',
   'api::companion.companion.mine',
+  'api::companion.companion.adopt',
   'api::companion.companion.feed', 'api::companion.companion.play', 'api::companion.companion.pet',
   'api::shop.shop.buy',
   // Motor de descubrimiento: registrar eventos + reevaluar estrategias.

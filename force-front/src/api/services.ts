@@ -18,6 +18,7 @@ import {
   AuthResponse,
   AuthUser,
   CompanionsResponse,
+  CompanionResponse,
   InventoryEntriesResponse,
   BuyResponse,
   DiscoveryEventRequest,
@@ -457,6 +458,12 @@ export const companionsService = {
     } catch (error) {
       throw new Error(`Error fetching companions: ${error}`);
     }
+  },
+
+  // Adoptar un monstruo como compañero (crea el compañero con stats base).
+  async adopt(monsterId: number): Promise<CompanionResponse> {
+    const response = await apiClient.post('/companions/adopt', { monsterId });
+    return response.data;
   },
 
   // Acciones de cuidado (devuelven el compañero actualizado, shape aplanado)

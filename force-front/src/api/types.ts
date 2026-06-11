@@ -91,6 +91,13 @@ export interface Monster extends StrapiEntity {
     InnateAbility: string | null;
     Biome: BiomeName | null;
     DiscoveryStrategy?: DiscoveryStrategy | null;
+    // Stats base de la especie (heredados por el compañero al crearse)
+    BaseHealth: number | null;
+    BaseStrength: number | null;
+    BaseDefense: number | null;
+    BaseSpeed: number | null;
+    BaseLuck: number | null;
+    BaseLevel: number | null;
     createdAt: string;
     updatedAt: string;
     publishedAt: string;
