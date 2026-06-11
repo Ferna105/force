@@ -34,9 +34,10 @@ const ACTIONS: { a: BattleAction; label: string; sub: string; icon: React.ReactN
 
 interface Floater { id: number; lr: 'me' | 'foe'; text: string; type: string; }
 
-// Imagen del peleador: recorte transparente por nombre, con fallback a la media.
+// Imagen del peleador: la del monster en el content (Strapi); si no hay, cae al
+// recorte transparente por nombre y por último a la miniatura.
 function cutoutSrc(name: string, imageUrl: string | null): string {
-  return monsterCutoutFallback(name) || (imageUrl ? strapiMedia(imageUrl) : thumbFallback(name));
+  return imageUrl ? strapiMedia(imageUrl) : (monsterCutoutFallback(name) || thumbFallback(name));
 }
 
 function BattleScreen() {
