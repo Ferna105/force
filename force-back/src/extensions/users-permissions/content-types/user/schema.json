@@ -76,6 +76,10 @@
       "default": 500,
       "min": 0
     },
+    "gameCooldowns": {
+      "type": "json",
+      "private": true
+    },
     "discoveredMonsters": {
       "type": "relation",
       "relation": "manyToMany",

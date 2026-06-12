@@ -683,3 +683,23 @@ h1,h2,h3,h4{margin:0;}
 .spinner-sm{width:16px;height:16px;flex:none;border-radius:50%;border:2px solid rgba(236,164,42,.3);border-top-color:var(--gold);animation:spin .8s linear infinite;}
 @media(max-width:560px){.duel{flex-wrap:wrap;}.d-right{width:100%;flex-direction:row;justify-content:space-between;align-items:center;}}
 
+
+/* ===== Juego (place de tipo game): pantalla de partida /play ===== */
+.play-stage{position:relative;overflow:hidden;min-height:440px;display:grid;place-items:center;padding:48px 40px;text-align:center;margin-top:26px;}
+.play-stage>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.26;}
+.play-stage .scrim{position:absolute;inset:0;background:radial-gradient(120% 120% at 50% 28%,transparent,rgba(10,8,5,.84));}
+.play-inner{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:20px;max-width:520px;}
+.play-orb-wrap{position:relative;width:140px;height:140px;display:grid;place-items:center;}
+.play-orb{position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 0deg,transparent,var(--gold) 72%,#FBE49C);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 13px),#000 calc(100% - 12px));mask:radial-gradient(farthest-side,transparent calc(100% - 13px),#000 calc(100% - 12px));animation:playSpin 1.1s linear infinite;filter:drop-shadow(0 0 18px rgba(236,164,42,.5));}
+.play-orb-core{position:relative;font-size:46px;animation:playFloat 2.4s ease-in-out infinite;}
+.play-charge{width:260px;max-width:72vw;height:8px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden;}
+.play-charge>i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--gold-deep),var(--gold-soft));animation:playFill 10s linear forwards;}
+.play-kicker{font-family:var(--font-fredoka);font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--mist-2);margin:0;}
+.play-title{font-family:var(--font-cinzel);font-weight:700;font-size:30px;color:#F6ECD7;margin:0;}
+.play-sub{font-family:var(--font-mulish);color:var(--mist);margin:0;}
+.play-reward{font-family:var(--font-cinzel);font-weight:800;font-size:48px;color:var(--gold-soft);text-shadow:0 0 26px rgba(236,164,42,.45);animation:playPop .5s cubic-bezier(.2,1.4,.4,1);margin:0;}
+.play-timer{font-family:var(--font-cinzel);font-weight:800;font-size:40px;color:#F6ECD7;letter-spacing:.04em;margin:0;}
+@keyframes playSpin{to{transform:rotate(360deg);}}
+@keyframes playFloat{0%,100%{transform:translateY(-4px);}50%{transform:translateY(4px);}}
+@keyframes playFill{from{width:0;}to{width:100%;}}
+@keyframes playPop{from{transform:scale(.4);opacity:0;}to{transform:scale(1);opacity:1;}}

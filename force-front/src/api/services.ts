@@ -26,6 +26,8 @@ import {
   ShopStock,
   DuelsLobby,
   DuelDetail,
+  GameStatus,
+  GameClaimResponse,
 } from './types';
 
 // Serializa un objeto/array anidado a la sintaxis de brackets de Strapi 4
@@ -589,5 +591,23 @@ export const battleService = {
   async get(duelId: number): Promise<DuelDetail> {
     const response = await apiClient.get(`/battle/duels/${duelId}`);
     return response.data.duel;
+  },
+};
+
+// Servicio del motor de juegos (places de tipo `game`).
+// El motor solo provee el contrato de reclamo: cada juego tiene su propia
+// mecánica/puntaje en el cliente, pero la conversión a monedas y el cooldown
+// global (1 reclamo cada N horas) se resuelven en el servidor.
+export const gamesService = {
+  // Estado del juego para el usuario autenticado (qué juego + cooldown).
+  async getStatus(placeId: number): Promise<GameStatus> {
+    const response = await apiClient.get(`/games/${placeId}/status`);
+    return response.data;
+  },
+  // Reclama la recompensa. `points` es el puntaje interno del juego (opcional:
+  // el template no lo usa). Devuelve la recompensa, el saldo nuevo y el cooldown.
+  async claim(placeId: number, points?: number): Promise<GameClaimResponse> {
+    const response = await apiClient.post(`/games/${placeId}/claim`, { points });
+    return response.data;
   },
 };

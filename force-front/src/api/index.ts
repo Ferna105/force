@@ -34,6 +34,8 @@ export type {
   BattleState,
   BattleLogEntry,
   BattleResult,
+  GameStatus,
+  GameClaimResponse,
   MonstersResponse,
   WorldsResponse,
   PlacesResponse,
@@ -64,6 +66,7 @@ export {
   shopService,
   discoveryService,
   battleService,
+  gamesService,
   dataService,
   authService
 } from './services';

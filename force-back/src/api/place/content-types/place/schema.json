@@ -74,6 +74,9 @@
     },
     "RestockAt": {
       "type": "datetime"
+    },
+    "GameKey": {
+      "type": "string"
     }
   }
 }

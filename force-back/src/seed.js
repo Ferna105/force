@@ -169,6 +169,9 @@ const AUTH_ACTIONS = [
   // Motor de descubrimiento: registrar eventos + reevaluar estrategias.
   'api::discovery.discovery.event',
   'api::discovery.discovery.sync',
+  // Motor de juegos: estado (cooldown) + reclamo de recompensas.
+  'api::game.game.status',
+  'api::game.game.claim',
   'plugin::users-permissions.user.me',
 ];
 

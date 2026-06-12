@@ -429,3 +429,22 @@ export interface BattleResult {
   wager: number;
   rounds: number | null;
 }
+
+// ===== Motor de juegos (places de tipo `game`) =====
+// Estado del juego para el usuario: qué juego corre + cooldown global de reclamo.
+export interface GameStatus {
+  gameKey: string;
+  cooldownHours: number;
+  canClaim: boolean;
+  secondsLeft: number;
+  nextClaimAt: string | null;
+}
+// Respuesta del reclamo: recompensa acreditada + saldo nuevo + cooldown reiniciado.
+export interface GameClaimResponse {
+  reward: number;
+  balance: number;
+  gameKey: string;
+  canClaim: boolean;
+  secondsLeft: number;
+  nextClaimAt: string | null;
+}

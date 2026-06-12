@@ -180,10 +180,10 @@ function ShopBody({ placeId }: { placeId: number }) {
 
 /* ============ JUEGO (estático / placeholder) ============ */
 function GameBody({ place }: { place: Place }) {
-  const { user } = useAuth();
-  const { recordEvent } = useDiscovery();
   const name = place.attributes.Name;
-  const play = () => { if (user) recordEvent('play_place', { placeId: place.id }); };
+  // El juego se ejecuta en su propia ruta /play (animación + reclamo de recompensa).
+  const worldId = place.attributes.World?.data?.id;
+  const playHref = `/explore/${worldId}/places/${place.id}/play`;
   const leaders = [
     { rk: 1, av: 'V', name: 'Vael', pts: '24.110' },
     { rk: 2, av: 'M', name: 'Mira', pts: '21.890' },
@@ -205,7 +205,7 @@ function GameBody({ place }: { place: Place }) {
             </div>
           ))}
         </div>
-        <button className="btn btn-primary btn-lg" style={{ marginTop: 12 }} onClick={play}>▶ Jugar ahora</button>
+        <Link className="btn btn-primary btn-lg" style={{ marginTop: 12 }} href={playHref}>▶ Jugar ahora</Link>
       </div>
       <div className="panel" style={{ padding: '24px 26px' }}>
         <div className="kicker" style={{ marginBottom: 6 }}>Tabla de clasificación</div>
