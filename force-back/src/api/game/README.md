@@ -126,19 +126,27 @@ la clave que registraste (p. ej. `aim-trainer`).
 
 ### Paso 3 — Frontend: construir el juego y reclamar
 
-Cada juego es una página web bajo la ruta de play. Hoy todos comparten el template
-en:
+Cada juego es un componente web bajo la ruta de play. Un **despachador**
+(`page.tsx`) trae el `status` y **branchea por `status.gameKey`** para elegir el
+componente del juego (si no hay, cae al `template`):
 
 ```
 force-front/src/app/explore/[worldId]/places/[placeId]/play/page.tsx
 ```
 
-Para un juego propio tenés dos opciones:
+El frontend ya provee **componentes genéricos** que todo juego debe reutilizar
+(no los reimplementes): `GameHeader` (encabezado, siempre visible), `GameLoading`
+(pantalla de carga de 5 s con el banner del juego de fondo), `GameRewardModal`
+(revela las monedas al reclamar) y `GameCooldownModal` (enfriamiento, con su
+propia cuenta regresiva). La guía completa del front, con el paso a paso para
+sumar un juego y los props de cada componente, está en:
 
-1. **Branchear por `gameKey`** dentro de esa página (traés el `status`, y según
-   `status.gameKey` renderizás el componente del juego correspondiente). Recomendado
-   mientras sean pocos juegos.
-2. Extraer cada juego a su propio componente y elegirlo con un registro en el front.
+```
+force-front/src/app/explore/[worldId]/places/[placeId]/play/README.md
+```
+
+> Tomá [`deo/DeoGame.tsx`](../../../../force-front/src/app/explore/%5BworldId%5D/places/%5BplaceId%5D/play/deo) como
+> ejemplo de un juego real que usa todos los genéricos.
 
 En cualquier caso, el juego debe usar el servicio ya existente:
 
@@ -162,8 +170,9 @@ updateUser({ balance: res.balance });
 // res.secondsLeft → cuándo se vuelve a habilitar (arrancá el contador con esto)
 ```
 
-Mirá el template actual como referencia de cómo manejar las fases (animación →
-botón de reclamo → countdown de cooldown) y el toast de recompensa.
+Mirá `deo/DeoGame.tsx` (o el `template` en `page.tsx`) como referencia de cómo
+manejar las fases (carga → partida → reclamo → recompensa/cooldown) con los
+componentes genéricos y el toast de recompensa.
 
 ---
 
@@ -227,4 +236,7 @@ Documentá en tu entrada de `GAMES` qué garantía de integridad tiene tu juego.
 | `place.schema.json` → `GameKey` | Qué juego corre cada place. |
 | `user.schema.json` → `gameCooldowns` | Mapa de cooldowns por juego del usuario. |
 | `force-front/src/api/services.ts` → `gamesService` | Cliente del front. |
-| `force-front/.../places/[placeId]/play/page.tsx` | Pantalla de play (template). |
+| `force-front/.../play/page.tsx` | Despachador (elige juego por `gameKey`) + `template`. |
+| `force-front/.../play/README.md` | Guía del front: componentes genéricos + cómo sumar un juego. |
+| `force-front/.../play/GameHeader / GameLoading / GameRewardModal / GameCooldownModal` | Componentes genéricos reutilizables por todos los juegos. |
+| `force-front/.../play/deo/` | Juego de ejemplo "Los Ojos de Deo" (`DeoGame.tsx` + `engine.ts`). |

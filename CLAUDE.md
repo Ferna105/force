@@ -236,15 +236,23 @@ contract** — it knows nothing about any game's mechanics. All logic is in
   granted to the Authenticated role in `src/seed.js`.
 - **Schema** — `place.GameKey` (string, which game runs there) and `user.gameCooldowns`
   (json). No new content-type.
-- **Frontend** — `gamesService` (`getStatus`/`claim`) in `services.ts`; the play route
-  `app/explore/[worldId]/places/[placeId]/play/page.tsx` is the current shared
-  **template** (10s animation → "Reclamar recompensa" button → cooldown countdown).
-  The place page's "Jugar ahora" links here.
+- **Frontend** — `gamesService` (`getStatus`/`claim`) in `services.ts`. The play route
+  `app/explore/[worldId]/places/[placeId]/play/page.tsx` is a **dispatcher**: it fetches
+  `status`, records `play_place`, and **branches on `status.gameKey`** to render the right
+  game component (falling back to `template`, the placeholder demo). Every game reuses the
+  **generic components** in that folder (sin textos propios de ningún juego): `GameHeader`
+  (encabezado, siempre visible — kicker/título/descripción/stats), `GameLoading` (carga de
+  `LOADING_MS` = 5 s con el banner del place de fondo), `GameRewardModal` (revela las monedas
+  recién al reclamar) y `GameCooldownModal` (enfriamiento, con su propia cuenta regresiva;
+  exporta `hhmmss`). Los modales `.overlay`/`.ov-*` y `.game-head`/`.play-*` son CSS genérico
+  en `globals.css`. El juego real **Los Ojos de Deo** vive en `play/deo/` (`DeoGame.tsx` +
+  `engine.ts`, un plataformero de descenso en canvas) y es el ejemplo de referencia.
 
-**Adding a game** = one entry in `GAMES` + set the place's `GameKey` + a frontend game
-UI that calls `gamesService.claim(placeId, score)`. No schema change. The full
-step-by-step integration contract (conversion rules, cooldown, security, checklist)
-is documented in **`force-back/src/api/game/README.md`** — read it before adding a game.
+**Adding a game** = one entry in `GAMES` + set the place's `GameKey` (seeded fill-if-missing
+in `seed.js` via `GAME_KEYS`, or set in the admin) + a frontend game component that reuses the
+generic components and calls `gamesService.claim(placeId, score)`. No schema change. The full
+contracts: backend in **`force-back/src/api/game/README.md`**, frontend (componentes genéricos
++ paso a paso) in **`force-front/src/app/explore/[worldId]/places/[placeId]/play/README.md`**.
 
 ### Frontend — discovery UX
 

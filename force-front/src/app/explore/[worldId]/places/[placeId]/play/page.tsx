@@ -14,19 +14,9 @@ import Topbar from '@/components/shell/Topbar';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { Loading, ErrorState } from '@/components/ui/states';
 import DeoGame from './deo/DeoGame';
-
-// Duración de la animación de "partida" antes de habilitar el reclamo (template).
-const ANIM_MS = 10000;
-
-// Segundos → h:mm:ss (o mm:ss si es < 1h). El cooldown es de 6 h.
-function hhmmss(secs: number) {
-  const h = Math.floor(secs / 3600);
-  const m = Math.floor((secs % 3600) / 60);
-  const s = secs % 60;
-  const mm = String(m).padStart(2, '0');
-  const ss = String(s).padStart(2, '0');
-  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
-}
+import GameHeader from './GameHeader';
+import GameLoading, { LOADING_MS } from './GameLoading';
+import { hhmmss } from './GameCooldownModal';
 
 export default function PlayPage() {
   return (
@@ -70,6 +60,7 @@ function PlayContent() {
 
   const a = place.attributes;
   const world = a.World?.data;
+  const banner = mediaUrl(a.Banner, placeBannerFallback(a.Name));
   const crumb = (
     <>
       {world && <><Link href={`/explore/${world.id}`} style={{ color: 'var(--gold-soft)' }}>{world.attributes.Name}</Link> · </>}
@@ -83,7 +74,7 @@ function PlayContent() {
       <>
         <Topbar crumb={crumb} />
         <div className="page game-page">
-          <DeoGame placeId={placeId} worldId={worldId} initialStatus={status} />
+          <DeoGame placeId={placeId} worldId={worldId} initialStatus={status} name={a.Name} banner={banner} />
         </div>
       </>
     );
@@ -93,7 +84,7 @@ function PlayContent() {
   return (
     <>
       <Topbar crumb={crumb} />
-      <div className="page">
+      <div className="page game-page">
         <TemplateGame place={place} worldId={worldId} placeId={placeId} status={status} />
       </div>
     </>
@@ -110,9 +101,9 @@ function TemplateGame({ place, worldId, placeId, status }: { place: Place; world
   const [claim, setClaim] = useState<GameClaimResponse | null>(null);
   const [cooldownSecs, setCooldownSecs] = useState<number | null>(status && !status.canClaim ? status.secondsLeft : null);
 
-  // La animación dura 10s; recién después se revela el botón / el cooldown.
+  // La pantalla de carga genérica dura LOADING_MS; después se revela el botón / el cooldown.
   useEffect(() => {
-    const t = setTimeout(() => setAnimDone(true), ANIM_MS);
+    const t = setTimeout(() => setAnimDone(true), LOADING_MS);
     return () => clearTimeout(t);
   }, []);
 
@@ -152,51 +143,51 @@ function TemplateGame({ place, worldId, placeId, status }: { place: Place; world
 
   const a = place.attributes;
   const banner = mediaUrl(a.Banner, placeBannerFallback(a.Name));
+  const world = a.World?.data;
   const onCooldown = cooldownSecs != null && cooldownSecs > 0;
 
+  // Encabezado genérico, siempre visible (también durante la carga).
+  const header = (
+    <GameHeader
+      kicker={world ? `Mundo ${world.attributes.Name} · Juego` : 'Juego'}
+      title={a.Name}
+      description={a.Description}
+    />
+  );
+
+  // Pantalla de carga genérica mientras "arranca" la partida.
+  if (!animDone) return <>{header}<GameLoading name={a.Name} banner={banner} /></>;
+
+  // Fase de reclamo: botón si se puede, o cuenta regresiva del cooldown.
   return (
-    <div className="play-stage panel">
+    <>
+      {header}
+      <div className="play-stage panel">
       {banner && <img src={banner} alt={a.Name} />}
       <div className="scrim" />
       <div className="play-inner">
-        {!animDone ? (
-          // Fase de partida: animación de 10 segundos.
+        {claim && <p className="play-reward">+ F {fmt(claim.reward)}</p>}
+        {onCooldown ? (
           <>
-            <div className="play-orb-wrap">
-              <div className="play-orb" />
-              <span className="play-orb-core">🎮</span>
-            </div>
-            <p className="play-kicker">Partida en curso</p>
-            <h1 className="play-title cinzel">{a.Name}</h1>
-            <p className="play-sub">Preparando tu recompensa…</p>
-            <div className="play-charge"><i /></div>
+            <p className="play-kicker">{claim ? 'Recompensa reclamada' : 'Ya jugaste hace poco'}</p>
+            <p className="play-sub">Próxima recompensa disponible en</p>
+            <p className="play-timer cinzel">{hhmmss(cooldownSecs!)}</p>
+            <p className="play-sub" style={{ fontSize: 13, color: 'var(--mist-2)' }}>
+              Solo se puede reclamar una vez cada {status?.cooldownHours ?? 6} horas (vale para todos los juegos).
+            </p>
           </>
         ) : (
-          // Fase de reclamo: botón si se puede, o cuenta regresiva del cooldown.
           <>
-            {claim && <p className="play-reward">+ F {fmt(claim.reward)}</p>}
-            {onCooldown ? (
-              <>
-                <p className="play-kicker">{claim ? 'Recompensa reclamada' : 'Ya jugaste hace poco'}</p>
-                <p className="play-sub">Próxima recompensa disponible en</p>
-                <p className="play-timer cinzel">{hhmmss(cooldownSecs!)}</p>
-                <p className="play-sub" style={{ fontSize: 13, color: 'var(--mist-2)' }}>
-                  Solo se puede reclamar una vez cada {status?.cooldownHours ?? 6} horas (vale para todos los juegos).
-                </p>
-              </>
-            ) : (
-              <>
-                {!claim && <h1 className="play-title cinzel">¡Tu recompensa está lista!</h1>}
-                <p className="play-sub">Reclamá tus monedas (entre 0 y 100, según tu partida).</p>
-                <button className="btn btn-primary btn-lg" disabled={claiming} onClick={doClaim}>
-                  {claiming ? 'Reclamando…' : '🏆 Reclamar recompensa'}
-                </button>
-              </>
-            )}
-            <Link className="btn btn-ghost" href={`/explore/${worldId}/places/${placeId}`}>Volver al lugar</Link>
+            {!claim && <h1 className="play-title cinzel">¡Tu recompensa está lista!</h1>}
+            <p className="play-sub">Reclamá tus monedas (entre 0 y 100, según tu partida).</p>
+            <button className="btn btn-primary btn-lg" disabled={claiming} onClick={doClaim}>
+              {claiming ? 'Reclamando…' : '🏆 Reclamar recompensa'}
+            </button>
           </>
         )}
+        <Link className="btn btn-ghost" href={`/explore/${worldId}/places/${placeId}`}>Volver al lugar</Link>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
