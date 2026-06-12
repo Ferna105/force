@@ -32,6 +32,7 @@ const WORLD_UID = 'api::world.world';
 const PLACE_UID = 'api::place.place';
 const EVENT_UID = 'api::user-event.user-event';
 const ENTRY_UID = 'api::inventory-entry.inventory-entry';
+const ITEM_UID = 'api::item.item';
 
 const EPOCH = new Date(0);
 
@@ -209,7 +210,7 @@ function evaluateStrategy(strategy, ctx) {
 
 /* ============ Carga de contexto del usuario ============ */
 async function loadContext(strapi, userId) {
-  const [worlds, places, monsters, events, inventory] = await Promise.all([
+  const [worlds, places, monsters, items, events, inventory] = await Promise.all([
     strapi.entityService.findMany(WORLD_UID, { fields: ['id', 'Name', 'Biome'], publicationState: 'live' }),
     strapi.entityService.findMany(PLACE_UID, {
       fields: ['id', 'Name'],
@@ -222,6 +223,10 @@ async function loadContext(strapi, userId) {
       populate: { Image: true },
       publicationState: 'live',
     }),
+    // Catálogo de items, para resolver tareas que referencian un objeto por nombre
+    // (own_item / buy_item con itemName). Los ids difieren entre entornos, así que
+    // las estrategias usan nombres y acá los traducimos a id.
+    strapi.entityService.findMany(ITEM_UID, { fields: ['id', 'name'], publicationState: 'live' }),
     strapi.entityService.findMany(EVENT_UID, {
       filters: { user: userId },
       populate: { place: { fields: ['id'] }, world: { fields: ['id'] }, item: { fields: ['id'] } },
@@ -241,6 +246,7 @@ async function loadContext(strapi, userId) {
   const worldsByName = new Map(worlds.map((w) => [String(w.Name).toLowerCase(), w]));
   const placesByName = new Map(places.map((p) => [String(p.Name).toLowerCase(), p]));
   const monstersByName = new Map(monsters.map((m) => [String(m.Name).toLowerCase(), m]));
+  const itemsByName = new Map(items.map((i) => [String(i.name).toLowerCase(), i]));
 
   // Lugares por mundo (solo publicados)
   const placesByWorld = new Map();
@@ -274,6 +280,7 @@ async function loadContext(strapi, userId) {
     worldsByName,
     placesByName,
     monstersByName,
+    itemsByName,
     placesByWorld,
     events: normEvents,
     inventory: normInventory,

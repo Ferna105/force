@@ -189,50 +189,179 @@ function fallbackHotspot(id) {
 }
 
 /**
- * Estrategias de descubrimiento explícitas por nombre de monstruo (datos demo).
- * Diseñadas para ser completables por un usuario recién registrado (saldo 500 F)
- * sin depender del tipo de cada lugar: usan visitas (cualquier lugar sirve) y la
- * tenencia / compra de objetos baratos. Ejercitan estrategias ordenadas y sin
- * orden, y varios tipos de tarea. Ver la tabla de tipos en CLAUDE.md.
+ * Estrategias de descubrimiento por monstruo — UNA por especie, temática y única.
+ *
+ * Cada estrategia está pensada a partir del carácter del monstruo (su bioma, su
+ * nombre y su "hogar" en el mapa) para que ningún monstruo se descubra igual que
+ * otro: distintos lugares, distinto verbo (visitar/jugar/entrar a tal hora),
+ * distinta combinación de objetos y mezcla de ordenadas / sin orden.
+ *
+ * Reglas de diseño:
+ *  - Referencian entidades **por nombre** (no por id): los ids difieren entre la
+ *    base local y la de prod, los nombres no. El motor los resuelve por nombre.
+ *  - Completables por un usuario nuevo con poco saldo: los objetos pedidos son
+ *    baratos (armas/armaduras de hierro 45–90 F, alimentos 15–45 F, Tótem Alfa 120 F)
+ *    y se consiguen en las tiendas del mapa.
+ *  - Mapa de referencia (bioma → mundo / lugares):
+ *      volcanic → Eryndor: Grieta de Brasas, Lago Susurrante, Dunas de Ceniza
+ *      forest   → Koril:   Torres de la Cordillera, Crateres Dorados, Mercado Bioluminiscente, …
+ *      arid     → Deo,  space → Egea: El Corazon Ardiente, Templos de Obsidiana, Cavernas Cristalizadas
+ *      aqua     → Isla del Reposo de la Serpiente (único lugar acuático)
+ *      snow     → Ciudadela de la Cumbre Helada
+ * Ver la tabla de tipos de tarea en CLAUDE.md.
  */
 const MONSTER_STRATEGIES = {
-  // Ordenada: hay que visitar los dos lugares EN ESTE ORDEN.
-  Tronc: {
+  // — Volcánicos (Eryndor) —
+  // Arqui: herrero de las brasas. Ordenada: encender las brasas, reflejarse en el
+  // lago y forjar un arma.
+  Arqui: {
     ordered: true,
     tasks: [
-      { type: 'visit_place', params: { placeName: 'Cañada Verdante' }, label: 'Primero adentrate en la Cañada Verdante' },
-      { type: 'visit_place', params: { placeName: 'Atalaya de Obsidiana' }, label: 'Después subí a la Atalaya de Obsidiana' },
+      { type: 'play_place', params: { placeName: 'Grieta de Brasas' }, label: 'Despertá las brasas jugando en la Grieta de Brasas' },
+      { type: 'visit_place', params: { placeName: 'Lago Susurrante' }, label: 'Dejá que el Lago Susurrante refleje tu fuego' },
+      { type: 'own_item_of_type', params: { type: 'weapon' }, label: 'Y forjá un arma digna de un herrero volcánico' },
     ],
   },
-  // Sin orden: visitar su isla + tener cualquier objeto misceláneo en el inventario.
-  Serpi: {
-    ordered: false,
-    tasks: [
-      { type: 'visit_place', params: { placeName: 'Isla del Reposo de la Serpiente' }, label: 'Visitá la Isla del Reposo de la Serpiente' },
-      { type: 'own_item_of_type', params: { type: 'misc' }, label: 'Tené un objeto misceláneo (p. ej. Moder Granite Table, 40 F)' },
-    ],
-  },
-  // Sin orden: visitar la ciudadela + tener un objeto poco común.
+  // Triso: pura ofensiva. Sin orden: furia en las dunas + un objeto poco común.
   Triso: {
     ordered: false,
     tasks: [
-      { type: 'visit_place', params: { placeName: 'Ciudadela de la Cumbre Helada' }, label: 'Explorá la Ciudadela de la Cumbre Helada' },
-      { type: 'own_item_of_rarity', params: { rarity: 'uncommon' }, label: 'Conseguí un objeto poco común (Bespoke Rubber Gloves, 95 F)' },
+      { type: 'play_place', params: { placeName: 'Dunas de Ceniza' }, label: 'Desatá tu furia jugando en las Dunas de Ceniza' },
+      { type: 'own_item_of_rarity', params: { rarity: 'uncommon' }, label: 'Y tené un objeto poco común en tu inventario' },
     ],
   },
-  // Una sola tarea: comprar un objeto puntual (en cualquier tienda).
+
+  // — De bosque (Koril) —
+  // Bul: mole tranquila. Sin orden: recorrer todo Koril + ponerse una armadura.
+  Bul: {
+    ordered: false,
+    tasks: [
+      { type: 'visit_all_places_in_world', params: { worldName: 'Koril' }, label: 'Recorré cada rincón del bosque de Koril' },
+      { type: 'own_item_of_type', params: { type: 'armor' }, label: 'Y cubrí tu mole con una armadura' },
+    ],
+  },
+  // Pogo: saltarín de cuchillas afiladas. Ordenada: saltar dos lugares de juego y afilar un arma.
+  Pogo: {
+    ordered: true,
+    tasks: [
+      { type: 'play_place', params: { placeName: 'Torres de la Cordillera' }, label: 'Saltá entre las Torres de la Cordillera' },
+      { type: 'play_place', params: { placeName: 'Crateres Dorados' }, label: 'Rebotá por los Cráteres Dorados' },
+      { type: 'own_item_of_type', params: { type: 'weapon' }, label: 'Y afilá tus cuchillas con un arma' },
+    ],
+  },
+  // Tronc: árbol-tanque. Ordenada: echar raíces en la Cañada y endurecer su corteza.
+  Tronc: {
+    ordered: true,
+    tasks: [
+      { type: 'visit_place', params: { placeName: 'Cañada Verdante' }, label: 'Echá raíces en la Cañada Verdante' },
+      { type: 'own_item', params: { itemName: 'Chaleco de Cuero' }, label: 'Y endurecé tu corteza con un Chaleco de Cuero' },
+    ],
+  },
+
+  // — Acuáticos (Isla del Reposo de la Serpiente) —
+  // Co: pequeño pez. Ordenada: sumergirse y atrapar un pescado.
+  Co: {
+    ordered: true,
+    tasks: [
+      { type: 'visit_place', params: { placeName: 'Isla del Reposo de la Serpiente' }, label: 'Sumergite en la Isla del Reposo de la Serpiente' },
+      { type: 'own_item', params: { itemName: 'Pescado' }, label: 'Y atrapá un Pescado fresco' },
+    ],
+  },
+  // Indrog: criatura de las profundidades. Sin orden: conseguir un cangrejo + comerciar en Eryndor.
+  Indrog: {
+    ordered: false,
+    tasks: [
+      { type: 'own_item', params: { itemName: 'Cangrejo' }, label: 'Conseguí un Cangrejo de las profundidades' },
+      { type: 'buy_in_world', params: { worldName: 'Eryndor' }, label: 'Y comerciá en una tienda de Eryndor' },
+    ],
+  },
+  // Muro: defensa sólida como un muro. Sin orden: plantarse en la isla + coraza de hierro.
+  Muro: {
+    ordered: false,
+    tasks: [
+      { type: 'visit_place', params: { placeName: 'Isla del Reposo de la Serpiente' }, label: 'Plantate firme en la Isla del Reposo de la Serpiente' },
+      { type: 'own_item', params: { itemName: 'Coraza de Hierro' }, label: 'Y vestí una Coraza de Hierro, sólida como un muro' },
+    ],
+  },
+  // Serpi: serpiente ágil. Sin orden: sorprenderla al amanecer + un camarón.
+  Serpi: {
+    ordered: false,
+    tasks: [
+      { type: 'enter_place_in_time_range', params: { placeName: 'Isla del Reposo de la Serpiente', fromHour: 6, toHour: 12 }, label: 'Sorprendela al amanecer en su Isla (06:00–12:00)' },
+      { type: 'own_item', params: { itemName: 'Camarón' }, label: 'Y tené un Camarón en tu inventario' },
+    ],
+  },
+
+  // — Espaciales (Egea) —
+  // Deo: fuego interno. Ordenada: seguir su rastro, sentir su fuego y canalizarlo en un tótem.
+  Deo: {
+    ordered: true,
+    tasks: [
+      { type: 'visit_place', params: { placeName: 'Templos de Obsidiana' }, label: 'Seguí su rastro por los Templos de Obsidiana' },
+      { type: 'play_place', params: { placeName: 'El Corazon Ardiente' }, label: 'Sentí su fuego interno en El Corazón Ardiente' },
+      { type: 'buy_item', params: { itemName: 'Tótem Alfa' }, label: 'Y reclamá un Tótem Alfa para canalizar su llama' },
+    ],
+  },
+  // Eli: viajera estelar. Sin orden: surcar todo Egea + un objeto poco común.
+  Eli: {
+    ordered: false,
+    tasks: [
+      { type: 'visit_all_places_in_world', params: { worldName: 'Egea' }, label: 'Surcá todos los confines de Egea' },
+      { type: 'own_item_of_rarity', params: { rarity: 'uncommon' }, label: 'Y tené un objeto poco común a bordo' },
+    ],
+  },
+  // Giri: criatura nocturna. Sin orden: visitar los templos de noche + una reliquia (misc).
+  Giri: {
+    ordered: false,
+    tasks: [
+      { type: 'enter_place_in_time_range', params: { placeName: 'Templos de Obsidiana', fromHour: 20, toHour: 6 }, label: 'Visitá los Templos de Obsidiana bajo el cielo nocturno (20:00–06:00)' },
+      { type: 'own_item_of_type', params: { type: 'misc' }, label: 'Y guardá una reliquia (un objeto misceláneo, p. ej. un tótem)' },
+    ],
+  },
+  // Irig: minera de cristales. Ordenada: internarse en las cavernas y comprar en Egea.
+  Irig: {
+    ordered: true,
+    tasks: [
+      { type: 'visit_place', params: { placeName: 'Cavernas Cristalizadas' }, label: 'Internate en las Cavernas Cristalizadas' },
+      { type: 'buy_in_world', params: { worldName: 'Egea' }, label: 'Y comprá algo en una tienda de Egea' },
+    ],
+  },
+  // Terri: veloz y frágil. Ordenada: correr por las cavernas y atrapar un objeto raro al vuelo.
+  Terri: {
+    ordered: true,
+    tasks: [
+      { type: 'play_place', params: { placeName: 'Cavernas Cristalizadas' }, label: 'Corré veloz jugando en las Cavernas Cristalizadas' },
+      { type: 'own_item_of_rarity', params: { rarity: 'rare' }, label: 'Y conseguí un objeto raro al vuelo' },
+    ],
+  },
+
+  // — Árido (Deo) —
+  // Raya: equilibrada y afortunada. Sin orden: cruzar todo el desierto + un objeto raro.
   Raya: {
     ordered: false,
     tasks: [
-      { type: 'buy_item', params: { itemName: 'Moder Granite Table' }, label: 'Comprá una Moder Granite Table' },
+      { type: 'visit_all_places_in_world', params: { worldName: 'Deo' }, label: 'Cruzá entero el desierto de Deo' },
+      { type: 'own_item_of_rarity', params: { rarity: 'rare' }, label: 'Y tené un objeto raro: que la suerte te acompañe' },
     ],
   },
-  // Sin orden: tener un objeto raro + visitar la torre.
-  Terri: {
+
+  // — Nieve (Ciudadela de la Cumbre Helada) —
+  // Li: criatura del hielo, defensiva. Ordenada: trepar la ciudadela helada y escudarse.
+  Li: {
+    ordered: true,
+    tasks: [
+      { type: 'visit_place', params: { placeName: 'Ciudadela de la Cumbre Helada' }, label: 'Trepá a la gélida Ciudadela de la Cumbre Helada' },
+      { type: 'own_item', params: { itemName: 'Escudo de Hierro' }, label: 'Y resguardate tras un Escudo de Hierro' },
+    ],
+  },
+
+  // — Sin bioma —
+  // Insec: enjambre recolector. Sin orden: revolotear por el mercado del bosque + acumular alimento.
+  Insec: {
     ordered: false,
     tasks: [
-      { type: 'own_item_of_rarity', params: { rarity: 'rare' }, label: 'Conseguí un objeto raro (Fanstastic Plastic Towels, 210 F)' },
-      { type: 'visit_place', params: { placeName: 'Atalaya de Obsidiana' }, label: 'Asomate a la Atalaya de Obsidiana' },
+      { type: 'visit_place', params: { placeName: 'Mercado Bioluminiscente' }, label: 'Revoloteá por el Mercado Bioluminiscente' },
+      { type: 'own_item_of_type', params: { type: 'consumable' }, label: 'Y acumulá algún alimento en tu inventario' },
     ],
   },
 };
@@ -506,3 +635,9 @@ module.exports = async function seed({ strapi }) {
     strapi.log.error(`[seed] Falló el seed de Force: ${err.message}`);
   }
 };
+
+// Exponer datos sembrables para herramientas externas (p. ej. el script que aplica
+// las estrategias directo a una base sin levantar Strapi). Requerir este módulo solo
+// define constantes y exporta esto; la función seed no corre hasta que se la invoca.
+module.exports.MONSTER_STRATEGIES = MONSTER_STRATEGIES;
+module.exports.buildDiscoveryStrategy = buildDiscoveryStrategy;
