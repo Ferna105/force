@@ -209,6 +209,43 @@ attack/defense into the companion's **effective combat totals** shown on `/compa
   chips with the equipment bonus. Both pages keep a local copy of the companion and update it
   from the equip/unequip response (`companionsService.equip/unequip`).
 
+### Backend — Game engine (motor de juegos)
+
+Places of type `game` are arbitrary web mini-games (each with its own mechanics and
+internal scoring). The custom **code-only** API `game` (controller + routes, no
+content-type, like `shop`/`discovery`/`battle`) provides **only the reward-claim
+contract** — it knows nothing about any game's mechanics. All logic is in
+`src/api/game/engine.js`.
+
+- **Conversion** — each game registers a `pointsToCoins(points, ctx)` in the `GAMES`
+  map keyed by `GameKey`; the engine **clamps the result to `[0..100]`** coins
+  (`clampReward`). The conversion runs **server-side** (don't trust the client's raw
+  score for high-value games — see the guide's security note). A place's game is
+  resolved by `gameKeyForPlace(place)` (`place.GameKey` → a `GAMES` entry, falling
+  back to `template`, the placeholder that grants a random 1..100 reward).
+- **Cooldown is per-game** — a user can claim once every `COOLDOWN_HOURS` (6h) **per
+  place**, independently across games. State lives on the user as
+  `gameCooldowns` (json, private): `{ [placeId]: ISO of last claim }` — no extra
+  table, no cron. `claimStatus(user, placeId)` computes `{ canClaim, secondsLeft,
+  nextClaimAt }`.
+- **Endpoints** (both require auth) — `GET /games/:placeId/status` returns
+  `{ gameKey, cooldownHours, canClaim, secondsLeft, nextClaimAt }`;
+  `POST /games/:placeId/claim` (body `{ points? }`) validates place type + cooldown
+  server-side, credits `balance`, stamps the per-game cooldown, and returns
+  `{ reward, balance, gameKey, ...status }`. Permissions (`game.status`/`game.claim`)
+  granted to the Authenticated role in `src/seed.js`.
+- **Schema** — `place.GameKey` (string, which game runs there) and `user.gameCooldowns`
+  (json). No new content-type.
+- **Frontend** — `gamesService` (`getStatus`/`claim`) in `services.ts`; the play route
+  `app/explore/[worldId]/places/[placeId]/play/page.tsx` is the current shared
+  **template** (10s animation → "Reclamar recompensa" button → cooldown countdown).
+  The place page's "Jugar ahora" links here.
+
+**Adding a game** = one entry in `GAMES` + set the place's `GameKey` + a frontend game
+UI that calls `gamesService.claim(placeId, score)`. No schema change. The full
+step-by-step integration contract (conversion rules, cooldown, security, checklist)
+is documented in **`force-back/src/api/game/README.md`** — read it before adding a game.
+
 ### Frontend — discovery UX
 
 `src/hooks/useDiscovery.tsx` — `DiscoveryProvider` (mounted in `layout.tsx` inside
