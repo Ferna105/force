@@ -241,13 +241,13 @@ h1,h2,h3,h4{margin:0;}
 .world-hero .orbwrap img{width:100%;height:100%;object-fit:cover;border-radius:50%;
   box-shadow:0 0 90px -10px rgba(212,85,46,.5), inset 0 0 60px rgba(0,0,0,.5);}
 .planet{position:relative;width:360px;height:360px;}
-.hotspot{position:absolute;transform:translate(-50%,-50%);z-index:3;display:flex;align-items:center;gap:9px;text-decoration:none;}
-.hotspot .dot{position:relative;width:15px;height:15px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 4px rgba(230,166,48,.28),0 0 12px rgba(230,166,48,.9);flex:none;transition:background .2s,box-shadow .2s;}
+.hotspot{position:absolute;transform:translate(-50%,-50%);z-index:3;text-decoration:none;}
+.hotspot .dot{display:block;position:relative;width:15px;height:15px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 4px rgba(230,166,48,.28),0 0 12px rgba(230,166,48,.9);flex:none;transition:background .2s,box-shadow .2s;}
 .hotspot .dot::after{content:"";position:absolute;inset:-3px;border-radius:50%;border:2px solid var(--gold-soft);animation:hpulse 2.2s ease-out infinite;}
 @keyframes hpulse{0%{transform:scale(.6);opacity:.9}100%{transform:scale(2.4);opacity:0}}
-.hotspot .lbl{font-family:var(--font-fredoka);font-weight:600;font-size:12px;color:#fff;background:rgba(8,6,4,.82);padding:5px 11px;border-radius:var(--r-pill);white-space:nowrap;border:1px solid var(--ink-line);opacity:0;transform:translateX(-6px);transition:opacity .2s,transform .2s;pointer-events:none;}
+.hotspot .lbl{position:absolute;left:calc(100% + 9px);top:50%;font-family:var(--font-fredoka);font-weight:600;font-size:12px;color:#fff;background:rgba(8,6,4,.82);padding:5px 11px;border-radius:var(--r-pill);white-space:nowrap;border:1px solid var(--ink-line);opacity:0;transform:translate(-6px,-50%);transition:opacity .2s,transform .2s;pointer-events:none;}
 .hotspot .lbl b{color:var(--gold-soft);font-weight:600;}
-.hotspot:hover .lbl{opacity:1;transform:translateX(0);}
+.hotspot:hover .lbl{opacity:1;transform:translate(0,-50%);}
 .hotspot:hover .dot{background:var(--gold-soft);box-shadow:0 0 0 5px rgba(244,201,105,.35),0 0 16px rgba(244,201,105,1);}
 .world-hero .stars{position:absolute;inset:0;background-image:radial-gradient(1px 1px at 20% 30%,#fff,transparent),radial-gradient(1px 1px at 70% 60%,#fff8,transparent),radial-gradient(1px 1px at 40% 80%,#fff6,transparent),radial-gradient(1px 1px at 85% 20%,#fff,transparent),radial-gradient(1px 1px at 55% 15%,#fff7,transparent);opacity:.7;}
 .stat-strip{display:flex;gap:14px;flex-wrap:wrap;margin-top:26px;}
