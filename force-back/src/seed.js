@@ -52,6 +52,11 @@ function slugify(name) {
 const WORLD_BIOME = { Eryndor: 'volcanic', Koril: 'forest', Deo: 'arid', Egea: 'space' };
 const MONSTER_BIOME = { Tronc: 'forest', Serpi: 'aqua', Triso: 'volcanic', Raya: 'arid', Terri: 'space' };
 
+// Qué mini-juego corre cada place de tipo `game` (su GameKey, clave en GAMES del
+// motor). Se completa SOLO si está vacío (no pisa una asignación hecha a mano en
+// el admin). Los demás places `game` sin entrada caen al `template`.
+const GAME_KEYS = { 'Los Ojos de Deo': 'deo' };
+
 // Stats base de progresión/combate por especie. Presupuesto parejo (STR+DEF+SPD≈30,
 // health≈100) con reparto por arquetipo de bioma, para que estén equilibrados.
 // Se backfillean campo a campo SOLO si faltan (no pisan ediciones del admin).
@@ -445,6 +450,8 @@ module.exports = async function seed({ strapi }) {
       if (p.HotspotY == null) data.HotspotY = hs.y;
       // Convertir el/los lugares designados en battledome (arena de duelos).
       if (BATTLEDOME_PLACES.has(p.Name) && p.Type !== 'battledome') data.Type = 'battledome';
+      // GameKey: qué juego corre cada place `game`. Solo si falta (no pisa el admin).
+      if (p.Type === 'game' && !p.GameKey && GAME_KEYS[p.Name]) data.GameKey = GAME_KEYS[p.Name];
       // ShopConfig: solo tiendas. Se (re)siembra si falta o si fue puesto por el
       // seed (seeded:true), nunca si fue editado a mano en el admin.
       if (p.Type === 'shop') {

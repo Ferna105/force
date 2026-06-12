@@ -44,6 +44,19 @@ const GAMES = {
       return 1 + Math.floor(Math.random() * MAX_REWARD);
     },
   },
+
+  // Los Ojos de Deo — plataformero de descenso (mundo Deo). El cliente envía
+  // como `points` la profundidad alcanzada en metros. Diseño: +10 F por metro,
+  // que el motor clampea a [0..100] monedas. Ese tope es además la red de
+  // integridad (§6): la profundidad se calcula en el cliente, así que el clamp
+  // acota cualquier puntaje inflado sin necesidad de partida server-authoritative.
+  deo: {
+    label: 'Los Ojos de Deo',
+    pointsToCoins(points) {
+      const depth = Math.max(0, Math.floor(Number(points) || 0));
+      return depth * 10; // 10 m ⇒ 100 monedas (tope del motor)
+    },
+  },
 };
 
 // Resuelve qué juego corre un place; si su GameKey no está registrado, usa la plantilla.
