@@ -57,6 +57,11 @@ const MONSTER_BIOME = { Tronc: 'forest', Serpi: 'aqua', Triso: 'volcanic', Raya:
 // el admin). Los demás places `game` sin entrada caen al `template`.
 const GAME_KEYS = { 'Los Ojos de Deo': 'deo', 'Torres de la Cordillera': 'torres' };
 
+// Dificultad declarativa de cada place `game` (chip informativa en la ficha).
+// Se completa SOLO si está vacía (no pisa una edición del admin). Sin entrada ⇒
+// queda null y el front muestra «—».
+const GAME_DIFFICULTY = { 'Los Ojos de Deo': 'hard', 'Torres de la Cordillera': 'medium' };
+
 // Stats base de progresión/combate por especie. Presupuesto parejo (STR+DEF+SPD≈30,
 // health≈100) con reparto por arquetipo de bioma, para que estén equilibrados.
 // Se backfillean campo a campo SOLO si faltan (no pisan ediciones del admin).
@@ -452,6 +457,8 @@ module.exports = async function seed({ strapi }) {
       if (BATTLEDOME_PLACES.has(p.Name) && p.Type !== 'battledome') data.Type = 'battledome';
       // GameKey: qué juego corre cada place `game`. Solo si falta (no pisa el admin).
       if (p.Type === 'game' && !p.GameKey && GAME_KEYS[p.Name]) data.GameKey = GAME_KEYS[p.Name];
+      // Difficulty: chip informativa del juego. Solo si falta (no pisa el admin).
+      if (p.Type === 'game' && !p.Difficulty && GAME_DIFFICULTY[p.Name]) data.Difficulty = GAME_DIFFICULTY[p.Name];
       // ShopConfig: solo tiendas. Se (re)siembra si falta o si fue puesto por el
       // seed (seeded:true), nunca si fue editado a mano en el admin.
       if (p.Type === 'shop') {

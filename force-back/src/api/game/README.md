@@ -38,6 +38,9 @@ está en enfriamiento.
 {
   "gameKey": "template",
   "cooldownHours": 6,
+  "difficulty": "hard",
+  "bestScore": 7,
+  "maxReward": 100,
   "canClaim": true,
   "secondsLeft": 0,
   "nextClaimAt": null
@@ -47,6 +50,11 @@ está en enfriamiento.
 - `canClaim` — `true` si puede reclamar ahora.
 - `secondsLeft` — segundos hasta poder reclamar de nuevo (0 si ya puede).
 - `nextClaimAt` — ISO del próximo reclamo disponible (`null` si nunca reclamó).
+- `difficulty` — dificultad declarada en el place (`easy`/`medium`/`hard`, o `null`).
+- `bestScore` — mejor puntaje crudo del usuario en ese juego (0 si nunca jugó). Se
+  guarda en `user.gameBestScores` (mapa `{ [placeId]: puntaje }`, privado) al reclamar.
+- `maxReward` — tope de monedas por reclamo (cap del motor, 100). Sirve para la chip
+  «Recompensa» de la ficha sin harcodearla.
 
 ### `POST /api/games/:placeId/claim`
 
@@ -60,6 +68,7 @@ Reclama la recompensa. Body opcional `{ points }` (el puntaje interno del juego;
   "reward": 73,
   "balance": 1553,
   "gameKey": "template",
+  "bestScore": 7,
   "canClaim": false,
   "secondsLeft": 21600,
   "nextClaimAt": "2026-06-12T18:00:00.000Z"
@@ -233,8 +242,8 @@ Documentá en tu entrada de `GAMES` qué garantía de integridad tiene tu juego.
 | `src/api/game/controllers/game.js` | Endpoints `status` y `claim`. |
 | `src/api/game/routes/game.js` | Rutas `/games/:placeId/status` y `/claim`. |
 | `src/seed.js` | Otorga permisos `game.status` / `game.claim` (rol Authenticated). |
-| `place.schema.json` → `GameKey` | Qué juego corre cada place. |
-| `user.schema.json` → `gameCooldowns` | Mapa de cooldowns por juego del usuario. |
+| `place.schema.json` → `GameKey` / `Difficulty` | Qué juego corre cada place + su dificultad. |
+| `user.schema.json` → `gameCooldowns` / `gameBestScores` | Mapas (por place) de cooldown y mejor puntaje del usuario. |
 | `force-front/src/api/services.ts` → `gamesService` | Cliente del front. |
 | `force-front/.../play/page.tsx` | Despachador (elige juego por `gameKey`) + `template`. |
 | `force-front/.../play/README.md` | Guía del front: componentes genéricos + cómo sumar un juego. |

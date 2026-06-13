@@ -77,6 +77,15 @@
     },
     "GameKey": {
       "type": "string"
+    },
+    "Difficulty": {
+      "type": "enumeration",
+      "enum": [
+        "easy",
+        "medium",
+        "hard"
+      ],
+      "required": false
     }
   }
 }

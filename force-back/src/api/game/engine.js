@@ -92,6 +92,13 @@ function claimStatus(user, placeId, now = Date.now()) {
   };
 }
 
+// Mejor puntaje crudo (en la unidad del juego, p. ej. metros) que el usuario
+// alcanzó en ESE place, leído del mapa `gameBestScores`. 0 si nunca jugó.
+function bestScore(user, placeId) {
+  const map = (user && user.gameBestScores) || {};
+  return Math.max(0, Math.floor(Number(map[placeId] ?? map[String(placeId)]) || 0));
+}
+
 /**
  * Reclama la recompensa del juego de `placeId` para el usuario.
  * Devuelve `{ error }` con un código si no se puede (`not_found`/`not_a_game`/
@@ -105,7 +112,7 @@ async function claim(strapi, userId, placeId, points) {
   if (place.Type !== 'game') return { error: 'not_a_game' };
 
   const user = await strapi.entityService.findOne(USER_UID, userId, {
-    fields: ['balance', 'gameCooldowns'],
+    fields: ['balance', 'gameCooldowns', 'gameBestScores'],
   });
   const status = claimStatus(user, placeId);
   if (!status.canClaim) return { error: 'cooldown', ...status };
@@ -116,12 +123,22 @@ async function claim(strapi, userId, placeId, points) {
   const balance = (user.balance ?? 0) + reward;
   // Sella el contador de ESTE juego, sin tocar el de los demás.
   const cooldowns = { ...(user.gameCooldowns || {}), [placeId]: nowIso };
+  // Guarda el mejor puntaje crudo del usuario en ESTE juego (máximo histórico).
+  const rawPoints = Math.max(0, Math.floor(Number(points) || 0));
+  const newBest = Math.max(bestScore(user, placeId), rawPoints);
+  const bestScores = { ...(user.gameBestScores || {}), [placeId]: newBest };
 
   await strapi.entityService.update(USER_UID, userId, {
-    data: { balance, gameCooldowns: cooldowns },
+    data: { balance, gameCooldowns: cooldowns, gameBestScores: bestScores },
   });
 
-  return { reward, balance, gameKey: key, ...claimStatus({ gameCooldowns: cooldowns }, placeId) };
+  return {
+    reward,
+    balance,
+    gameKey: key,
+    bestScore: newBest,
+    ...claimStatus({ gameCooldowns: cooldowns }, placeId),
+  };
 }
 
 module.exports = {
@@ -132,5 +149,6 @@ module.exports = {
   clampReward,
   gameKeyForPlace,
   claimStatus,
+  bestScore,
   claim,
 };

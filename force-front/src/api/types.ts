@@ -435,6 +435,9 @@ export interface BattleResult {
 export interface GameStatus {
   gameKey: string;
   cooldownHours: number;
+  difficulty: string | null; // 'easy' | 'medium' | 'hard' | null
+  bestScore: number;         // mejor puntaje crudo del usuario en ese juego (0 si nunca jugó)
+  maxReward: number;         // tope de monedas por reclamo (cap del motor)
   canClaim: boolean;
   secondsLeft: number;
   nextClaimAt: string | null;
@@ -444,6 +447,7 @@ export interface GameClaimResponse {
   reward: number;
   balance: number;
   gameKey: string;
+  bestScore: number;
   canClaim: boolean;
   secondsLeft: number;
   nextClaimAt: string | null;

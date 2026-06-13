@@ -833,6 +833,7 @@ export interface ApiPlacePlace extends Schema.CollectionType {
     > &
       Attribute.Private;
     Description: Attribute.Text;
+    Difficulty: Attribute.Enumeration<['easy', 'medium', 'hard']>;
     GameKey: Attribute.String;
     HotspotX: Attribute.Decimal &
       Attribute.SetMinMax<
@@ -1425,6 +1426,7 @@ export interface PluginUsersPermissionsUser extends Schema.CollectionType {
       Attribute.SetMinMaxLength<{
         minLength: 6;
       }>;
+    gameBestScores: Attribute.JSON & Attribute.Private;
     gameCooldowns: Attribute.JSON & Attribute.Private;
     inventoryEntries: Attribute.Relation<
       'plugin::users-permissions.user',

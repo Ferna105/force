@@ -22,19 +22,22 @@ module.exports = {
     if (!placeId) return ctx.badRequest('Falta placeId.');
 
     const place = await strapi.entityService.findOne(PLACE_UID, placeId, {
-      fields: ['Type', 'GameKey'],
+      fields: ['Type', 'GameKey', 'Difficulty'],
     });
     if (!place) return ctx.notFound('Lugar no encontrado.');
     if (place.Type !== 'game') return ctx.badRequest('El lugar no es un juego.');
 
     // Releer el usuario para tener los contadores frescos (ctx.state.user puede estar cacheado).
     const fresh = await strapi.entityService.findOne(USER_UID, user.id, {
-      fields: ['gameCooldowns'],
+      fields: ['gameCooldowns', 'gameBestScores'],
     });
 
     return ctx.send({
       gameKey: engine.gameKeyForPlace(place),
       cooldownHours: engine.COOLDOWN_HOURS,
+      difficulty: place.Difficulty ?? null,
+      bestScore: engine.bestScore(fresh, placeId),
+      maxReward: engine.MAX_REWARD,
       ...engine.claimStatus(fresh, placeId),
     });
   },

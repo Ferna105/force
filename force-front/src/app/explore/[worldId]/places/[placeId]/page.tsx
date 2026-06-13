@@ -4,8 +4,8 @@
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
-import { usePlace, useMonsters, useDiscoveredMonsters, useActiveCompanion, inventoryService, shopService, battleService } from '@/api';
-import type { Place, Item, ShopStock, DuelsLobby } from '@/api/types';
+import { usePlace, useMonsters, useDiscoveredMonsters, useActiveCompanion, inventoryService, shopService, battleService, gamesService } from '@/api';
+import type { Place, Item, ShopStock, DuelsLobby, GameStatus } from '@/api/types';
 import { useAuth } from '@/hooks/useAuth';
 import { useDiscovery } from '@/hooks/useDiscovery';
 import { useToast } from '@/hooks/useToast';
@@ -178,45 +178,50 @@ function ShopBody({ placeId }: { placeId: number }) {
   );
 }
 
-/* ============ JUEGO (estático / placeholder) ============ */
+/* ============ JUEGO ============ */
+// Etiqueta humana de la dificultad declarada en el place.
+const DIFFICULTY_LABEL: Record<string, string> = { easy: 'Fácil', medium: 'Media', hard: 'Difícil' };
+// Unidad del puntaje crudo según el juego (deo/torres miden en metros).
+const GAME_UNIT: Record<string, string> = { deo: 'm', torres: 'm' };
+
 function GameBody({ place }: { place: Place }) {
+  const { user } = useAuth();
   const name = place.attributes.Name;
   // El juego se ejecuta en su propia ruta /play (animación + reclamo de recompensa).
   const worldId = place.attributes.World?.data?.id;
   const playHref = `/explore/${worldId}/places/${place.id}/play`;
-  const leaders = [
-    { rk: 1, av: 'V', name: 'Vael', pts: '24.110' },
-    { rk: 2, av: 'M', name: 'Mira', pts: '21.890' },
-    { rk: 3, av: 'N', name: 'Nora (vos)', pts: '18.420', me: true },
-    { rk: 4, av: 'K', name: 'Koa', pts: '17.005' },
-    { rk: 5, av: 'T', name: 'Tover', pts: '15.330' },
-  ];
+
+  // Estado real del juego (dificultad, récord propio, tope de recompensa). Solo
+  // con sesión: el endpoint requiere auth.
+  const [status, setStatus] = useState<GameStatus | null>(null);
+  useEffect(() => {
+    if (!user) { setStatus(null); return; }
+    let alive = true;
+    gamesService.getStatus(place.id).then((s) => { if (alive) setStatus(s); }).catch(() => {});
+    return () => { alive = false; };
+  }, [user, place.id]);
+
+  const unit = status ? (GAME_UNIT[status.gameKey] ?? 'pts') : 'pts';
+  const difficulty = status?.difficulty ? (DIFFICULTY_LABEL[status.difficulty] ?? status.difficulty) : '—';
+  const reward = status ? `Hasta ${status.maxReward} F` : '—';
+  const record = status ? (status.bestScore > 0 ? `${fmt(status.bestScore)} ${unit}` : '—') : '—';
+
   return (
-    <div className="grid" style={{ gridTemplateColumns: '1.4fr 1fr', marginTop: 26 }}>
+    <div className="grid" style={{ gridTemplateColumns: '1fr', marginTop: 26, maxWidth: 760 }}>
       <div className="panel" style={{ padding: '34px 36px' }}>
         <BiomeTag biome={place.attributes.Biome} />
         <h3 className="cinzel" style={{ fontSize: 30, color: '#F6ECD7', margin: '14px 0 6px' }}>El desafío de {name}</h3>
         <p className="sub">{place.attributes.Description || 'Superá el desafío antes de que se agote el tiempo. Cada victoria fortalece el vínculo con tu criatura.'}</p>
         <div className="grid" style={{ gridTemplateColumns: 'repeat(3,1fr)', gap: 14, margin: '24px 0' }}>
-          {[['Difícil', 'Dificultad'], ['+250 F', 'Recompensa'], ['18.420', 'Tu récord']].map(([b, s]) => (
+          {[[difficulty, 'Dificultad'], [reward, 'Recompensa'], [record, 'Tu récord']].map(([b, s]) => (
             <div key={s} style={{ background: 'rgba(255,255,255,.04)', border: '1px solid var(--ink-line)', borderRadius: 'var(--r-md)', padding: 14 }}>
               <div style={{ fontFamily: 'var(--font-cinzel)', fontWeight: 700, fontSize: 20, color: 'var(--gold-soft)' }}>{b}</div>
               <div style={{ fontFamily: 'var(--font-fredoka)', fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--mist-2)' }}>{s}</div>
             </div>
           ))}
         </div>
+        {!user && <p className="sub" style={{ marginBottom: 12 }}>Iniciá sesión para ver tu récord y reclamar la recompensa.</p>}
         <Link className="btn btn-primary btn-lg" style={{ marginTop: 12 }} href={playHref}>▶ Jugar ahora</Link>
-      </div>
-      <div className="panel" style={{ padding: '24px 26px' }}>
-        <div className="kicker" style={{ marginBottom: 6 }}>Tabla de clasificación</div>
-        {leaders.map((l, idx) => (
-          <div key={l.rk} className="lead" style={{ ...(l.me ? { background: 'rgba(230,166,48,.08)', borderRadius: 'var(--r-md)' } : {}), ...(idx === leaders.length - 1 ? { border: 'none' } : {}) }}>
-            <span className="rk">{l.rk}</span>
-            <span className="av" style={l.me ? { background: 'radial-gradient(circle at 35% 30%,#f0c878,#bf8420)', color: '#3a2606' } : undefined}>{l.av}</span>
-            <b>{l.name}</b>
-            <span className="pts">{l.pts}</span>
-          </div>
-        ))}
       </div>
     </div>
   );
