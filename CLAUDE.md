@@ -234,12 +234,17 @@ contract** — it knows nothing about any game's mechanics. All logic is in
   cooldown server-side, credits `balance`, stamps the per-game cooldown, **records the
   user's best raw score**, and returns `{ reward, balance, gameKey, bestScore, ...status }`.
   Permissions (`game.status`/`game.claim`) granted to the Authenticated role in `src/seed.js`.
+  `GET /games/:placeId/leaderboard?limit=5` is **public** (no auth): returns the real
+  per-place leaderboard `{ gameKey, total, top:[{ rank, userId, username, score, me }], me }`
+  — each user's best raw score (from `gameBestScores`), sorted desc; `me` is the current
+  user's standing if outside the top (when a token is sent). Granted to the Public role.
 - **Schema** — `place.GameKey` (string, which game runs there) + `place.Difficulty`
   (enum `easy`/`medium`/`hard`), and `user.gameCooldowns` + `user.gameBestScores` (json
   maps keyed by placeId — last-claim ISO and best raw score). No new content-type. The
   status extras (`difficulty`/`bestScore`/`maxReward` = engine cap 100) feed the game
   card's chips (Dificultad / Recompensa / Tu récord) instead of hardcoded mock values;
-  the fake leaderboard was removed. Seeded fill-if-missing via `GAME_DIFFICULTY` in `seed.js`.
+  the leaderboard panel is now backed by the real `leaderboard` endpoint (was a hardcoded
+  mock). Seeded fill-if-missing via `GAME_DIFFICULTY` in `seed.js`.
 - **Frontend** — `gamesService` (`getStatus`/`claim`) in `services.ts`. The play route
   `app/explore/[worldId]/places/[placeId]/play/page.tsx` is a **dispatcher**: it fetches
   `status`, records `play_place`, and **branches on `status.gameKey`** to render the right

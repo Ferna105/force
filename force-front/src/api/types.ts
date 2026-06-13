@@ -442,6 +442,21 @@ export interface GameStatus {
   secondsLeft: number;
   nextClaimAt: string | null;
 }
+// Una fila de la tabla de récords de un juego.
+export interface GameLeaderboardEntry {
+  rank: number;
+  userId: number;
+  username: string;
+  score: number; // mejor puntaje crudo del usuario (en la unidad del juego)
+  me: boolean;   // true si es el usuario logueado
+}
+// Tabla de récords: top-N + el standing propio si quedó fuera del top.
+export interface GameLeaderboard {
+  gameKey: string;
+  total: number;
+  top: GameLeaderboardEntry[];
+  me: { rank: number; score: number } | null;
+}
 // Respuesta del reclamo: recompensa acreditada + saldo nuevo + cooldown reiniciado.
 export interface GameClaimResponse {
   reward: number;

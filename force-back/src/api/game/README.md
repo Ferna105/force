@@ -87,6 +87,31 @@ Reclama la recompensa. Body opcional `{ points }` (el puntaje interno del juego;
 > El cooldown se valida **siempre en el servidor**. El front lo chequea para la UX,
 > pero aunque alguien fuerce el `POST`, el motor lo rechaza.
 
+### `GET /api/games/:placeId/leaderboard?limit=5`
+
+Tabla de récords del juego: el mejor puntaje de **cada usuario** en ese place,
+ordenado de mayor a menor. **Pública** (se ve sin sesión); si la llamada lleva token,
+marca al usuario actual (`me:true`) y, si quedó fuera del top, devuelve su standing en
+`me`. No hay tabla aparte: se agrega leyendo el mapa `gameBestScores` de cada usuario
+(a esta escala alcanza; si crece, conviene una content-type `game-score` indexada).
+
+```json
+{
+  "gameKey": "deo",
+  "total": 4,
+  "top": [
+    { "rank": 1, "userId": 5, "username": "vael", "score": 9, "me": false }
+  ],
+  "me": { "rank": 4, "score": 3 }
+}
+```
+
+- `limit` — tamaño del top (default 5, clamp 1..50).
+- `top` — filas ordenadas desc; empate ⇒ el usuario más antiguo (menor id) arriba.
+- `me` — standing propio `{ rank, score }` **solo si quedó fuera del top** (null si
+  está en el top, nunca jugó, o no hay sesión).
+- Errores: `404` place inexistente, `400` si el place no es de tipo `game`.
+
 ---
 
 ## 3. Agregar un juego nuevo — paso a paso

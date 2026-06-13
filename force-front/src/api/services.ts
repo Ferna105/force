@@ -28,6 +28,7 @@ import {
   DuelDetail,
   GameStatus,
   GameClaimResponse,
+  GameLeaderboard,
 } from './types';
 
 // Serializa un objeto/array anidado a la sintaxis de brackets de Strapi 4
@@ -608,6 +609,11 @@ export const gamesService = {
   // el template no lo usa). Devuelve la recompensa, el saldo nuevo y el cooldown.
   async claim(placeId: number, points?: number): Promise<GameClaimResponse> {
     const response = await apiClient.post(`/games/${placeId}/claim`, { points });
+    return response.data;
+  },
+  // Tabla de récords del juego (público). Con sesión, marca al usuario actual.
+  async getLeaderboard(placeId: number, limit = 5): Promise<GameLeaderboard> {
+    const response = await apiClient.get(`/games/${placeId}/leaderboard`, { params: { limit } });
     return response.data;
   },
 };

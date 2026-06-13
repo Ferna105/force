@@ -158,6 +158,8 @@ const PUBLIC_ACTIONS = [
   'api::item.item.find', 'api::item.item.findOne',
   // Stock de una tienda (solo lectura): visible sin sesión.
   'api::shop.shop.stock',
+  // Tabla de récords de un juego (solo lectura): visible sin sesión.
+  'api::game.game.leaderboard',
 ];
 const AUTH_ACTIONS = [
   ...PUBLIC_ACTIONS,

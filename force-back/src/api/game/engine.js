@@ -100,6 +100,40 @@ function bestScore(user, placeId) {
 }
 
 /**
+ * Tabla de récords (leaderboard) de un juego: el mejor puntaje de CADA usuario en
+ * ese place, ordenado de mayor a menor. No hay tabla aparte: se agrega leyendo el
+ * mapa `gameBestScores` de todos los usuarios (suficiente a esta escala; si crece,
+ * conviene una content-type `game-score` indexada).
+ *
+ * Devuelve `{ total, top, me }`:
+ *  - `top` — top-N entradas `{ rank, userId, username, score, me }`.
+ *  - `me`  — standing del usuario actual `{ rank, score }` si quedó FUERA del top
+ *            (null si está en el top, no jugó, o no hay sesión).
+ */
+async function leaderboard(strapi, placeId, currentUserId = null, limit = 5) {
+  const lim = Math.max(1, Math.min(50, Math.floor(Number(limit) || 5)));
+  const users = await strapi.db.query(USER_UID).findMany({
+    select: ['id', 'username', 'gameBestScores'],
+    where: { gameBestScores: { $notNull: true } },
+  });
+
+  const ranked = users
+    .map((u) => ({ userId: u.id, username: u.username, score: bestScore(u, placeId) }))
+    .filter((e) => e.score > 0)
+    // Mayor puntaje primero; empate ⇒ el de menor id (más antiguo) va arriba.
+    .sort((a, b) => b.score - a.score || a.userId - b.userId)
+    .map((e, i) => ({ rank: i + 1, ...e, me: currentUserId != null && e.userId === currentUserId }));
+
+  const top = ranked.slice(0, lim);
+  let me = null;
+  if (currentUserId != null && !top.some((e) => e.me)) {
+    const mine = ranked.find((e) => e.userId === currentUserId);
+    if (mine) me = { rank: mine.rank, score: mine.score };
+  }
+  return { total: ranked.length, top, me };
+}
+
+/**
  * Reclama la recompensa del juego de `placeId` para el usuario.
  * Devuelve `{ error }` con un código si no se puede (`not_found`/`not_a_game`/
  * `cooldown`), o `{ reward, balance, gameKey, ...status }` si se acreditó.
@@ -150,5 +184,6 @@ module.exports = {
   gameKeyForPlace,
   claimStatus,
   bestScore,
+  leaderboard,
   claim,
 };

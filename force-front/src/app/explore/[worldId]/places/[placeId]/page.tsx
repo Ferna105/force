@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { usePlace, useMonsters, useDiscoveredMonsters, useActiveCompanion, inventoryService, shopService, battleService, gamesService } from '@/api';
-import type { Place, Item, ShopStock, DuelsLobby, GameStatus } from '@/api/types';
+import type { Place, Item, ShopStock, DuelsLobby, GameStatus, GameLeaderboard } from '@/api/types';
 import { useAuth } from '@/hooks/useAuth';
 import { useDiscovery } from '@/hooks/useDiscovery';
 import { useToast } from '@/hooks/useToast';
@@ -194,6 +194,9 @@ function GameBody({ place }: { place: Place }) {
   // Estado real del juego (dificultad, récord propio, tope de recompensa). Solo
   // con sesión: el endpoint requiere auth.
   const [status, setStatus] = useState<GameStatus | null>(null);
+  // Tabla de récords real (público): mejor puntaje de cada usuario en este juego.
+  const [board, setBoard] = useState<GameLeaderboard | null>(null);
+
   useEffect(() => {
     if (!user) { setStatus(null); return; }
     let alive = true;
@@ -201,13 +204,21 @@ function GameBody({ place }: { place: Place }) {
     return () => { alive = false; };
   }, [user, place.id]);
 
-  const unit = status ? (GAME_UNIT[status.gameKey] ?? 'pts') : 'pts';
+  useEffect(() => {
+    let alive = true;
+    gamesService.getLeaderboard(place.id).then((b) => { if (alive) setBoard(b); }).catch(() => {});
+    return () => { alive = false; };
+    // Se recarga al loguearse para que marque al usuario actual (manda el token).
+  }, [place.id, user]);
+
+  const gameKey = status?.gameKey ?? board?.gameKey ?? '';
+  const unit = GAME_UNIT[gameKey] ?? 'pts';
   const difficulty = status?.difficulty ? (DIFFICULTY_LABEL[status.difficulty] ?? status.difficulty) : '—';
   const reward = status ? `Hasta ${status.maxReward} F` : '—';
   const record = status ? (status.bestScore > 0 ? `${fmt(status.bestScore)} ${unit}` : '—') : '—';
 
   return (
-    <div className="grid" style={{ gridTemplateColumns: '1fr', marginTop: 26, maxWidth: 760 }}>
+    <div className="grid" style={{ gridTemplateColumns: '1.4fr 1fr', marginTop: 26 }}>
       <div className="panel" style={{ padding: '34px 36px' }}>
         <BiomeTag biome={place.attributes.Biome} />
         <h3 className="cinzel" style={{ fontSize: 30, color: '#F6ECD7', margin: '14px 0 6px' }}>El desafío de {name}</h3>
@@ -222,6 +233,28 @@ function GameBody({ place }: { place: Place }) {
         </div>
         {!user && <p className="sub" style={{ marginBottom: 12 }}>Iniciá sesión para ver tu récord y reclamar la recompensa.</p>}
         <Link className="btn btn-primary btn-lg" style={{ marginTop: 12 }} href={playHref}>▶ Jugar ahora</Link>
+      </div>
+      <div className="panel" style={{ padding: '24px 26px' }}>
+        <div className="kicker" style={{ marginBottom: 6 }}>Tabla de clasificación</div>
+        {board && board.top.length === 0 && (
+          <p className="sub" style={{ margin: '10px 0' }}>Todavía nadie marcó un récord. ¡Sé el primero!</p>
+        )}
+        {(board?.top ?? []).map((e, idx) => (
+          <div key={e.userId} className="lead" style={{ ...(e.me ? { background: 'rgba(230,166,48,.08)', borderRadius: 'var(--r-md)' } : {}), ...(idx === board!.top.length - 1 && !board!.me ? { border: 'none' } : {}) }}>
+            <span className="rk">{e.rank}</span>
+            <span className="av" style={e.me ? { background: 'radial-gradient(circle at 35% 30%,#f0c878,#bf8420)', color: '#3a2606' } : undefined}>{(e.username[0] ?? '?').toUpperCase()}</span>
+            <b>{e.username}{e.me ? ' (vos)' : ''}</b>
+            <span className="pts">{fmt(e.score)} {unit}</span>
+          </div>
+        ))}
+        {board?.me && (
+          <div className="lead" style={{ background: 'rgba(230,166,48,.08)', borderRadius: 'var(--r-md)', border: 'none', marginTop: 6 }}>
+            <span className="rk">{board.me.rank}</span>
+            <span className="av" style={{ background: 'radial-gradient(circle at 35% 30%,#f0c878,#bf8420)', color: '#3a2606' }}>{(user?.username?.[0] ?? 'V').toUpperCase()}</span>
+            <b>{user?.username} (vos)</b>
+            <span className="pts">{fmt(board.me.score)} {unit}</span>
+          </div>
+        )}
       </div>
     </div>
   );

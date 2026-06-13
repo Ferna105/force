@@ -65,4 +65,22 @@ module.exports = {
 
     return ctx.send(res);
   },
+
+  // Tabla de récords del juego (mejor puntaje de cada usuario en ese place).
+  // Pública: se puede ver sin sesión; si hay token, marca al usuario actual.
+  async leaderboard(ctx) {
+    const placeId = Number(ctx.params.placeId);
+    if (!placeId) return ctx.badRequest('Falta placeId.');
+
+    const place = await strapi.entityService.findOne(PLACE_UID, placeId, {
+      fields: ['Type', 'GameKey'],
+    });
+    if (!place) return ctx.notFound('Lugar no encontrado.');
+    if (place.Type !== 'game') return ctx.badRequest('El lugar no es un juego.');
+
+    const userId = ctx.state.user?.id ?? null;
+    const board = await engine.leaderboard(strapi, placeId, userId, ctx.query.limit);
+
+    return ctx.send({ gameKey: engine.gameKeyForPlace(place), ...board });
+  },
 };
