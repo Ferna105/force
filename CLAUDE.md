@@ -247,6 +247,9 @@ contract** — it knows nothing about any game's mechanics. All logic is in
   exporta `hhmmss`). Los modales `.overlay`/`.ov-*` y `.game-head`/`.play-*` son CSS genérico
   en `globals.css`. El juego real **Los Ojos de Deo** vive en `play/deo/` (`DeoGame.tsx` +
   `engine.ts`, un plataformero de descenso en canvas) y es el ejemplo de referencia.
+  **Torres de la Cordillera** (`play/torres/`, `TorresGame.tsx` + `engine.ts`) es un segundo
+  juego concreto: un plataformero de **ascenso** vertical (mundo Koril, GameKey `torres`,
+  +8 F/m) con su CSS scopeado bajo `.torres-game` en `globals.css`.
 
 **Adding a game** = one entry in `GAMES` + set the place's `GameKey` (seeded fill-if-missing
 in `seed.js` via `GAME_KEYS`, or set in the admin) + a frontend game component that reuses the

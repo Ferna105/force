@@ -57,6 +57,19 @@ const GAMES = {
       return depth * 10; // 10 m ⇒ 100 monedas (tope del motor)
     },
   },
+
+  // Torres de la Cordillera — plataformero de ascenso (mundo Koril). El cliente
+  // envía como `points` la altura alcanzada en metros. Diseño: +8 F por metro,
+  // que el motor clampea a [0..100] monedas. Igual que en `deo`, ese tope es la
+  // red de integridad (§6): la altura la calcula el cliente, así que el clamp
+  // acota cualquier puntaje inflado sin partida server-authoritative.
+  torres: {
+    label: 'Torres de la Cordillera',
+    pointsToCoins(points) {
+      const height = Math.max(0, Math.floor(Number(points) || 0));
+      return height * 8; // 12.5 m ⇒ 100 monedas (tope del motor)
+    },
+  },
 };
 
 // Resuelve qué juego corre un place; si su GameKey no está registrado, usa la plantilla.

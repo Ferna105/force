@@ -55,7 +55,7 @@ const MONSTER_BIOME = { Tronc: 'forest', Serpi: 'aqua', Triso: 'volcanic', Raya:
 // Qué mini-juego corre cada place de tipo `game` (su GameKey, clave en GAMES del
 // motor). Se completa SOLO si está vacío (no pisa una asignación hecha a mano en
 // el admin). Los demás places `game` sin entrada caen al `template`.
-const GAME_KEYS = { 'Los Ojos de Deo': 'deo' };
+const GAME_KEYS = { 'Los Ojos de Deo': 'deo', 'Torres de la Cordillera': 'torres' };
 
 // Stats base de progresión/combate por especie. Presupuesto parejo (STR+DEF+SPD≈30,
 // health≈100) con reparto por arquetipo de bioma, para que estén equilibrados.

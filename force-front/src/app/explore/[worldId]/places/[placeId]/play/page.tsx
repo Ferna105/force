@@ -14,6 +14,7 @@ import Topbar from '@/components/shell/Topbar';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { Loading, ErrorState } from '@/components/ui/states';
 import DeoGame from './deo/DeoGame';
+import TorresGame from './torres/TorresGame';
 import GameHeader from './GameHeader';
 import GameLoading, { LOADING_MS } from './GameLoading';
 import { hhmmss } from './GameCooldownModal';
@@ -75,6 +76,18 @@ function PlayContent() {
         <Topbar crumb={crumb} />
         <div className="page game-page">
           <DeoGame placeId={placeId} worldId={worldId} initialStatus={status} name={a.Name} banner={banner} />
+        </div>
+      </>
+    );
+  }
+
+  // Torres de la Cordillera — plataformero de ascenso del mundo Koril.
+  if (status?.gameKey === 'torres') {
+    return (
+      <>
+        <Topbar crumb={crumb} />
+        <div className="page game-page">
+          <TorresGame placeId={placeId} worldId={worldId} initialStatus={status} name={a.Name} banner={banner} />
         </div>
       </>
     );

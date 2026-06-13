@@ -32,6 +32,9 @@ este documento es la contraparte del **frontend**.
 if (status?.gameKey === 'deo') {
   return <DeoGame placeId={placeId} worldId={worldId} initialStatus={status} name={a.Name} banner={banner} />;
 }
+if (status?.gameKey === 'torres') {
+  return <TorresGame placeId={placeId} worldId={worldId} initialStatus={status} name={a.Name} banner={banner} />;
+}
 // …else: <TemplateGame .../>
 ```
 
@@ -181,3 +184,5 @@ de resultado son siempre los componentes genéricos de arriba.**
 | `GameCooldownModal.tsx` | Modal genérico de enfriamiento (cuenta regresiva propia) + `hhmmss`. |
 | `deo/DeoGame.tsx` | Juego concreto "Los Ojos de Deo" (usa todos los genéricos). |
 | `deo/engine.ts` | Motor canvas de Deo (mecánica propia, sin contrato de reclamo). |
+| `torres/TorresGame.tsx` | Juego concreto "Torres de la Cordillera" (plataformero de ascenso). |
+| `torres/engine.ts` | Motor canvas de Torres (mecánica propia, sin contrato de reclamo). |
