@@ -84,10 +84,10 @@ async function uploadTrainerImage(strapi, image, altName) {
 // (idempotente por nombre) y se venden en la tienda isleña (categoría `potion`).
 const POTIONS = [
   { name: 'Poción Menor', rarity: 'common', value: 60, heal: 40 },
-  { name: 'Poción de Vida', rarity: 'uncommon', value: 140, heal: 80 },
-  { name: 'Poción Mayor', rarity: 'rare', value: 280, heal: 140 },
-  { name: 'Elixir Curativo', rarity: 'epic', value: 520, heal: 220 },
-  { name: 'Elixir Divino', rarity: 'legendary', value: 1000, heal: 400 },
+  { name: 'Poción de Vida', rarity: 'uncommon', value: 200, heal: 80 },
+  { name: 'Poción Mayor', rarity: 'rare', value: 700, heal: 140 },
+  { name: 'Elixir Curativo', rarity: 'epic', value: 1600, heal: 220 },
+  { name: 'Elixir Divino', rarity: 'legendary', value: 3000, heal: 400 },
 ];
 
 // Slug kebab-case a partir del nombre (sin acentos), para el uid del item.
@@ -148,14 +148,44 @@ const PLACE_HOTSPOT = {
   'Ciudadela de la Cumbre Helada': { x: 64, y: 30 },
   'Atalaya de Obsidiana': { x: 36, y: 62 },
 };
-// Datos plausibles para items (solo se aplican si faltan)
+// Datos plausibles para items (solo se aplican si faltan). El `value` sigue la
+// escala canónica de precios (ver PRICE_SCALE / priceFor) por rareza×rol.
 const ITEM_DATA = {
-  'Soft Wooden Chair': { rarity: 'legendary', value: 1480, type: 'misc' },
-  'Sleek Cotton Sausages': { rarity: 'epic', value: 640, type: 'consumable', is_stackable: true, max_stack: 20, usable: true, cooldown: 30 },
-  'Fanstastic Plastic Towels': { rarity: 'rare', value: 210, type: 'misc' },
-  'Bespoke Rubber Gloves': { rarity: 'uncommon', value: 95, type: 'armor' },
-  'Moder Granite Table': { rarity: 'common', value: 40, type: 'misc' },
+  'Soft Wooden Chair': { rarity: 'legendary', value: 13000, type: 'misc' },
+  'Sleek Cotton Sausages': { rarity: 'epic', value: 5000, type: 'consumable', is_stackable: true, max_stack: 20, usable: true, cooldown: 30 },
+  'Fanstastic Plastic Towels': { rarity: 'rare', value: 1400, type: 'misc' },
+  'Bespoke Rubber Gloves': { rarity: 'uncommon', value: 350, type: 'armor' },
+  'Moder Granite Table': { rarity: 'common', value: 80, type: 'misc' },
 };
+
+// ─── Escala canónica de precios (campo `item.value`, en monedas F) ───────────
+// Anclada al ÚNICO faucet de monedas: los juegos topean en 100 F por reclamo con
+// cooldown de 6 h ⇒ techo ~800 F/día (jugador óptimo), ~200–300 F/día realista.
+// Un legendario de equipo (13.000 F) ⇒ ~1 mes para el jugador realista.
+// Tres ladders por ROL, porque los consumibles se compran repetido y no pueden
+// costar "un mes" cada uno:
+//   · equip   — armas, armaduras, tótems, trofeos (permanentes): ladder completa.
+//   · food    — comida (se consume al alimentar): ladder comprimida y barata.
+//   · potion  — pociones de curación: intermedia (valor de combate).
+const PRICE_SCALE = {
+  equip:  { common: 80, uncommon: 350, rare: 1400, epic: 5000, legendary: 13000 },
+  food:   { common: 40, uncommon: 150, rare: 500, epic: 1200, legendary: 2500 },
+  potion: { common: 60, uncommon: 200, rare: 700, epic: 1600, legendary: 3000 },
+};
+const FOOD_CATEGORIES = new Set(['fruit', 'vegetable', 'meat', 'seafood', 'legume']);
+
+// Rol de precio de un item a partir de su categoría (con fallback a heal/type).
+function priceRole(item) {
+  if (FOOD_CATEGORIES.has(item.category)) return 'food';
+  if (item.category === 'potion' || (item.heal && item.heal > 0)) return 'potion';
+  return 'equip';
+}
+
+// Precio canónico (o null si la rareza no está en la escala).
+function priceFor(item) {
+  if (!item.rarity) return null;
+  return PRICE_SCALE[priceRole(item)][item.rarity] ?? null;
+}
 
 // Ataque/Defensa de equipamiento por familia × rareza. La familia se deriva de
 // `category` (con fallback a `type`): armas (espadas) pegan, armaduras (escudos,
@@ -610,6 +640,15 @@ module.exports = async function seed({ strapi }) {
         if (!it.type) data.type = d.type;
         if (d.is_stackable && !it.is_stackable) { data.is_stackable = true; data.max_stack = d.max_stack; }
         if (d.usable && !it.usable) { data.usable = true; data.cooldown = d.cooldown; }
+      }
+      // Reescala de precios a la escala canónica (rareza×rol). A diferencia de los
+      // backfills "rellenar-si-falta", esto PISA el value viejo (era el objetivo del
+      // rebalanceo: un legendario debe costar ~1 mes de juego). Determinista ⇒ las
+      // re-corridas son no-ops. Se puede desactivar con REPRICE_ITEMS=false.
+      if (process.env.REPRICE_ITEMS !== 'false') {
+        const itForPrice = { ...it, category: it.category || data.category };
+        const target = priceFor(itForPrice);
+        if (target != null && it.value !== target) data.value = target;
       }
       if (Object.keys(data).length) {
         await strapi.db.query('api::item.item').update({ where: { id: it.id }, data });
