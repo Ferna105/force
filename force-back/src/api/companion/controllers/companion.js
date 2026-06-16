@@ -56,6 +56,9 @@ const companionToRest = (c) => ({
     speed: c.speed,
     luck: c.luck,
     level: c.level,
+    // Estado de entrenamiento (la UI del battledome lo usa para bloquear duelos).
+    trainingStat: c.trainingStat ?? null,
+    trainingEndsAt: c.trainingEndsAt ?? null,
     monster: monsterToRest(c.monster),
     // Objetos equipados (hasta MAX_EQUIP), en shape de lista REST.
     equippedItems: { data: (c.equippedItems || []).map(itemToRest).filter(Boolean) },
@@ -122,7 +125,10 @@ module.exports = createCoreController(UID, () => ({
       filters: { user: user.id },
       populate: COMPANION_POPULATE,
     });
-    return ctx.send({ data: list.map(companionToRest) });
+    // Resolver entrenamientos vencidos (aplica el +gain) antes de devolverlos,
+    // así /companion muestra la stat ya subida y el compañero vuelve a poder pelear.
+    const resolved = await Promise.all(list.map((c) => strapi.service(UID).resolveTraining(c)));
+    return ctx.send({ data: resolved.map(companionToRest) });
   },
 
   // Adoptar un monstruo como compañero del usuario autenticado.

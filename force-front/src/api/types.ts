@@ -111,7 +111,7 @@ export interface Place extends StrapiEntity {
     Name: string;
     Description: string | null;
     Banner: StrapiImage | null;
-    Type: 'shop' | 'game' | 'information' | 'battledome';
+    Type: 'shop' | 'game' | 'information' | 'battledome' | 'training';
     Biome: BiomeName | null;
     HotspotX: number | null;
     HotspotY: number | null;
@@ -253,6 +253,9 @@ export interface Companion extends StrapiEntity {
     speed: number;
     luck: number;
     level: number;
+    // Entrenamiento en curso (escuela de adiestramiento): null si no entrena.
+    trainingStat?: 'strength' | 'defense' | 'speed' | 'health' | 'level' | null;
+    trainingEndsAt?: string | null;
     monster?: { data: Monster | null };
     // Objetos equipados (hasta 5). Suman su ataque/defensa al total efectivo.
     equippedItems?: { data: Item[] };
@@ -467,3 +470,47 @@ export interface GameClaimResponse {
   secondsLeft: number;
   nextClaimAt: string | null;
 }
+
+/* ===== Escuela de entrenamiento ===== */
+export type TrainStat = 'strength' | 'defense' | 'speed' | 'health' | 'level';
+// Entrenador de la escuela (nombre, imagen, disciplinas en las que es experto).
+export interface TrainerInfo {
+  name: string;
+  imageUrl: string | null;
+  specialties: TrainStat[];
+}
+// Una disciplina entrenable, con su valor actual, tope y cuánto sube (+1 ó +2).
+export interface TrainStatRow {
+  key: TrainStat;
+  value: number;
+  cap: number;
+  canTrain: boolean;
+  gain: number;
+}
+// Tótem puntual exigido por el entrenador para el próximo entrenamiento.
+export interface DemandedTotem {
+  id: number;
+  name: string;
+  rarity: string;
+  iconUrl: string | null;
+}
+// Estado de la escuela para un compañero: o está entrenando, o está libre.
+export type TrainingInfo =
+  | {
+      status: 'training';
+      stat: TrainStat;
+      gain: number;
+      endsAt: string;
+      secondsLeft: number;
+      trainer: TrainerInfo | null;
+    }
+  | {
+      status: 'idle';
+      level: number;
+      requiredRarity: string;
+      days: number;
+      trainer: TrainerInfo | null;
+      demandedTotem: DemandedTotem | null;
+      ownsDemanded: boolean;
+      stats: TrainStatRow[];
+    };

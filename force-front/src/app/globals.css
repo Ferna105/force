@@ -135,6 +135,7 @@ h1,h2,h3,h4{margin:0;}
 .tp-game{background:linear-gradient(180deg,#d873c5,var(--t-game));}
 .tp-info{background:linear-gradient(180deg,#5aa1ea,var(--t-info));}
 .tp-battledome{background:linear-gradient(180deg,#e0584a,var(--t-battledome));}
+.tp-training{background:linear-gradient(180deg,#e6a630,#b5781b);color:#3a2606;}
 
 /* biome tags */
 .biome{font-family:var(--font-fredoka);font-weight:600;font-size:11.5px;letter-spacing:.04em;padding:5px 12px 5px 9px;border-radius:var(--r-pill);display:inline-flex;align-items:center;gap:6px;color:#fff;}
@@ -796,3 +797,24 @@ h1,h2,h3,h4{margin:0;}
 .ov-meta .n{font-family:var(--font-cinzel);font-weight:800;font-size:22px;color:#F6ECD7;}
 .ov-meta .l{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--mist-2);margin-top:3px;}
 .ov-emblem{width:62px;height:62px;margin:0 auto 6px;}
+
+/* ===== Escuela de entrenamiento ===== */
+.train-wrap{margin-top:26px;display:flex;flex-direction:column;gap:18px;}
+.train-trainer{padding:24px 28px;display:flex;gap:24px;align-items:center;}
+.train-trainer-img{width:128px;height:128px;border-radius:var(--r-md);object-fit:cover;background:rgba(255,255,255,.04);border:1px solid var(--ink-line);flex:0 0 auto;}
+.train-spec-row{display:flex;flex-wrap:wrap;gap:8px;}
+.train-spec{font-family:var(--font-fredoka);font-weight:600;font-size:12px;padding:5px 11px;border-radius:var(--r-pill);background:rgba(230,166,48,.14);border:1px solid rgba(230,166,48,.45);color:var(--gold-soft);}
+.train-clock{font-size:40px;font-weight:800;color:#F6ECD7;letter-spacing:.04em;}
+.train-demand{padding:22px 26px;display:flex;justify-content:space-between;align-items:center;gap:24px;flex-wrap:wrap;}
+.train-totem{display:flex;align-items:center;gap:18px;}
+.train-totem img{width:78px;height:78px;border-radius:var(--r-md);object-fit:contain;background:rgba(255,255,255,.04);border:1px solid var(--ink-line);padding:6px;}
+.train-meta{display:flex;gap:26px;text-align:center;}
+.train-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;}
+.train-stat{padding:18px 20px;display:flex;flex-direction:column;gap:10px;}
+.train-stat.is-capped{opacity:.6;}
+.train-stat-top{display:flex;justify-content:space-between;align-items:center;}
+.train-stat-top .cinzel{font-size:18px;color:#F6ECD7;}
+.train-gain{font-family:var(--font-fredoka);font-weight:700;font-size:13px;color:var(--mist-2);}
+.train-gain.boon{color:var(--gold-soft);}
+.train-stat-val b{font-family:var(--font-cinzel);font-size:26px;color:var(--gold-soft);}
+.train-stat .btn{margin-top:auto;}

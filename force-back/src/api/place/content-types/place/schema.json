@@ -35,7 +35,8 @@
         "shop",
         "game",
         "information",
-        "battledome"
+        "battledome",
+        "training"
       ],
       "required": true
     },

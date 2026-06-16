@@ -86,6 +86,29 @@
       "type": "integer",
       "default": 1,
       "min": 1
+    },
+    "trainingStat": {
+      "type": "enumeration",
+      "enum": [
+        "strength",
+        "defense",
+        "speed",
+        "health",
+        "level"
+      ]
+    },
+    "trainingEndsAt": {
+      "type": "datetime"
+    },
+    "trainingGain": {
+      "type": "integer",
+      "default": 1,
+      "min": 1
+    },
+    "demandedTotem": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::item.item"
     }
   }
 }

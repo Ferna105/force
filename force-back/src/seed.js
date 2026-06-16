@@ -10,9 +10,13 @@
  * Se ejecuta en bootstrap y es seguro re-ejecutarlo: solo crea lo que falta.
  */
 
+const fs = require('fs');
+const path = require('path');
+
 const seedBibliotecaItems = require('../scripts/biblioteca/seed-items-core');
 const BIBLIOTECA_ITEMS = require('../scripts/biblioteca/items.json');
 const { restockDueShops } = require('./api/shop/stock');
+const { statCap } = require('./api/training/engine');
 
 // Mapa nombre→category del catálogo, para backfillear items ya creados sin categoría.
 const ITEM_CATEGORY = Object.fromEntries(
@@ -32,6 +36,49 @@ const GENERIC_SHOP_CONFIG = {};
 
 // Lugares que el seed convierte en battledome (arena de duelos por turnos).
 const BATTLEDOME_PLACES = new Set(['Atalaya de Obsidiana']);
+
+// Escuelas de entrenamiento de Eryndor (places de Type 'training') + sus entrenadores.
+// Todas enseñan todas las disciplinas; lo que varía es la especialidad del entrenador
+// (+2 en vez de +1). Se crean idempotentes (find-or-create por nombre / por place), en
+// local y prod. Entre las tres cubren las 4 stats de combate.
+const TRAINING_SCHOOLS = [
+  {
+    place: {
+      name: 'Fragua de los Maestros',
+      description: 'En lo más hondo de Eryndor, entre yunques al rojo vivo, los maestros forjan no metal sino criaturas. Pagá con un tótem y dejá que el fuego temple a tu compañero.',
+      hotspot: { x: 52, y: 40 },
+    },
+    trainer: { name: 'Maestro Pyros', specialties: ['strength', 'defense'], image: 'maestro-pyros.png' },
+  },
+  {
+    place: {
+      name: 'Foso de Escamas',
+      description: 'Un pozo de roca volcánica donde la Maestra Víbora enseña el arte del golpe veloz. Quien entrena acá aprende a atacar antes de ser visto.',
+      hotspot: { x: 43, y: 58 },
+    },
+    trainer: { name: 'Maestra Víbora', specialties: ['speed', 'strength'], image: 'maestra-vibora.png' },
+  },
+  {
+    place: {
+      name: 'Santuario del Limo',
+      description: 'Entre vapores tibios y musgo ardiente, el Maestro Babo predica la paciencia: aguantar todo lo que el rival tenga para dar, y seguir en pie.',
+      hotspot: { x: 64, y: 47 },
+    },
+    trainer: { name: 'Maestro Babo', specialties: ['defense', 'health'], image: 'maestro-babo.png' },
+  },
+];
+const TRAINER_ASSETS_DIR = path.join(__dirname, '..', 'scripts', 'assets');
+
+// Sube la imagen de un entrenador a la media library (mismo patrón que el seed de items).
+async function uploadTrainerImage(strapi, image, altName) {
+  const filePath = path.join(TRAINER_ASSETS_DIR, image);
+  const stats = fs.statSync(filePath);
+  const [uploaded] = await strapi.plugin('upload').service('upload').upload({
+    data: { fileInfo: { name: image, alternativeText: altName, caption: altName } },
+    files: { name: image, type: 'image/png', size: stats.size, path: filePath },
+  });
+  return uploaded;
+}
 
 // Pociones de curación del battledome (campo `heal` en item). Se crean si faltan
 // (idempotente por nombre) y se venden en la tienda isleña (categoría `potion`).
@@ -62,29 +109,30 @@ const GAME_KEYS = { 'Los Ojos de Deo': 'deo', 'Torres de la Cordillera': 'torres
 // queda null y el front muestra «—».
 const GAME_DIFFICULTY = { 'Los Ojos de Deo': 'hard', 'Torres de la Cordillera': 'medium' };
 
-// Stats base de progresión/combate por especie. Presupuesto parejo (STR+DEF+SPD≈30,
-// health≈100) con reparto por arquetipo de bioma, para que estén equilibrados.
-// Se backfillean campo a campo SOLO si faltan (no pisan ediciones del admin).
+// Stats base de progresión/combate por especie. NINGÚN stat base supera 10 (la
+// escuela de entrenamiento usa un tope de 2×nivel, así que los stats arrancan bajos
+// y crecen entrenando). Se reparte por arquetipo de bioma para que estén equilibrados.
+// Se backfillean / clampean a ≤10 en el seed (ver paso 3).
 const MONSTER_BASE_STATS = {
-  Tronc: { BaseHealth: 110, BaseStrength: 10, BaseDefense: 14, BaseSpeed: 6, BaseLuck: 5, BaseLevel: 1 }, // tanque
-  Serpi: { BaseHealth: 95, BaseStrength: 9, BaseDefense: 8, BaseSpeed: 13, BaseLuck: 5, BaseLevel: 1 }, // ágil
-  Triso: { BaseHealth: 100, BaseStrength: 14, BaseDefense: 9, BaseSpeed: 7, BaseLuck: 5, BaseLevel: 1 }, // ofensivo
-  Raya: { BaseHealth: 100, BaseStrength: 10, BaseDefense: 10, BaseSpeed: 10, BaseLuck: 8, BaseLevel: 1 }, // equilibrado/afortunado
-  Terri: { BaseHealth: 90, BaseStrength: 11, BaseDefense: 6, BaseSpeed: 13, BaseLuck: 7, BaseLevel: 1 }, // veloz frágil
+  Tronc: { BaseHealth: 10, BaseStrength: 5, BaseDefense: 8, BaseSpeed: 3, BaseLuck: 4, BaseLevel: 1 }, // tanque
+  Serpi: { BaseHealth: 8, BaseStrength: 5, BaseDefense: 4, BaseSpeed: 9, BaseLuck: 4, BaseLevel: 1 }, // ágil
+  Triso: { BaseHealth: 9, BaseStrength: 9, BaseDefense: 5, BaseSpeed: 4, BaseLuck: 4, BaseLevel: 1 }, // ofensivo
+  Raya: { BaseHealth: 8, BaseStrength: 6, BaseDefense: 6, BaseSpeed: 6, BaseLuck: 7, BaseLevel: 1 }, // equilibrado/afortunado
+  Terri: { BaseHealth: 7, BaseStrength: 6, BaseDefense: 3, BaseSpeed: 9, BaseLuck: 6, BaseLevel: 1 }, // veloz frágil
 };
 // Arquetipo por bioma para monstruos sin entrada explícita en MONSTER_BASE_STATS.
-// Mismo presupuesto (STR+DEF+SPD≈30, health≈100) que los anclas a medida, del que
-// cada bioma deriva su sabor — así dos monstruos del mismo bioma comparten arquetipo.
+// Mismo criterio (todo ≤10) que los anclas a medida, del que cada bioma deriva su
+// sabor — así dos monstruos del mismo bioma comparten arquetipo.
 const BIOME_BASE_STATS = {
-  forest: { BaseHealth: 110, BaseStrength: 10, BaseDefense: 14, BaseSpeed: 6, BaseLuck: 5, BaseLevel: 1 }, // tanque (cf. Tronc)
-  aqua: { BaseHealth: 95, BaseStrength: 9, BaseDefense: 8, BaseSpeed: 13, BaseLuck: 5, BaseLevel: 1 }, // ágil (cf. Serpi)
-  volcanic: { BaseHealth: 100, BaseStrength: 14, BaseDefense: 9, BaseSpeed: 7, BaseLuck: 5, BaseLevel: 1 }, // ofensivo (cf. Triso)
-  arid: { BaseHealth: 100, BaseStrength: 10, BaseDefense: 10, BaseSpeed: 10, BaseLuck: 8, BaseLevel: 1 }, // equilibrado/afortunado (cf. Raya)
-  space: { BaseHealth: 90, BaseStrength: 11, BaseDefense: 6, BaseSpeed: 13, BaseLuck: 7, BaseLevel: 1 }, // veloz frágil (cf. Terri)
-  snow: { BaseHealth: 105, BaseStrength: 9, BaseDefense: 13, BaseSpeed: 8, BaseLuck: 5, BaseLevel: 1 }, // defensivo/resistente
+  forest: { BaseHealth: 10, BaseStrength: 5, BaseDefense: 8, BaseSpeed: 3, BaseLuck: 4, BaseLevel: 1 }, // tanque (cf. Tronc)
+  aqua: { BaseHealth: 8, BaseStrength: 5, BaseDefense: 4, BaseSpeed: 9, BaseLuck: 4, BaseLevel: 1 }, // ágil (cf. Serpi)
+  volcanic: { BaseHealth: 9, BaseStrength: 9, BaseDefense: 5, BaseSpeed: 4, BaseLuck: 4, BaseLevel: 1 }, // ofensivo (cf. Triso)
+  arid: { BaseHealth: 8, BaseStrength: 6, BaseDefense: 6, BaseSpeed: 6, BaseLuck: 7, BaseLevel: 1 }, // equilibrado/afortunado (cf. Raya)
+  space: { BaseHealth: 7, BaseStrength: 6, BaseDefense: 3, BaseSpeed: 9, BaseLuck: 6, BaseLevel: 1 }, // veloz frágil (cf. Terri)
+  snow: { BaseHealth: 9, BaseStrength: 5, BaseDefense: 8, BaseSpeed: 4, BaseLuck: 4, BaseLevel: 1 }, // defensivo/resistente
 };
-// Genérico final para monstruos sin entrada a medida y sin bioma (equilibrado).
-const GENERIC_BASE_STATS = { BaseHealth: 100, BaseStrength: 10, BaseDefense: 10, BaseSpeed: 10, BaseLuck: 5, BaseLevel: 1 };
+// Genérico final para monstruos sin entrada a medida y sin bioma (equilibrado, ≤10).
+const GENERIC_BASE_STATS = { BaseHealth: 8, BaseStrength: 6, BaseDefense: 6, BaseSpeed: 6, BaseLuck: 5, BaseLevel: 1 };
 const PLACE_BIOME = {
   'Cañada Verdante': 'forest',
   'Isla del Reposo de la Serpiente': 'aqua',
@@ -109,28 +157,34 @@ const ITEM_DATA = {
 // Ataque/Defensa de equipamiento por familia × rareza. La familia se deriva de
 // `category` (con fallback a `type`): armas (espadas) pegan, armaduras (escudos,
 // yelmos, guantes, chalecos, corazas) aguantan, tótems dan un buff balanceado.
-// Los alimentos / el resto quedan en 0/0. Se backfillea solo si el valor está en 0.
+// Los alimentos / el resto quedan en 0/0.
+//
+// ESCALA: acorde a los stats base ≤10 y a los topes de la escuela (str/def/spd hasta
+// 2×nivel, salud hasta 4×nivel). El bono de un objeto es modesto (máx +7) para que
+// COMPLEMENTE a los stats entrenados sin reemplazarlos: pesa fuerte temprano/mitad de
+// juego y se diluye en niveles altos (donde los stats entrenados son mucho mayores).
+// Hasta 5 objetos equipados, así que el total razonable de una build es ~+10/+15.
 const EQUIP_STATS = {
   weapon: {
-    common: { attack: 6, defense: 0 },
-    uncommon: { attack: 11, defense: 0 },
-    rare: { attack: 17, defense: 1 },
-    epic: { attack: 25, defense: 2 },
-    legendary: { attack: 35, defense: 3 },
+    common: { attack: 1, defense: 0 },
+    uncommon: { attack: 2, defense: 0 },
+    rare: { attack: 3, defense: 0 },
+    epic: { attack: 5, defense: 0 },
+    legendary: { attack: 7, defense: 0 },
   },
   armor: {
-    common: { attack: 0, defense: 6 },
-    uncommon: { attack: 0, defense: 11 },
-    rare: { attack: 1, defense: 17 },
-    epic: { attack: 2, defense: 25 },
-    legendary: { attack: 3, defense: 35 },
+    common: { attack: 0, defense: 1 },
+    uncommon: { attack: 0, defense: 2 },
+    rare: { attack: 0, defense: 3 },
+    epic: { attack: 0, defense: 5 },
+    legendary: { attack: 0, defense: 7 },
   },
   totem: {
-    common: { attack: 4, defense: 4 },
-    uncommon: { attack: 7, defense: 7 },
-    rare: { attack: 11, defense: 11 },
-    epic: { attack: 16, defense: 16 },
-    legendary: { attack: 24, defense: 24 },
+    common: { attack: 1, defense: 1 },
+    uncommon: { attack: 1, defense: 1 },
+    rare: { attack: 2, defense: 2 },
+    epic: { attack: 3, defense: 3 },
+    legendary: { attack: 4, defense: 4 },
   },
 };
 
@@ -184,6 +238,9 @@ const AUTH_ACTIONS = [
   // Motor de juegos: estado (cooldown) + reclamo de recompensas.
   'api::game.game.status',
   'api::game.game.claim',
+  // Escuela de entrenamiento: estado + iniciar entrenamiento.
+  'api::training.training.info',
+  'api::training.training.start',
   'plugin::users-permissions.user.me',
 ];
 
@@ -428,8 +485,9 @@ module.exports = async function seed({ strapi }) {
     }
 
     // 3) Biomas + stats base de monstruos.
-    //    Los Base* se rellenan campo a campo SOLO si están null (no pisan una
-    //    edición manual del admin), igual que el backfill de items/hotspots.
+    //    Los Base* se rellenan campo a campo si están null Y se BAJAN si superan 10
+    //    (invariante de diseño: ningún stat base supera 10, para que el tope 2×nivel
+    //    de la escuela tenga sentido). Un valor 1..10 puesto a mano se respeta.
     const monsters = await strapi.db.query('api::monster.monster').findMany({});
     for (const m of monsters) {
       const data = {};
@@ -439,7 +497,7 @@ module.exports = async function seed({ strapi }) {
       const effBiome = biome || m.Biome;
       const baseStats = MONSTER_BASE_STATS[m.Name] || BIOME_BASE_STATS[effBiome] || GENERIC_BASE_STATS;
       for (const [field, value] of Object.entries(baseStats)) {
-        if (m[field] == null) data[field] = value;
+        if (m[field] == null || m[field] > 10) data[field] = value;
       }
       if (Object.keys(data).length) {
         await strapi.db.query('api::monster.monster').update({ where: { id: m.id }, data });
@@ -476,18 +534,65 @@ module.exports = async function seed({ strapi }) {
       }
     }
 
+    // 4b) Escuelas de entrenamiento de Eryndor (places Type 'training' + entrenadores).
+    //     Idempotente: crea cada place si falta, su trainer si falta, y sube la imagen
+    //     del maestro. Corre en bootstrap → puebla local y prod (prod en redeploy).
+    const eryndor = worlds.find((w) => w.Name === 'Eryndor');
+    if (eryndor) {
+      for (const { place: ph, trainer: th } of TRAINING_SCHOOLS) {
+        let school = await strapi.db.query('api::place.place').findOne({ where: { Name: ph.name } });
+        if (!school) {
+          school = await strapi.entityService.create('api::place.place', {
+            data: {
+              Name: ph.name,
+              Description: ph.description,
+              Type: 'training',
+              World: eryndor.id,
+              Biome: 'volcanic',
+              HotspotX: ph.hotspot.x,
+              HotspotY: ph.hotspot.y,
+              publishedAt: new Date(),
+            },
+          });
+          strapi.log.info(`[seed] Escuela de entrenamiento creada: ${ph.name}`);
+        }
+        // Entrenador de la escuela (find-or-create por place).
+        const trainer = await strapi.db.query('api::trainer.trainer').findOne({ where: { place: school.id }, populate: ['image'] });
+        if (!trainer) {
+          let imageId = null;
+          try { imageId = (await uploadTrainerImage(strapi, th.image, th.name))?.id ?? null; }
+          catch (err) { strapi.log.warn(`[seed] No se pudo subir la imagen de ${th.name}: ${err.message}`); }
+          await strapi.entityService.create('api::trainer.trainer', {
+            data: { name: th.name, specialties: th.specialties, place: school.id, image: imageId },
+          });
+          strapi.log.info(`[seed] Entrenador creado: ${th.name}`);
+        } else if (!trainer.image) {
+          // Backfill de la imagen si el entrenador ya existe pero sin imagen.
+          try {
+            const up = await uploadTrainerImage(strapi, th.image, th.name);
+            if (up?.id) await strapi.db.query('api::trainer.trainer').update({ where: { id: trainer.id }, data: { image: up.id } });
+          } catch (err) { strapi.log.warn(`[seed] No se pudo subir la imagen de ${th.name}: ${err.message}`); }
+        }
+      }
+    }
+
     // 5) Completar datos de items faltantes
     const items = await strapi.db.query('api::item.item').findMany({});
     for (const it of items) {
       const data = {};
       // Backfill de categoría desde el catálogo (para items creados antes del campo).
       if (!it.category && ITEM_CATEGORY[it.name]) data.category = ITEM_CATEGORY[it.name];
-      // Ataque/Defensa por familia × rareza. Solo se completan si están en 0/null
-      // (preserva ediciones del admin; los alimentos se quedan en 0). Usa la
-      // categoría ya backfilleada en `data` si vino vacía.
-      const stats = equipStatsFor({ ...it, category: it.category || data.category });
-      if ((it.attack == null || it.attack === 0) && stats.attack) data.attack = stats.attack;
-      if ((it.defense == null || it.defense === 0) && stats.defense) data.defense = stats.defense;
+      // Ataque/Defensa por familia × rareza. Para objetos equipables (arma/armadura/
+      // tótem) se fija el valor canónico de la nueva escala (rellena 0/null y BAJA los
+      // valores viejos de la escala anterior, p. ej. arma legendaria 35 → 7; también
+      // pone en 0 los cross-terms viejos). Los no equipables (comida, etc.) quedan en 0.
+      const itForFam = { ...it, category: it.category || data.category };
+      const fam = equipFamily(itForFam);
+      if (fam) {
+        const stats = equipStatsFor(itForFam);
+        if (it.attack !== stats.attack) data.attack = stats.attack;
+        if (it.defense !== stats.defense) data.defense = stats.defense;
+      }
       const d = ITEM_DATA[it.name];
       if (d) {
         if (!it.rarity) data.rarity = d.rarity;
@@ -586,19 +691,28 @@ module.exports = async function seed({ strapi }) {
       }
     }
 
-    // 9b) Backfill de stats de progresión/combate de compañeros previos al sistema
-    //     de stats (health/strength/... en null): se completan campo a campo desde
-    //     el base de la especie. Luego la salud actual arranca llena (= health).
+    // 9b) Stats de progresión/combate de compañeros:
+    //     - se completan campo a campo desde el base de la especie si faltan;
+    //     - se BAJAN al base si quedaron por encima del tope 2×nivel (datos viejos
+    //       de la escala anterior: p. ej. salud 110 cuando el tope es 2). Un stat
+    //       entrenado legítimamente nunca supera el tope, así que no se toca.
     const companionSvc = strapi.service('api::companion.companion');
     const allCompanions = await strapi.db.query('api::companion.companion').findMany({ populate: { monster: true } });
     for (const c of allCompanions) {
-      const base = companionSvc.baseStatsFor(c.monster);
+      const base = companionSvc.baseStatsFor(c.monster); // ya ≤10 (paso 3)
       const data = {};
       for (const [field, value] of Object.entries(base)) {
         if (c[field] == null) data[field] = value;
       }
-      // Salud actual: completa si falta (= health ya backfilleada o la existente).
-      if (c.currentHealth == null) data.currentHealth = data.health ?? c.health ?? base.health;
+      const lvl = data.level ?? c.level ?? 1;
+      for (const field of ['health', 'strength', 'defense', 'speed']) {
+        const cur = data[field] ?? c[field];
+        if (cur != null && cur > statCap(field, lvl) && cur !== base[field]) data[field] = base[field];
+      }
+      // Salud actual: completa si falta y se clampa a la salud máxima resultante.
+      const finalHealth = data.health ?? c.health ?? base.health;
+      if (c.currentHealth == null) data.currentHealth = finalHealth;
+      else if (c.currentHealth > finalHealth) data.currentHealth = finalHealth;
       if (Object.keys(data).length) {
         await strapi.db.query('api::companion.companion').update({ where: { id: c.id }, data });
       }

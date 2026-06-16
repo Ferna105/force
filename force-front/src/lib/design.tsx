@@ -9,7 +9,7 @@ import type { StrapiImage } from '@/api/types';
 /* ============ TIPOS ============ */
 export type Biome = 'forest' | 'aqua' | 'volcanic' | 'space' | 'snow' | 'arid';
 export type Rarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
-export type PlaceType = 'shop' | 'game' | 'information' | 'battledome';
+export type PlaceType = 'shop' | 'game' | 'information' | 'battledome' | 'training';
 export type ItemType = 'weapon' | 'armor' | 'consumable' | 'key' | 'misc';
 
 /* ============ RAREZA ============ */
@@ -59,6 +59,7 @@ export const PLACE_TYPE: Record<PlaceType, { label: string; pill: string }> = {
   game:        { label: 'Juego',       pill: 'tp-game' },
   information: { label: 'Información', pill: 'tp-info' },
   battledome:  { label: 'Battledome',  pill: 'tp-battledome' },
+  training:    { label: 'Escuela',     pill: 'tp-training' },
 };
 
 const PLACE_TYPE_PATHS: Record<PlaceType, React.ReactNode> = {
@@ -66,6 +67,7 @@ const PLACE_TYPE_PATHS: Record<PlaceType, React.ReactNode> = {
   game:        <><rect x="2" y="7" width="20" height="11" rx="4" /><path d="M7 12h3M8.5 10.5v3M16 11h.01M18 13h.01" /></>,
   information: <><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 7.5h.01" /></>,
   battledome:  <><path d="M14.5 14.5 20 20l1-3-3-1-5.5-5.5M9.5 14.5 4 20l-1-3 3-1 5.5-5.5" /><path d="M13 11l6.5-6.5 1.5 0 0 1.5L14.5 12.5M11 11 4.5 4.5 3 4.5 3 6l6.5 6.5" /></>,
+  training:    <><path d="M6.5 6.5 3 3M3 8V3h5M17.5 6.5 21 3M21 8V3h-5M9 15l-6 6M3 16v5h5M15 15l6 6M21 16v5h-5M12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z" /></>,
 };
 
 export function PlaceTypeIcon({ type }: { type: PlaceType }) {
@@ -79,7 +81,7 @@ export function PlaceTypeIcon({ type }: { type: PlaceType }) {
 /* Verbo del CTA según el tipo de lugar */
 export const PLACE_CTA: Record<PlaceType, string> = {
   shop: 'Visitar mercado →', game: 'Jugar →', information: 'Explorar →',
-  battledome: 'Entrar a la arena →',
+  battledome: 'Entrar a la arena →', training: 'Entrenar →',
 };
 
 /* Bioma del lugar → clase de arena del battledome (fondo animado). */

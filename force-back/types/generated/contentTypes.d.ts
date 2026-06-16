@@ -406,6 +406,11 @@ export interface ApiCompanionCompanion extends Schema.CollectionType {
         number
       > &
       Attribute.DefaultTo<10>;
+    demandedTotem: Attribute.Relation<
+      'api::companion.companion',
+      'manyToOne',
+      'api::item.item'
+    >;
     energy: Attribute.Integer &
       Attribute.SetMinMax<
         {
@@ -476,6 +481,18 @@ export interface ApiCompanionCompanion extends Schema.CollectionType {
         number
       > &
       Attribute.DefaultTo<10>;
+    trainingEndsAt: Attribute.DateTime;
+    trainingGain: Attribute.Integer &
+      Attribute.SetMinMax<
+        {
+          min: 1;
+        },
+        number
+      > &
+      Attribute.DefaultTo<1>;
+    trainingStat: Attribute.Enumeration<
+      ['strength', 'defense', 'speed', 'health', 'level']
+    >;
     updatedAt: Attribute.DateTime;
     updatedBy: Attribute.Relation<
       'api::companion.companion',
@@ -855,7 +872,9 @@ export interface ApiPlacePlace extends Schema.CollectionType {
     publishedAt: Attribute.DateTime;
     RestockAt: Attribute.DateTime;
     ShopConfig: Attribute.JSON;
-    Type: Attribute.Enumeration<['shop', 'game', 'information', 'battledome']> &
+    Type: Attribute.Enumeration<
+      ['shop', 'game', 'information', 'battledome', 'training']
+    > &
       Attribute.Required;
     updatedAt: Attribute.DateTime;
     updatedBy: Attribute.Relation<
@@ -912,6 +931,43 @@ export interface ApiShopStockShopStock extends Schema.CollectionType {
     updatedAt: Attribute.DateTime;
     updatedBy: Attribute.Relation<
       'api::shop-stock.shop-stock',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+  };
+}
+
+export interface ApiTrainerTrainer extends Schema.CollectionType {
+  collectionName: 'trainers';
+  info: {
+    description: 'Entrenador de una escuela de adiestramiento: nombre, imagen y disciplinas en las que se especializa';
+    displayName: 'Trainer';
+    pluralName: 'trainers';
+    singularName: 'trainer';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<
+      'api::trainer.trainer',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    image: Attribute.Media<'images'>;
+    name: Attribute.String & Attribute.Required;
+    place: Attribute.Relation<
+      'api::trainer.trainer',
+      'oneToOne',
+      'api::place.place'
+    >;
+    specialties: Attribute.JSON;
+    updatedAt: Attribute.DateTime;
+    updatedBy: Attribute.Relation<
+      'api::trainer.trainer',
       'oneToOne',
       'admin::user'
     > &
@@ -1483,6 +1539,7 @@ declare module '@strapi/types' {
       'api::monster.monster': ApiMonsterMonster;
       'api::place.place': ApiPlacePlace;
       'api::shop-stock.shop-stock': ApiShopStockShopStock;
+      'api::trainer.trainer': ApiTrainerTrainer;
       'api::user-event.user-event': ApiUserEventUserEvent;
       'api::world.world': ApiWorldWorld;
       'plugin::content-releases.release': PluginContentReleasesRelease;

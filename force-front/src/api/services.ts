@@ -29,6 +29,8 @@ import {
   GameStatus,
   GameClaimResponse,
   GameLeaderboard,
+  TrainingInfo,
+  TrainStat,
 } from './types';
 
 // Serializa un objeto/array anidado a la sintaxis de brackets de Strapi 4
@@ -614,6 +616,20 @@ export const gamesService = {
   // Tabla de récords del juego (público). Con sesión, marca al usuario actual.
   async getLeaderboard(placeId: number, limit = 5): Promise<GameLeaderboard> {
     const response = await apiClient.get(`/games/${placeId}/leaderboard`, { params: { limit } });
+    return response.data;
+  },
+};
+
+// Escuela de entrenamiento: estado (tótem exigido, stats, entrenador) + iniciar entrenamiento.
+export const trainingService = {
+  // Estado de la escuela para un compañero (requiere sesión).
+  async getInfo(placeId: number, companionId: number): Promise<TrainingInfo> {
+    const response = await apiClient.get(`/training/${placeId}/info`, { params: { companionId } });
+    return response.data;
+  },
+  // Inicia un entrenamiento de `stat`: cobra el tótem exigido y deja al compañero entrenando.
+  async start(placeId: number, companionId: number, stat: TrainStat): Promise<TrainingInfo> {
+    const response = await apiClient.post(`/training/${placeId}/start`, { companionId, stat });
     return response.data;
   },
 };

@@ -11,6 +11,7 @@
  */
 
 const { createCoreService } = require('@strapi/strapi').factories;
+const { statCap } = require('../../training/engine');
 
 const UID = 'api::companion.companion';
 
@@ -34,6 +35,28 @@ function baseStatsFor(monster) {
 module.exports = createCoreService(UID, ({ strapi }) => ({
   baseStatsFor,
   GENERIC_BASE_STATS,
+
+  /**
+   * Resuelve (perezosamente) un entrenamiento en curso del compañero `c`: si su
+   * `trainingEndsAt` ya pasó, aplica el +`trainingGain` a la stat entrenada
+   * (clamp al tope 2×nivel / 100), limpia los campos de entrenamiento y devuelve
+   * el row actualizado. Si no hay nada que resolver, devuelve `c` tal cual.
+   * Lo llaman el controller de training (info/start) y `companion.mine`.
+   */
+  async resolveTraining(c) {
+    if (!c || !c.trainingStat || !c.trainingEndsAt) return c;
+    if (new Date(c.trainingEndsAt).getTime() > Date.now()) return c; // todavía entrenando
+
+    const stat = c.trainingStat;
+    const gain = c.trainingGain || 1;
+    const current = Number(c[stat]) || 0;
+    const next = Math.min(current + gain, statCap(stat, c.level));
+
+    const updated = await strapi.entityService.update(UID, c.id, {
+      data: { [stat]: next, trainingStat: null, trainingEndsAt: null, trainingGain: 1 },
+    });
+    return { ...c, ...updated };
+  },
 
   /**
    * Crea un compañero para `userId` sobre `monsterId`, con sus stats de progresión

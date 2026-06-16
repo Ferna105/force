@@ -101,6 +101,11 @@ async function loadOwnedCompanion(ctx, userId, companionId) {
   return c;
 }
 
+// ¿El companion está entrenando ahora mismo? (no puede pelear)
+function companionTraining(c) {
+  return !!(c?.trainingStat && c?.trainingEndsAt && new Date(c.trainingEndsAt).getTime() > Date.now());
+}
+
 // ¿El companion ya está comprometido en un duelo abierto/activo?
 async function companionBusy(companionId) {
   const existing = await strapi.db.query(DUEL_UID).findOne({
@@ -164,6 +169,7 @@ module.exports = {
 
     const companion = await loadOwnedCompanion(ctx, user.id, companionId);
     if (!companion) return;
+    if (companionTraining(companion)) return ctx.badRequest('Tu compañero está entrenando y no puede pelear.');
     if (await companionBusy(companionId)) return ctx.badRequest('Tu compañero ya está en un duelo.');
 
     const balance = user.balance ?? 0;
@@ -202,6 +208,7 @@ module.exports = {
 
     const companion = await loadOwnedCompanion(ctx, user.id, companionId);
     if (!companion) return;
+    if (companionTraining(companion)) return ctx.badRequest('Tu compañero está entrenando y no puede pelear.');
     if (await companionBusy(companionId)) return ctx.badRequest('Tu compañero ya está en un duelo.');
 
     const balance = user.balance ?? 0;

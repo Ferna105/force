@@ -4,8 +4,8 @@
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
-import { usePlace, useMonsters, useDiscoveredMonsters, useActiveCompanion, inventoryService, shopService, battleService, gamesService } from '@/api';
-import type { Place, Item, ShopStock, DuelsLobby, GameStatus, GameLeaderboard } from '@/api/types';
+import { usePlace, useMonsters, useDiscoveredMonsters, useActiveCompanion, inventoryService, shopService, battleService, gamesService, trainingService } from '@/api';
+import type { Place, Item, ShopStock, DuelsLobby, GameStatus, GameLeaderboard, TrainingInfo, TrainStat } from '@/api/types';
 import { useAuth } from '@/hooks/useAuth';
 import { useDiscovery } from '@/hooks/useDiscovery';
 import { useToast } from '@/hooks/useToast';
@@ -60,6 +60,7 @@ export default function PlacePage() {
         {a.Type === 'game' && <GameBody place={place} />}
         {a.Type === 'information' && <InfoBody place={place} />}
         {a.Type === 'battledome' && <BattledomeBody placeId={placeId} />}
+        {a.Type === 'training' && <TrainingBody placeId={placeId} />}
       </div>
     </>
   );
@@ -355,10 +356,13 @@ function BattledomeBody({ placeId }: { placeId: number }) {
   const cur = comp?.currentHealth ?? 0;
   const max = comp?.health ?? 100;
   const fainted = !!comp && cur <= 0;
+  // El compañero no puede pelear mientras entrena en la escuela.
+  const training = !!(comp?.trainingEndsAt && new Date(comp.trainingEndsAt).getTime() > Date.now());
+  const blocked = fainted || training;
   const canWager = (w: number) => (user.balance ?? 0) >= w;
 
   const create = async () => {
-    if (!companion || fainted) return;
+    if (!companion || blocked) return;
     if (!canWager(wager)) { toast.show({ tone: 'danger', icon: 'warning', message: 'No te alcanza el saldo para esa apuesta.' }); return; }
     setBusy(true);
     try {
@@ -372,7 +376,8 @@ function BattledomeBody({ placeId }: { placeId: number }) {
   };
 
   const join = (d: DuelsLobby['open'][number]) => {
-    if (!companion || fainted) { toast.show({ tone: 'danger', icon: 'warning', message: 'Tu compañero está debilitado. Curalo con una poción antes de pelear.' }); return; }
+    if (!companion || training) { toast.show({ tone: 'danger', icon: 'warning', message: 'Tu compañero está entrenando y no puede pelear.' }); return; }
+    if (fainted) { toast.show({ tone: 'danger', icon: 'warning', message: 'Tu compañero está debilitado. Curalo con una poción antes de pelear.' }); return; }
     if (!canWager(d.wager)) { toast.show({ tone: 'danger', icon: 'warning', message: 'No te alcanza el saldo para esa apuesta.' }); return; }
     toast.show({
       tone: 'gold', icon: 'question',
@@ -415,7 +420,7 @@ function BattledomeBody({ placeId }: { placeId: number }) {
         </div>
         <button
           className="btn btn-primary btn-lg"
-          disabled={!companion || fainted}
+          disabled={!companion || blocked}
           onClick={() => setComposing((v) => !v)}
         >
           ⚔ Crear duelo
@@ -424,6 +429,11 @@ function BattledomeBody({ placeId }: { placeId: number }) {
 
       {!companion && (
         <div className="d-empty" style={{ marginTop: 18 }}>Todavía no tenés compañero. Adoptá una criatura desde su ficha para poder pelear.</div>
+      )}
+      {training && (
+        <div className="d-empty" style={{ marginTop: 18, color: 'var(--gold-soft)' }}>
+          <b style={{ color: 'var(--gold-soft)' }}>{monsterName}</b> está entrenando en la escuela y no puede pelear hasta que termine.
+        </div>
       )}
       {fainted && (
         <div className="d-empty" style={{ marginTop: 18, color: 'var(--danger)' }}>
@@ -509,11 +519,220 @@ function BattledomeBody({ placeId }: { placeId: number }) {
             </div>
             <div className="d-right">
               <span className="d-wager"><span className="c">F</span> {fmt(d.wager)}</span>
-              <button className="btn btn-primary btn-sm" disabled={fainted || !companion} onClick={() => join(d)}>Inscribirse</button>
+              <button className="btn btn-primary btn-sm" disabled={blocked || !companion} onClick={() => join(d)}>Inscribirse</button>
             </div>
           </div>
         ))}
       </div>
     </>
+  );
+}
+
+/* ============ ESCUELA DE ENTRENAMIENTO ============ */
+// Etiqueta humana de cada disciplina entrenable.
+const STAT_LABEL: Record<TrainStat, string> = {
+  strength: 'Fuerza', defense: 'Defensa', speed: 'Velocidad', health: 'Salud', level: 'Nivel',
+};
+// Etiqueta humana de la rareza del tótem exigido.
+const RARITY_ES: Record<string, string> = {
+  common: 'común', uncommon: 'poco común', rare: 'raro', epic: 'épico', legendary: 'legendario',
+};
+// Duración en d / hh:mm:ss a partir de segundos (los entrenamientos duran días).
+function fmtDur(secs: number) {
+  const d = Math.floor(secs / 86400);
+  const h = Math.floor((secs % 86400) / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  const s = secs % 60;
+  const hms = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  return d > 0 ? `${d}d ${hms}` : hms;
+}
+
+function TrainingBody({ placeId }: { placeId: number }) {
+  const { user } = useAuth();
+  const { data: companion } = useActiveCompanion(user?.id ?? null);
+  const [info, setInfo] = useState<TrainingInfo | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState<TrainStat | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [secsLeft, setSecsLeft] = useState<number | null>(null);
+
+  const companionId = companion?.id ?? null;
+
+  // Carga el estado de la escuela para el compañero activo.
+  const load = useCallback(async () => {
+    if (!companionId) { setLoading(false); return; }
+    setLoading(true);
+    try {
+      const i = await trainingService.getInfo(placeId, companionId);
+      setInfo(i);
+    } catch {
+      setMsg('No se pudo cargar la escuela.');
+    } finally {
+      setLoading(false);
+    }
+  }, [placeId, companionId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  // Cuenta regresiva del entrenamiento en curso; al llegar a 0 recarga (el +gain
+  // ya se aplicó en el server y el compañero queda libre).
+  const trainingSecs = info?.status === 'training' ? info.secondsLeft : null;
+  useEffect(() => {
+    if (trainingSecs == null) { setSecsLeft(null); return; }
+    setSecsLeft(trainingSecs);
+    const t = setInterval(() => {
+      setSecsLeft((s) => {
+        if (s == null) return null;
+        if (s <= 1) { clearInterval(t); load(); return 0; }
+        return s - 1;
+      });
+    }, 1000);
+    return () => clearInterval(t);
+  }, [trainingSecs, load]);
+
+  const train = async (stat: TrainStat) => {
+    if (!companionId) return;
+    setBusy(stat); setMsg(null);
+    try {
+      const i = await trainingService.start(placeId, companionId, stat);
+      setInfo(i);
+      setMsg(`¡${STAT_LABEL[stat]} en entrenamiento! Volvé cuando termine.`);
+    } catch {
+      setMsg('No se pudo iniciar el entrenamiento (¿tenés el tótem que pide el maestro?).');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  if (!user) {
+    return (
+      <div className="panel" style={{ padding: '34px 36px', marginTop: 26, textAlign: 'center' }}>
+        <h3 className="cinzel" style={{ color: '#F6ECD7', marginBottom: 8 }}>Escuela de entrenamiento</h3>
+        <p className="sub" style={{ margin: '0 auto 18px' }}>Iniciá sesión para entrenar a tu compañero.</p>
+        <Link className="btn btn-primary" href="/login">Iniciar sesión</Link>
+      </div>
+    );
+  }
+
+  if (!companion) {
+    return (
+      <div className="d-empty" style={{ marginTop: 26 }}>
+        Todavía no tenés compañero. Adoptá una criatura desde su ficha para poder entrenarla.
+      </div>
+    );
+  }
+
+  const trainer = info?.trainer ?? null;
+
+  return (
+    <div className="train-wrap">
+      {/* Tarjeta del entrenador (siempre visible) */}
+      {trainer && (
+        <div className="panel train-trainer">
+          <img
+            className="train-trainer-img"
+            src={trainer.imageUrl ? strapiMedia(trainer.imageUrl) : thumbFallback(trainer.name)}
+            alt={trainer.name}
+          />
+          <div>
+            <div className="kicker">Maestro de la escuela</div>
+            <h3 className="cinzel" style={{ color: '#F6ECD7', margin: '4px 0 8px' }}>{trainer.name}</h3>
+            <p className="sub" style={{ marginBottom: 10 }}>
+              Especialista en{' '}
+              <b style={{ color: 'var(--gold-soft)' }}>
+                {trainer.specialties.map((s) => STAT_LABEL[s]).join(' y ') || '—'}
+              </b>
+              . Entrenar esas disciplinas con él sube <b>+2</b> en vez de +1.
+            </p>
+            <div className="train-spec-row">
+              {trainer.specialties.map((s) => (
+                <span key={s} className="train-spec">{STAT_LABEL[s]} +2</span>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {msg && <p className="sub" style={{ margin: '4px 0', color: 'var(--gold-soft)' }}>{msg}</p>}
+      {loading && <Loading />}
+
+      {/* Entrenamiento en curso */}
+      {!loading && info?.status === 'training' && (
+        <div className="panel" style={{ padding: '30px 34px', textAlign: 'center' }}>
+          <div className="kicker" style={{ marginBottom: 8 }}>Entrenamiento en curso</div>
+          <h3 className="cinzel" style={{ color: 'var(--gold-soft)', marginBottom: 6 }}>
+            Entrenando {STAT_LABEL[info.stat]} (+{info.gain})
+          </h3>
+          <p className="sub" style={{ marginBottom: 14 }}>
+            Tu compañero está en plena disciplina. No puede pelear hasta terminar.
+          </p>
+          <div className="train-clock cinzel">{fmtDur(secsLeft ?? info.secondsLeft)}</div>
+        </div>
+      )}
+
+      {/* Libre: tótem exigido + grilla de disciplinas */}
+      {!loading && info?.status === 'idle' && (
+        <>
+          <div className="panel train-demand">
+            <div className="train-totem">
+              {info.demandedTotem ? (
+                <>
+                  <img
+                    src={info.demandedTotem.iconUrl ? strapiMedia(info.demandedTotem.iconUrl) : thumbFallback(info.demandedTotem.name)}
+                    alt={info.demandedTotem.name}
+                  />
+                  <div>
+                    <div className="kicker">El maestro exige</div>
+                    <div className="cinzel" style={{ fontSize: 22, color: '#F6ECD7' }}>{info.demandedTotem.name}</div>
+                    <div className="sub">
+                      Tótem {RARITY_ES[info.demandedTotem.rarity] ?? info.demandedTotem.rarity} ·{' '}
+                      {info.ownsDemanded
+                        ? <b style={{ color: 'var(--verdant, #7bbf6a)' }}>Lo tenés ✓</b>
+                        : <b style={{ color: 'var(--danger)' }}>No lo tenés — conseguilo en una tienda</b>}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="sub">No hay tótems disponibles para el nivel de tu compañero.</div>
+              )}
+            </div>
+            <div className="train-meta">
+              <div><b className="cinzel" style={{ color: 'var(--gold-soft)', fontSize: 20 }}>Nv. {info.level}</b><div className="sub">Nivel</div></div>
+              <div><b className="cinzel" style={{ color: 'var(--gold-soft)', fontSize: 20 }}>{info.days}d</b><div className="sub">Duración</div></div>
+            </div>
+          </div>
+
+          <div className="sec-title"><h3 className="cinzel">Disciplinas</h3></div>
+          <p className="sub" style={{ marginBottom: 18 }}>
+            Cada característica puede entrenarse hasta el doble del nivel. Para superar ese tope, subí el nivel.
+          </p>
+          <div className="train-grid">
+            {info.stats.map((st) => {
+              const capped = !st.canTrain;
+              const disabled = busy != null || capped || !info.ownsDemanded;
+              return (
+                <div key={st.key} className={`panel train-stat${capped ? ' is-capped' : ''}`}>
+                  <div className="train-stat-top">
+                    <span className="cinzel">{STAT_LABEL[st.key]}</span>
+                    <span className={`train-gain${st.gain > 1 ? ' boon' : ''}`}>+{st.gain}</span>
+                  </div>
+                  <div className="train-stat-val">
+                    <b>{st.value}</b>
+                    <span className="sub"> / {st.cap}{st.key === 'level' ? '' : st.key === 'health' ? ' (4× nivel)' : ' (2× nivel)'}</span>
+                  </div>
+                  <button
+                    className="btn btn-primary btn-sm"
+                    disabled={disabled}
+                    onClick={() => train(st.key)}
+                  >
+                    {capped ? 'Tope alcanzado' : busy === st.key ? 'Iniciando…' : 'Entrenar'}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
   );
 }

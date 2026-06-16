@@ -157,16 +157,19 @@ A `companion` (user↔monster bond) carries two independent groups of stats:
   **raise** these stats are not implemented yet — the stats are stored as the mutable current
   values, ready to be bumped later.
 
-**Base stats are balanced per species** (budget STR+DEF+SPD≈30, health≈100, varied by biome
-archetype). Seeded in `src/seed.js` with a cascade: `MONSTER_BASE_STATS[name]` (hand-authored
-anchors: Tronc tank / Serpi agile / Triso offense / Raya balanced+lucky / Terri fast-fragile)
-→ `BIOME_BASE_STATS[biome]` (per-biome archetype each anchor derives from, so any monster
-inherits its biome's flavor: forest tank / aqua agile / volcanic offense / arid balanced /
-space fast-fragile / snow defensive) → `GENERIC_BASE_STATS` (for monsters with no biome). The
-seed **backfills each `Base*` field only when it's null**
-(step 3, same "fill-if-missing" convention as item/hotspot backfill) — so it never overwrites
-an admin edit, and because `seed.js` runs on `bootstrap` it populates **both local and prod**
-(prod on the next redeploy). No per-field `seeded` marker is needed since it never overwrites.
+**Base stats are balanced per species and capped at ≤10 each** (so the training school's
+`2×level` cap is meaningful — see the Training engine; no base stat ever exceeds 10), varied by
+biome archetype. Seeded in `src/seed.js` with a cascade: `MONSTER_BASE_STATS[name]`
+(hand-authored anchors: Tronc tank / Serpi agile / Triso offense / Raya balanced+lucky / Terri
+fast-fragile) → `BIOME_BASE_STATS[biome]` (per-biome archetype each anchor derives from, so any
+monster inherits its biome's flavor: forest tank / aqua agile / volcanic offense / arid balanced
+/ space fast-fragile / snow defensive) → `GENERIC_BASE_STATS` (for monsters with no biome). The
+seed **fills each `Base*` field when null AND lowers any value > 10** to the archetype value
+(step 3) — a manual value in 1..10 is respected, but the ≤10 invariant is enforced. Because
+`seed.js` runs on `bootstrap` it populates **both local and prod** (prod on the next redeploy).
+Companion progression stats are likewise migrated down in step 9b (any stat above its training
+cap — `2×level`, or `4×level` for health — is reset to the species base; old high data.
+Legitimately trained stats never exceed the cap, so they're left alone).
 
 **Creation seam.** `companion.service` exposes `baseStatsFor(monster)` (Base* → the 6
 progression stats, with generic fallback) and `createForUser(userId, monsterId, extra)`, which
@@ -265,6 +268,48 @@ in `seed.js` via `GAME_KEYS`, or set in the admin) + a frontend game component t
 generic components and calls `gamesService.claim(placeId, score)`. No schema change. The full
 contracts: backend in **`force-back/src/api/game/README.md`**, frontend (componentes genéricos
 + paso a paso) in **`force-front/src/app/explore/[worldId]/places/[placeId]/play/README.md`**.
+
+### Backend — Training engine (escuela de entrenamiento)
+
+Places of type `training` are **schools** where the player **raises a companion's combat
+stats** by paying with a **totem** and waiting real time. Custom **code-only** API `training`
+(controller + routes + `engine.js`, like `shop`/`battle`/`game`); all rules live in
+`src/api/training/engine.js`. Full contract in **`force-back/src/api/training/README.md`**.
+
+- **Stats & cap** — trainable: `strength`/`defense`/`speed`/`health`/`level` (`STATS`). Each
+  completed training raises the chosen stat **+1** (or **+2** if it's a specialty of the
+  school's trainer). Cap for str/def/spd = **2 × level**, **health = 4 × level** (`statCap` /
+  `CAP_MULT`); `level` caps at 100. To pass the cap you must raise `level` first. Base stats are kept **≤10 per stat** (see
+  Companion stats) so that low-base disciplines (e.g. speed) become trainable within a few
+  levels; `level` (and any stat already under its cap) is always trainable.
+- **Payment** — 1 totem (`item.category==='totem'`) of the rarity for the companion's level
+  band (`rarityByLevel`): 1–19 common · 20–39 uncommon · 40–59 rare · 60–79 epic · 80–100
+  legendary. The trainer demands **one specific totem** picked at random among that rarity and
+  **persisted** in `companion.demandedTotem` (stable across reloads; re-rolled only on pay or
+  when the level band changes). Duration in **real days** (`DAYS_BY_RARITY`): 1/2/3/4/5.
+- **Companion state** (schema `companion`) — `trainingStat`, `trainingEndsAt`, `trainingGain`
+  (1 or 2, fixed at start), `demandedTotem` (relation → item). Completion is **lazy**:
+  `companion.service.resolveTraining(c)` applies `+trainingGain` (clamped to cap) when
+  `trainingEndsAt` passed, then clears the fields — called by `training.info`/`start` and
+  `companion.mine` (no cron). While training, the companion **can't battle**:
+  `battle.create`/`battle.join` reject it (`companionTraining`).
+- **Trainer** (content-type `trainer`: `name`, `image`, `specialties: json`, `place`→school).
+  `gainFor(stat, specialties)` ⇒ +2 if the stat is a specialty. The front gets it inside the
+  `info` response.
+- **Endpoints** (auth) — `GET /training/:placeId/info?companionId=` (estado: tótem exigido,
+  stats con value/cap/gain, entrenador) and `POST /training/:placeId/start { companionId, stat }`
+  (valida tope/duelo/tótem, cobra 1 tótem, programa el entrenamiento). Permisos
+  `training.info`/`training.start` al rol Authenticated en `src/seed.js`.
+- **Seed** — `src/seed.js` crea idempotente el place **"Fragua de los Maestros"** (Eryndor,
+  `Type:'training'`) y el entrenador **"Maestro Pyros"** (`specialties:['strength','defense']`,
+  imagen subida desde `scripts/assets/maestro-pyros.png`), poblando local y prod en bootstrap.
+- **Frontend** — `trainingService` (`getInfo`/`start`) en `services.ts`; el branch
+  `a.Type === 'training'` de la página de place renderiza `TrainingBody` (tarjeta del
+  entrenador, tótem exigido, grilla de disciplinas con +1/+2 y cuenta regresiva del
+  entrenamiento en curso). El battledome deshabilita pelear si el compañero entrena.
+
+**Adding a school** = a place `Type:'training'` + a `trainer` row with its `place`. All schools
+teach everything; only the trainer's `specialties` (the +2) vary.
 
 ### Frontend — discovery UX
 
