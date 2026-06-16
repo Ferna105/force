@@ -14,9 +14,8 @@ export function WorldCard({ world, row = false, short = false }: { world: World;
   const img = mediaUrl(a.Image, worldArtFallback(a.Name));
   const places = a.places?.data?.length ?? 0;
   return (
-    <Link className={`world${row ? ' wrow' : ''}${short ? ' wshort' : ''}`} href={`/explore/${world.id}`} data-biome={a.Biome ?? ''}>
+    <Link className={`world${row ? ' wrow' : ''}${short ? ' wshort' : ''}`} href={`/explore/${world.id}`}>
       <div className="orb">{img && <img src={img} alt={a.Name} />}</div>
-      <BiomeTag biome={a.Biome} abs />
       <div className="wb">
         <h4 className="cinzel">{a.Name}</h4>
         {a.Description && <p>{a.Description}</p>}

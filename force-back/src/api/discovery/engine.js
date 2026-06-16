@@ -211,7 +211,7 @@ function evaluateStrategy(strategy, ctx) {
 /* ============ Carga de contexto del usuario ============ */
 async function loadContext(strapi, userId) {
   const [worlds, places, monsters, items, events, inventory] = await Promise.all([
-    strapi.entityService.findMany(WORLD_UID, { fields: ['id', 'Name', 'Biome'], publicationState: 'live' }),
+    strapi.entityService.findMany(WORLD_UID, { fields: ['id', 'Name'], publicationState: 'live' }),
     strapi.entityService.findMany(PLACE_UID, {
       fields: ['id', 'Name'],
       populate: { World: { fields: ['id', 'Name'] } },

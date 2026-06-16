@@ -92,6 +92,9 @@ export interface Monster extends StrapiEntity {
     AverageWeight: number | null;
     InnateAbility: string | null;
     Biome: BiomeName | null;
+    // Mundo al que pertenece la criatura (relación). El bioma sigue siendo propio
+    // del monstruo; el mundo es un dato aparte.
+    World?: { data: World | null };
     DiscoveryStrategy?: DiscoveryStrategy | null;
     // Stats base de la especie (heredados por el compañero al crearse)
     BaseHealth: number | null;
@@ -127,9 +130,11 @@ export interface World extends StrapiEntity {
     Name: string;
     Description: string | null;
     Image: StrapiImage | null;
-    Biome: BiomeName | null;
     places: {
       data: Place[];
+    };
+    monsters?: {
+      data: Monster[];
     };
     createdAt: string;
     updatedAt: string;

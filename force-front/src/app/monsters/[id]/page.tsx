@@ -47,7 +47,10 @@ function MonsterView() {
   const a = monster.attributes;
   const biome = a.Biome;
   const art = mediaUrl(a.Image, monsterArtFallback(a.Name));
-  const habitatWorld = biome ? (worlds ?? []).find((w) => w.attributes.Biome === biome) : undefined;
+  // Hábitat: el mundo al que pertenece la criatura (relación World) — se busca el
+  // mundo completo en la lista para tener sus lugares; el lugar sigue por bioma.
+  const worldId = a.World?.data?.id;
+  const habitatWorld = worldId ? (worlds ?? []).find((w) => w.id === worldId) : undefined;
   const habitatPlace = biome ? (places ?? []).find((p) => p.attributes.Biome === biome) : undefined;
   // Las criaturas afines también se limitan a las ya descubiertas.
   const kin = (monsters ?? []).filter((m) => m.id !== monster.id && discovered.has(m.id) && (!biome || m.attributes.Biome === biome)).slice(0, 4);

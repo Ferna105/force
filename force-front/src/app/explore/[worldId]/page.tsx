@@ -5,10 +5,10 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useWorld, useMonsters, useDiscoveredMonsters } from '@/api';
 import { useAuth } from '@/hooks/useAuth';
-import { BIOME, mediaUrl, worldArtFallback, PLACE_TYPE } from '@/lib/design';
+import { mediaUrl, worldArtFallback, PLACE_TYPE } from '@/lib/design';
 import Topbar from '@/components/shell/Topbar';
 import { Loading, ErrorState } from '@/components/ui/states';
-import { BiomeTag, SectionTitle } from '@/components/ui/tags';
+import { SectionTitle } from '@/components/ui/tags';
 import { PlaceBanner, MonsterCard } from '@/components/ui/cards';
 
 export default function WorldPage() {
@@ -24,10 +24,10 @@ export default function WorldPage() {
 
   const a = world.attributes;
   const places = a.places?.data ?? [];
-  const biome = a.Biome;
-  // Criaturas nativas: solo las que el usuario logueado ya descubrió (vacío sin sesión).
+  // Criaturas nativas: las que pertenecen a este mundo (relación World) y que el
+  // usuario logueado ya descubrió (vacío sin sesión).
   const discovered = new Set(discoveredIds ?? []);
-  const natives = (monsters ?? []).filter((m) => biome && m.attributes.Biome === biome && discovered.has(m.id));
+  const natives = (monsters ?? []).filter((m) => m.attributes.World?.data?.id === world.id && discovered.has(m.id));
   const art = mediaUrl(a.Image, worldArtFallback(a.Name));
 
   return (
@@ -37,13 +37,11 @@ export default function WorldPage() {
         <section className="world-hero">
           <div className="stars" />
           <div className="txt">
-            {biome && <BiomeTag biome={biome} />}
             <h1 className="cinzel" style={{ fontSize: 'clamp(48px,7vw,84px)', lineHeight: '.95', color: '#F6ECD7', margin: '14px 0 14px', letterSpacing: '.03em' }}>{a.Name}</h1>
             {a.Description && <p className="sub" style={{ fontSize: 18 }}>{a.Description}</p>}
             <div className="stat-strip">
               <div className="s"><b>{places.length}</b><span>Lugares</span></div>
               {user && <div className="s"><b>{natives.length}</b><span>Criaturas nativas</span></div>}
-              {biome && <div className="s"><b>{BIOME[biome].label}</b><span>Ecosistema</span></div>}
             </div>
             <div style={{ display: 'flex', gap: 12, marginTop: 26, flexWrap: 'wrap' }}>
               {places[0] && <Link className="btn btn-primary btn-lg" href={`/explore/${world.id}/places/${places[0].id}`}>Viajar a {a.Name} ✦</Link>}
@@ -67,18 +65,6 @@ export default function WorldPage() {
             </div>
           </div>
         </section>
-
-        {biome && (
-          <div className="panel" style={{ marginTop: 26, padding: '24px 28px', display: 'flex', gap: 22, alignItems: 'center', flexWrap: 'wrap' }}>
-            <div style={{ flex: '1 1 280px' }}>
-              <div className="kicker">Sobre el ecosistema</div>
-              <p style={{ margin: '8px 0 0', color: 'var(--mist)', maxWidth: 640 }}>
-                {a.Name} es un mundo de ecosistema {BIOME[biome].label.toLowerCase()}. Sus criaturas se adaptan a este bioma y los lugares que lo componen reflejan su carácter.
-              </p>
-            </div>
-            <BiomeTag biome={biome} />
-          </div>
-        )}
 
         <SectionTitle title={`Lugares de ${a.Name}`} />
         <div className="grid" style={{ gridTemplateColumns: 'repeat(2,1fr)' }}>

@@ -35,17 +35,11 @@
       "target": "api::place.place",
       "mappedBy": "World"
     },
-    "Biome": {
-      "type": "enumeration",
-      "enum": [
-        "forest",
-        "aqua",
-        "volcanic",
-        "space",
-        "snow",
-        "arid"
-      ],
-      "required": false
+    "monsters": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::monster.monster",
+      "mappedBy": "World"
     }
   }
 }

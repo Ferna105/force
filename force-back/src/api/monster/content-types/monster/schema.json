@@ -58,6 +58,12 @@
       ],
       "required": false
     },
+    "World": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::world.world",
+      "inversedBy": "monsters"
+    },
     "DiscoveryStrategy": {
       "type": "json"
     },

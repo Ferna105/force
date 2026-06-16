@@ -96,6 +96,9 @@ function slugify(name) {
     .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 }
 
+// Los mundos ya NO tienen bioma. Esta tabla nombre→bioma se usa solo como lookup
+// del seed: para derivar el bioma de un place desde su mundo y para emparejar cada
+// monstruo con el mundo de su bioma (campo World).
 const WORLD_BIOME = { Eryndor: 'volcanic', Koril: 'forest', Deo: 'arid', Egea: 'space' };
 const MONSTER_BIOME = { Tronc: 'forest', Serpi: 'aqua', Triso: 'volcanic', Raya: 'arid', Terri: 'space' };
 
@@ -475,26 +478,33 @@ module.exports = async function seed({ strapi }) {
     await enablePermissions(strapi, 'public', PUBLIC_ACTIONS);
     await enablePermissions(strapi, 'authenticated', AUTH_ACTIONS);
 
-    // 2) Biomas de mundos
+    // 2) Mundos. Ya NO tienen bioma (el bioma es solo de places y monstruos); se
+    //    consultan para usarlos más abajo (escuelas, mundo de cada monstruo, etc.).
     const worlds = await strapi.db.query('api::world.world').findMany({});
-    for (const w of worlds) {
-      const biome = WORLD_BIOME[w.Name];
-      if (biome && w.Biome !== biome) {
-        await strapi.db.query('api::world.world').update({ where: { id: w.id }, data: { Biome: biome } });
-      }
-    }
+    // Mundo por bioma (según WORLD_BIOME): para asignar a cada monstruo el mundo
+    // que mejor matchea su bioma. Sirve además de fallback round-robin.
+    const worldIdByBiome = {};
+    worlds.forEach((w) => { const b = WORLD_BIOME[w.Name]; if (b) worldIdByBiome[b] = w.id; });
 
-    // 3) Biomas + stats base de monstruos.
-    //    Los Base* se rellenan campo a campo si están null Y se BAJAN si superan 10
-    //    (invariante de diseño: ningún stat base supera 10, para que el tope 2×nivel
-    //    de la escuela tenga sentido). Un valor 1..10 puesto a mano se respeta.
-    const monsters = await strapi.db.query('api::monster.monster').findMany({});
-    for (const m of monsters) {
+    // 3) Bioma + mundo + stats base de monstruos.
+    //    - Bioma: se siembra por nombre (MONSTER_BIOME).
+    //    - World: cada monstruo pertenece a un mundo (campo nuevo). Se asigna el mundo
+    //      cuyo bioma coincide con el del monstruo, con fallback round-robin. Solo si
+    //      falta (no pisa una asignación hecha a mano en el admin).
+    //    - Base*: se rellenan campo a campo si están null Y se BAJAN si superan 10
+    //      (invariante de diseño: ningún stat base supera 10, para que el tope 2×nivel
+    //      de la escuela tenga sentido). Un valor 1..10 puesto a mano se respeta.
+    const monsters = await strapi.db.query('api::monster.monster').findMany({ populate: { World: true } });
+    for (const [idx, m] of monsters.entries()) {
       const data = {};
       const biome = MONSTER_BIOME[m.Name];
       if (biome && m.Biome !== biome) data.Biome = biome;
-      // Stats base: a medida por nombre → arquetipo del bioma → genérico.
       const effBiome = biome || m.Biome;
+      // World: solo si el monstruo todavía no tiene mundo asignado.
+      if (!m.World && worlds.length) {
+        data.World = worldIdByBiome[effBiome] || worlds[idx % worlds.length].id;
+      }
+      // Stats base: a medida por nombre → arquetipo del bioma → genérico.
       const baseStats = MONSTER_BASE_STATS[m.Name] || BIOME_BASE_STATS[effBiome] || GENERIC_BASE_STATS;
       for (const [field, value] of Object.entries(baseStats)) {
         if (m[field] == null || m[field] > 10) data[field] = value;

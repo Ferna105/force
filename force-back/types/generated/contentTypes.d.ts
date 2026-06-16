@@ -823,6 +823,11 @@ export interface ApiMonsterMonster extends Schema.CollectionType {
       'admin::user'
     > &
       Attribute.Private;
+    World: Attribute.Relation<
+      'api::monster.monster',
+      'manyToOne',
+      'api::world.world'
+    >;
   };
 }
 
@@ -1038,9 +1043,6 @@ export interface ApiWorldWorld extends Schema.CollectionType {
     draftAndPublish: true;
   };
   attributes: {
-    Biome: Attribute.Enumeration<
-      ['forest', 'aqua', 'volcanic', 'space', 'snow', 'arid']
-    >;
     createdAt: Attribute.DateTime;
     createdBy: Attribute.Relation<
       'api::world.world',
@@ -1050,6 +1052,11 @@ export interface ApiWorldWorld extends Schema.CollectionType {
       Attribute.Private;
     Description: Attribute.Text;
     Image: Attribute.Media<'images'>;
+    monsters: Attribute.Relation<
+      'api::world.world',
+      'oneToMany',
+      'api::monster.monster'
+    >;
     Name: Attribute.String & Attribute.Required & Attribute.Unique;
     places: Attribute.Relation<
       'api::world.world',
