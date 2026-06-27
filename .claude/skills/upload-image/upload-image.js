@@ -50,7 +50,7 @@ async function main() {
       const out = { ...row };
       try {
         const kind = KINDS[row.kind];
-        if (!kind) throw new Error(`kind inválido: "${row.kind}" (usar place|item)`);
+        if (!kind) throw new Error(`kind inválido: "${row.kind}" (usar place|region|item)`);
         const field = row.field || kind.defaultField;
 
         const filePath = path.join(__dirname, row.file);
