@@ -9,7 +9,7 @@ import type { StrapiImage } from '@/api/types';
 /* ============ TIPOS ============ */
 export type Biome = 'forest' | 'aqua' | 'volcanic' | 'space' | 'snow' | 'arid';
 export type Rarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
-export type PlaceType = 'shop' | 'game' | 'information' | 'battledome' | 'training';
+export type PlaceType = 'shop' | 'game' | 'information' | 'battledome' | 'training' | 'neighborhood';
 export type ItemType = 'weapon' | 'armor' | 'consumable' | 'key' | 'misc';
 
 /* ============ RAREZA ============ */
@@ -60,6 +60,7 @@ export const PLACE_TYPE: Record<PlaceType, { label: string; pill: string }> = {
   information: { label: 'Información', pill: 'tp-info' },
   battledome:  { label: 'Battledome',  pill: 'tp-battledome' },
   training:    { label: 'Escuela',     pill: 'tp-training' },
+  neighborhood:{ label: 'Vecindario',  pill: 'tp-neighborhood' },
 };
 
 const PLACE_TYPE_PATHS: Record<PlaceType, React.ReactNode> = {
@@ -68,6 +69,7 @@ const PLACE_TYPE_PATHS: Record<PlaceType, React.ReactNode> = {
   information: <><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 7.5h.01" /></>,
   battledome:  <><path d="M14.5 14.5 20 20l1-3-3-1-5.5-5.5M9.5 14.5 4 20l-1-3 3-1 5.5-5.5" /><path d="M13 11l6.5-6.5 1.5 0 0 1.5L14.5 12.5M11 11 4.5 4.5 3 4.5 3 6l6.5 6.5" /></>,
   training:    <><path d="M6.5 6.5 3 3M3 8V3h5M17.5 6.5 21 3M21 8V3h-5M9 15l-6 6M3 16v5h5M15 15l6 6M21 16v5h-5M12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z" /></>,
+  neighborhood:<><path d="M3 11l9-7 9 7M5 10v10h14V10M10 20v-6h4v6" /></>,
 };
 
 export function PlaceTypeIcon({ type }: { type: PlaceType }) {
@@ -81,7 +83,7 @@ export function PlaceTypeIcon({ type }: { type: PlaceType }) {
 /* Verbo del CTA según el tipo de lugar */
 export const PLACE_CTA: Record<PlaceType, string> = {
   shop: 'Visitar mercado →', game: 'Jugar →', information: 'Explorar →',
-  battledome: 'Entrar a la arena →', training: 'Entrenar →',
+  battledome: 'Entrar a la arena →', training: 'Entrenar →', neighborhood: 'Ver parcelas →',
 };
 
 /* Bioma del lugar → clase de arena del battledome (fondo animado). */

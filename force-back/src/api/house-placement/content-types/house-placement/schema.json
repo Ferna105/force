@@ -1,0 +1,36 @@
+{
+  "kind": "collectionType",
+  "collectionName": "house_placements",
+  "info": {
+    "singularName": "house-placement",
+    "pluralName": "house-placements",
+    "displayName": "House Placement",
+    "description": "Un mueble colocado en un cubo de una casa: objeto + coordenadas (x, y)."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "house": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::house.house",
+      "inversedBy": "placements"
+    },
+    "item": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::item.item"
+    },
+    "x": {
+      "type": "integer",
+      "required": true,
+      "min": 0
+    },
+    "y": {
+      "type": "integer",
+      "required": true,
+      "min": 0
+    }
+  }
+}

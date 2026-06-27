@@ -42,7 +42,7 @@ The per-app npm scripts below are still the way to run a single service directly
 ### Backend — Strapi content types
 All API resources live under `force-back/src/api/<name>/` and are scaffolded with Strapi factories — controllers (`createCoreController`), routes (`createCoreRouter`), and services (`createCoreService`) are unmodified boilerplate. **Behavior is driven almost entirely by the `content-types/<name>/schema.json` files, not by code.** To change the API, edit the schema (or use the admin panel, which writes these files).
 
-Content types: `world`, `place`, `monster`, `item`, `companion` (user↔monster care bond), `inventory-entry` (user's item + quantity), `user-event` (activity log feeding the discovery engine — see below), `shop-stock` (a shop place's live stock: place + item + quantity — see the shop/stock engine). Note the field-naming inconsistency — `world`/`place`/`monster` use PascalCase attributes (`Name`, `Description`, `Image`), while `item` uses snake_case (`name`, `slug`, `type`, `rarity`). Relations: `world` 1—N `place` and `world` 1—N `monster` (monster's `World`, a manyToOne); `item` N—N `user` (the Items relation is added to the user schema in `src/extensions/users-permissions/content-types/user/schema.json`, marked `private`); `companion` N—N `item` (`equippedItems`, the companion's equipment — see the equipment engine). The user schema also has `discoveredMonsters` (M2N → monster), `balance`, `companions` and `inventoryEntries`. The `item` schema also carries `attack`/`defense` (equipment stats, default 0).
+Content types: `world`, `place`, `monster`, `item`, `companion` (user↔monster care bond), `inventory-entry` (user's item + quantity), `user-event` (activity log feeding the discovery engine — see below), `shop-stock` (a shop place's live stock: place + item + quantity — see the shop/stock engine), `house` (a user's house in a neighborhood), `house-placement` (a furniture item placed at x/y inside a house), `house-design` (a house variant offered by a neighborhood — see the neighborhood/house engine). Note the field-naming inconsistency — `world`/`place`/`monster` use PascalCase attributes (`Name`, `Description`, `Image`), while `item` uses snake_case (`name`, `slug`, `type`, `rarity`). Relations: `world` 1—N `place` and `world` 1—N `monster` (monster's `World`, a manyToOne); `item` N—N `user` (the Items relation is added to the user schema in `src/extensions/users-permissions/content-types/user/schema.json`, marked `private`); `companion` N—N `item` (`equippedItems`, the companion's equipment — see the equipment engine). The user schema also has `discoveredMonsters` (M2N → monster), `balance`, `companions` and `inventoryEntries`. The `item` schema also carries `attack`/`defense` (equipment stats, default 0).
 
 There are also two custom **code-only** APIs (controller + routes, no content-type, like the `shop` pattern): `shop` (`POST /shop/buy`, `GET /shop/:placeId/stock`) and `discovery` (`POST /discovery/event`, `POST /discovery/sync`).
 
@@ -323,6 +323,53 @@ stats** by paying with a **totem** and waiting real time. Custom **code-only** A
 **Adding a school** = a place `Type:'training'` + a `trainer` row with its `place`. All schools
 teach everything; only the trainer's `specialties` (the +2) vary.
 
+### Backend — Neighborhood/House engine (vecindarios y casas)
+
+Places of type `neighborhood` are **vecindarios**: a map of **parcels** (grid `cols×rows`)
+where each user can buy **one house** (a single house in the whole game). The house occupies
+a parcel and holds an **interior 15×15 grid of cubes** (expandable); each cube holds a
+**furniture** item (`item.category === 'furniture'`). **Placing a furniture consumes 1** from
+inventory; **removing it returns 1**. Custom **code-only API over the content type** (patrón
+`companion`): `src/api/house/` — `controllers/house.js` + `routes/house.js` (custom routes
+only, **no** `createCoreRouter`, so `GET /houses/:id` doesn't collide) + `engine.js`
+(REST-shaping helpers reusing the `itemToRest`/`mediaToRest` pattern + parcel-map resolver).
+Full contract in **`force-back/src/api/house/README.md`**.
+
+- **Content types** — `house` (`owner`→user, `place`→neighborhood, `design`→house-design,
+  `parcelIndex`, `visibility` `public`/`private`, `width`/`height` default 15, `placements`
+  1-N → house-placement), `house-placement` (`house`+`item`+`x`/`y`), `house-design`
+  (`Name`, `Image` exterior, `Interior` floor, `place`→neighborhood — patrón `trainer`→place).
+  Invariants enforced server-side: **1 house per user**, **1 house per parcel**.
+- **Place config** — `place.NeighborhoodConfig` (json, `seeded:true` marker like `ShopConfig`):
+  `{ cols, rows, price }`; `place.ParcelImage` (media, free-parcel art). `item.category` gained
+  `furniture`; the seed's price scale gained a `furniture` rol (`priceRole`/`PRICE_SCALE`).
+- **Endpoints** (auth unless noted) — `GET /neighborhoods/:placeId/parcels` (**public**;
+  parcel map + designs + `myHouseId`, `canEnter = public || mine`), `POST
+  /neighborhoods/:placeId/buy` (`{parcelIndex, designId}` — charges `price`, creates the
+  house), `GET /houses/mine`, `GET /houses/:id` (**public**; public-or-owner, else 403),
+  `POST /houses/:id/place` (`{itemId,x,y}` — consume 1), `POST /houses/:id/remove` (`{x,y}` —
+  return 1), `POST /houses/:id/visibility` (`{visibility}`). Permissions: `parcels`/`detail`
+  to Public, the rest to Authenticated (in `src/seed.js`).
+- **Seed** — idempotent demo neighborhood **"Villa Robledal"** (Eryndor, Valle de los Ecos
+  Verdes) with `NeighborhoodConfig` + 3 `house-design` rows, plus the **mobiliario catalog**
+  (26 `category:'furniture'` items from the design's "Mobiliario y misceláneos" section) seeded
+  via `scripts/seed-furniture.js` (`seedFurniture`, exact design prices/descriptions — furniture
+  is excluded from `priceFor`'s canonical rescale). That module is **dual-use**: called by the
+  bootstrap seed and runnable standalone (`SEED=false node scripts/seed-furniture.js`) to
+  populate local (`docker exec`) and prod (`ssh railway-back`) without a redeploy — the same
+  pattern as the `upload-image` skill. All images are **optional** (asset-or-fallback): missing
+  parcel/design/furniture-icon art falls back on the front; load real art later via the admin
+  or the `upload-image` skill (the design's furniture icons are `items/m-*.png`).
+- **Frontend** — `housesService` (`getParcels`/`buy`/`getMine`/`getHouse`/`place`/`remove`/
+  `setVisibility`) in `services.ts`. The place page branch `a.Type === 'neighborhood'` renders
+  `NeighborhoodBody` (parcel map, `.nbh-*`); the house interior lives at
+  `app/explore/[worldId]/places/[placeId]/houses/[houseId]/page.tsx` (15×15 grid, `.house-*`,
+  furniture palette + visibility toggle for the owner, read-only for visitors). Front contract
+  in that folder's **README.md**.
+
+**Adding a neighborhood** = a place `Type:'neighborhood'` + its `NeighborhoodConfig` +
+`house-design` rows pointing to it. No schema change.
+
 ### Frontend — discovery UX
 
 `src/hooks/useDiscovery.tsx` — `DiscoveryProvider` (mounted in `layout.tsx` inside
@@ -353,7 +400,7 @@ Despite `next-auth` being a dependency, auth is a custom client-side flow, not N
 - Login/register call `authService.login`/`register` (`/auth/local`, `/auth/local/register`); the returned JWT is passed manually as a Bearer header (e.g. `authService.getMe(token)`). The axios client does **not** auto-attach the token — its request interceptor is a no-op placeholder.
 - `src/components/ProtectedRoute.tsx` guards pages that require a session.
 
-Routes (App Router, `src/app/`): `/`, `/login`, `/register`, `/explore`, `/explore/[worldId]`, `/explore/[worldId]/places/[placeId]`, `/monsters`, `/monsters/[id]`, `/inventory`. UI text and code comments are in Spanish.
+Routes (App Router, `src/app/`): `/`, `/login`, `/register`, `/explore`, `/explore/[worldId]`, `/explore/[worldId]/places/[placeId]`, `/explore/[worldId]/places/[placeId]/houses/[houseId]` (house interior), `/monsters`, `/monsters/[id]`, `/inventory`. UI text and code comments are in Spanish.
 
 ## Cross-cutting notes
 

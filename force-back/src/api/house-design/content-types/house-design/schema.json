@@ -1,0 +1,40 @@
+{
+  "kind": "collectionType",
+  "collectionName": "house_designs",
+  "info": {
+    "singularName": "house-design",
+    "pluralName": "house-designs",
+    "displayName": "House Design",
+    "description": "Variante de casa que ofrece un vecindario: imagen exterior (mapa de parcelas) e interior (fondo de la grilla)."
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "attributes": {
+    "Name": {
+      "type": "string",
+      "required": true
+    },
+    "Image": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "Interior": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "place": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::place.place"
+    }
+  }
+}

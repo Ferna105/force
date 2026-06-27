@@ -1,0 +1,60 @@
+{
+  "kind": "collectionType",
+  "collectionName": "houses",
+  "info": {
+    "singularName": "house",
+    "pluralName": "houses",
+    "displayName": "House",
+    "description": "Casa de un usuario en un vecindario: ocupa una parcela y tiene una grilla interior de muebles."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "owner": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "place": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::place.place"
+    },
+    "design": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::house-design.house-design"
+    },
+    "parcelIndex": {
+      "type": "integer",
+      "required": true,
+      "min": 0
+    },
+    "visibility": {
+      "type": "enumeration",
+      "enum": [
+        "public",
+        "private"
+      ],
+      "default": "private",
+      "required": true
+    },
+    "width": {
+      "type": "integer",
+      "default": 15,
+      "min": 1
+    },
+    "height": {
+      "type": "integer",
+      "default": 15,
+      "min": 1
+    },
+    "placements": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::house-placement.house-placement",
+      "mappedBy": "house"
+    }
+  }
+}

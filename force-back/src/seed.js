@@ -17,6 +17,7 @@ const seedBibliotecaItems = require('../scripts/biblioteca/seed-items-core');
 const BIBLIOTECA_ITEMS = require('../scripts/biblioteca/items.json');
 const { restockDueShops } = require('./api/shop/stock');
 const { statCap } = require('./api/training/engine');
+const { seedFurniture } = require('../scripts/seed-furniture');
 
 // Mapa nombre→category del catálogo, para backfillear items ya creados sin categoría.
 const ITEM_CATEGORY = Object.fromEntries(
@@ -68,6 +69,32 @@ const TRAINING_SCHOOLS = [
   },
 ];
 const TRAINER_ASSETS_DIR = path.join(__dirname, '..', 'scripts', 'assets');
+
+// Vecindario demo (place Type 'neighborhood') + sus diseños de casa. El comprador
+// elige una variante al comprar; cada variante tiene imagen exterior (mapa) e
+// interior (fondo de la grilla). Las imágenes son opcionales: si el asset no está
+// en scripts/assets el front usa un fallback (se pueden cargar luego por el admin
+// o la skill upload-image). Idempotente (find-or-create por Name).
+const NEIGHBORHOOD = {
+  place: {
+    name: 'Villa Robledal',
+    description: 'Un barrio tranquilo al pie del Valle de los Ecos Verdes, donde las domadoras levantan su hogar entre robles centenarios. Elegí una parcela libre y construí tu casa.',
+    world: 'Eryndor',
+    region: 'Valle de los Ecos Verdes',
+    biome: 'forest',
+    hotspot: { x: 28, y: 48 },
+    config: { cols: 5, rows: 4, price: 300 },
+    parcelImage: 'parcela-robledal.png',
+  },
+  designs: [
+    { name: 'Cabaña de Roble', image: 'casa-roble.png', interior: 'interior-roble.png' },
+    { name: 'Casona de Piedra', image: 'casa-piedra.png', interior: 'interior-piedra.png' },
+    { name: 'Refugio del Bosque', image: 'casa-bosque.png', interior: 'interior-bosque.png' },
+  ],
+};
+
+// El catálogo de mobiliario (category 'furniture') vive en scripts/seed-furniture.js
+// (seedFurniture), compartido con el runner que puebla local y prod sin redeploy.
 
 // Sube la imagen de un entrenador a la media library (mismo patrón que el seed de items).
 async function uploadTrainerImage(strapi, image, altName) {
@@ -249,8 +276,11 @@ function priceRole(item) {
   return 'equip';
 }
 
-// Precio canónico (o null si la rareza no está en la escala).
+// Precio canónico (o null si la rareza no está en la escala). El mobiliario
+// (category 'furniture') lleva precios a medida del diseño (ver scripts/
+// seed-furniture.js), así que se EXCLUYE del reescalado canónico.
 function priceFor(item) {
+  if (item.category === 'furniture') return null;
   if (!item.rarity) return null;
   return PRICE_SCALE[priceRole(item)][item.rarity] ?? null;
 }
@@ -316,6 +346,9 @@ const PUBLIC_ACTIONS = [
   'api::shop.shop.stock',
   // Tabla de récords de un juego (solo lectura): visible sin sesión.
   'api::game.game.leaderboard',
+  // Vecindario: mapa de parcelas y entrar a una casa pública (solo lectura).
+  'api::house.house.parcels',
+  'api::house.house.detail',
 ];
 const AUTH_ACTIONS = [
   ...PUBLIC_ACTIONS,
@@ -343,6 +376,12 @@ const AUTH_ACTIONS = [
   // Escuela de entrenamiento: estado + iniciar entrenamiento.
   'api::training.training.info',
   'api::training.training.start',
+  // Vecindario/casas: comprar, mi casa, colocar/quitar muebles, visibilidad.
+  'api::house.house.buy',
+  'api::house.house.mine',
+  'api::house.house.place',
+  'api::house.house.remove',
+  'api::house.house.visibility',
   'plugin::users-permissions.user.me',
 ];
 
@@ -723,6 +762,65 @@ module.exports = async function seed({ strapi }) {
       }
     }
 
+    // 4d) Vecindario demo (place Type 'neighborhood') + sus diseños de casa.
+    //     Idempotente: crea el place si falta (ligado a su mundo/región), (re)siembra
+    //     su NeighborhoodConfig salvo edición manual, y crea cada diseño si falta
+    //     (subiendo su imagen exterior/interior si el asset existe). Puebla local y
+    //     prod en bootstrap (prod en el redeploy, que el schema nuevo requiere igual).
+    const neighWorld = worlds.find((w) => w.Name === NEIGHBORHOOD.place.world);
+    if (neighWorld) {
+      const np = NEIGHBORHOOD.place;
+      let hood = await strapi.db.query('api::place.place').findOne({ where: { Name: np.name } });
+      if (!hood) {
+        const region = await strapi.db.query('api::region.region').findOne({ where: { Name: np.region } });
+        hood = await strapi.entityService.create('api::place.place', {
+          data: {
+            Name: np.name,
+            Description: np.description,
+            Type: 'neighborhood',
+            World: neighWorld.id,
+            region: region?.id ?? null,
+            Biome: np.biome,
+            HotspotX: np.hotspot.x,
+            HotspotY: np.hotspot.y,
+            NeighborhoodConfig: { ...np.config, seeded: true },
+            publishedAt: new Date(),
+          },
+        });
+        strapi.log.info(`[seed] Vecindario creado: ${np.name}`);
+      } else {
+        // (Re)sembrar NeighborhoodConfig salvo que haya sido editado a mano en el admin.
+        const cur = hood.NeighborhoodConfig;
+        const isManual = cur && typeof cur === 'object' && cur.seeded !== true;
+        if (!isManual) {
+          await strapi.db.query('api::place.place').update({ where: { id: hood.id }, data: { NeighborhoodConfig: { ...np.config, seeded: true } } });
+        }
+      }
+      // Imagen de la parcela libre (backfill si falta y existe el asset).
+      const hoodMedia = await strapi.db.query('api::place.place').findOne({ where: { id: hood.id }, populate: ['ParcelImage'] });
+      if (!hoodMedia?.ParcelImage) {
+        try {
+          const up = await uploadTrainerImage(strapi, np.parcelImage, np.name);
+          if (up?.id) await strapi.db.query('api::place.place').update({ where: { id: hood.id }, data: { ParcelImage: up.id } });
+        } catch (err) { strapi.log.warn(`[seed] Sin imagen de parcela para ${np.name} (opcional): ${err.message}`); }
+      }
+      // Diseños de casa del vecindario (find-or-create por Name+place).
+      for (const d of NEIGHBORHOOD.designs) {
+        const exists = await strapi.db.query('api::house-design.house-design').findOne({ where: { Name: d.name, place: hood.id } });
+        if (exists) continue;
+        let imageId = null;
+        let interiorId = null;
+        try { imageId = (await uploadTrainerImage(strapi, d.image, d.name))?.id ?? null; }
+        catch (err) { strapi.log.warn(`[seed] Sin imagen exterior para ${d.name} (opcional): ${err.message}`); }
+        try { interiorId = (await uploadTrainerImage(strapi, d.interior, d.name))?.id ?? null; }
+        catch (err) { strapi.log.warn(`[seed] Sin imagen interior para ${d.name} (opcional): ${err.message}`); }
+        await strapi.entityService.create('api::house-design.house-design', {
+          data: { Name: d.name, Image: imageId, Interior: interiorId, place: hood.id, publishedAt: new Date() },
+        });
+        strapi.log.info(`[seed] Diseño de casa creado: ${d.name} (${np.name})`);
+      }
+    }
+
     // 5) Completar datos de items faltantes
     const items = await strapi.db.query('api::item.item').findMany({});
     for (const it of items) {
@@ -805,6 +903,12 @@ module.exports = async function seed({ strapi }) {
         },
       });
     }
+
+    // 5d) Catálogo de mobiliario (items category 'furniture', sección "Mobiliario
+    //     y misceláneos" del diseño). Idempotente: crea/converge los 26 objetos y
+    //     elimina los placeholders previos. Lógica compartida en scripts/seed-furniture.js.
+    const furnRes = await seedFurniture(strapi);
+    strapi.log.info(`[seed] Mobiliario: creados ${furnRes.created}, actualizados ${furnRes.updated}, placeholders eliminados ${furnRes.removed}.`);
 
     // 6) Usuario demo
     let demo = await strapi.db.query('plugin::users-permissions.user').findOne({ where: { email: 'nora@force.dev' } });
@@ -891,6 +995,18 @@ module.exports = async function seed({ strapi }) {
       for (const [i, it] of items.slice(0, 5).entries()) {
         await strapi.entityService.create('api::inventory-entry.inventory-entry', {
           data: { user: demo.id, item: it.id, quantity: qty[i] || 1 },
+        });
+      }
+    }
+
+    // 10b) Muebles en el inventario del demo (para poder decorar su casa).
+    //      Fill-if-missing: asegura una entrada (qty 3) por cada mueble de ejemplo.
+    const furnitureItems = await strapi.db.query('api::item.item').findMany({ where: { category: 'furniture' } });
+    for (const fi of furnitureItems) {
+      const has = await strapi.db.query('api::inventory-entry.inventory-entry').findOne({ where: { user: { id: demo.id }, item: { id: fi.id } } });
+      if (!has) {
+        await strapi.entityService.create('api::inventory-entry.inventory-entry', {
+          data: { user: demo.id, item: fi.id, quantity: 3 },
         });
       }
     }

@@ -567,6 +567,175 @@ export interface ApiDuelDuel extends Schema.CollectionType {
   };
 }
 
+export interface ApiHouseDesignHouseDesign extends Schema.CollectionType {
+  collectionName: 'house_designs';
+  info: {
+    description: 'Variante de casa que ofrece un vecindario: imagen exterior (mapa de parcelas) e interior (fondo de la grilla).';
+    displayName: 'House Design';
+    pluralName: 'house-designs';
+    singularName: 'house-design';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    createdAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<
+      'api::house-design.house-design',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    Image: Attribute.Media<'images'>;
+    Interior: Attribute.Media<'images'>;
+    Name: Attribute.String & Attribute.Required;
+    place: Attribute.Relation<
+      'api::house-design.house-design',
+      'manyToOne',
+      'api::place.place'
+    >;
+    publishedAt: Attribute.DateTime;
+    updatedAt: Attribute.DateTime;
+    updatedBy: Attribute.Relation<
+      'api::house-design.house-design',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+  };
+}
+
+export interface ApiHousePlacementHousePlacement extends Schema.CollectionType {
+  collectionName: 'house_placements';
+  info: {
+    description: 'Un mueble colocado en un cubo de una casa: objeto + coordenadas (x, y).';
+    displayName: 'House Placement';
+    pluralName: 'house-placements';
+    singularName: 'house-placement';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<
+      'api::house-placement.house-placement',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    house: Attribute.Relation<
+      'api::house-placement.house-placement',
+      'manyToOne',
+      'api::house.house'
+    >;
+    item: Attribute.Relation<
+      'api::house-placement.house-placement',
+      'manyToOne',
+      'api::item.item'
+    >;
+    updatedAt: Attribute.DateTime;
+    updatedBy: Attribute.Relation<
+      'api::house-placement.house-placement',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    x: Attribute.Integer &
+      Attribute.Required &
+      Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      >;
+    y: Attribute.Integer &
+      Attribute.Required &
+      Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      >;
+  };
+}
+
+export interface ApiHouseHouse extends Schema.CollectionType {
+  collectionName: 'houses';
+  info: {
+    description: 'Casa de un usuario en un vecindario: ocupa una parcela y tiene una grilla interior de muebles.';
+    displayName: 'House';
+    pluralName: 'houses';
+    singularName: 'house';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<
+      'api::house.house',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    design: Attribute.Relation<
+      'api::house.house',
+      'manyToOne',
+      'api::house-design.house-design'
+    >;
+    height: Attribute.Integer &
+      Attribute.SetMinMax<
+        {
+          min: 1;
+        },
+        number
+      > &
+      Attribute.DefaultTo<15>;
+    owner: Attribute.Relation<
+      'api::house.house',
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    parcelIndex: Attribute.Integer &
+      Attribute.Required &
+      Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      >;
+    place: Attribute.Relation<
+      'api::house.house',
+      'manyToOne',
+      'api::place.place'
+    >;
+    placements: Attribute.Relation<
+      'api::house.house',
+      'oneToMany',
+      'api::house-placement.house-placement'
+    >;
+    updatedAt: Attribute.DateTime;
+    updatedBy: Attribute.Relation<
+      'api::house.house',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    visibility: Attribute.Enumeration<['public', 'private']> &
+      Attribute.Required &
+      Attribute.DefaultTo<'private'>;
+    width: Attribute.Integer &
+      Attribute.SetMinMax<
+        {
+          min: 1;
+        },
+        number
+      > &
+      Attribute.DefaultTo<15>;
+  };
+}
+
 export interface ApiInventoryEntryInventoryEntry extends Schema.CollectionType {
   collectionName: 'inventory_entries';
   info: {
@@ -644,7 +813,8 @@ export interface ApiItemItem extends Schema.CollectionType {
         'totem',
         'weapon',
         'armor',
-        'potion'
+        'potion',
+        'furniture'
       ]
     >;
     cooldown: Attribute.Integer &
@@ -874,6 +1044,8 @@ export interface ApiPlacePlace extends Schema.CollectionType {
         number
       >;
     Name: Attribute.String & Attribute.Required & Attribute.Unique;
+    NeighborhoodConfig: Attribute.JSON;
+    ParcelImage: Attribute.Media<'images'>;
     publishedAt: Attribute.DateTime;
     region: Attribute.Relation<
       'api::place.place',
@@ -883,7 +1055,7 @@ export interface ApiPlacePlace extends Schema.CollectionType {
     RestockAt: Attribute.DateTime;
     ShopConfig: Attribute.JSON;
     Type: Attribute.Enumeration<
-      ['shop', 'game', 'information', 'battledome', 'training']
+      ['shop', 'game', 'information', 'battledome', 'training', 'neighborhood']
     > &
       Attribute.Required;
     updatedAt: Attribute.DateTime;
@@ -1613,6 +1785,9 @@ declare module '@strapi/types' {
       'admin::user': AdminUser;
       'api::companion.companion': ApiCompanionCompanion;
       'api::duel.duel': ApiDuelDuel;
+      'api::house-design.house-design': ApiHouseDesignHouseDesign;
+      'api::house-placement.house-placement': ApiHousePlacementHousePlacement;
+      'api::house.house': ApiHouseHouse;
       'api::inventory-entry.inventory-entry': ApiInventoryEntryInventoryEntry;
       'api::item.item': ApiItemItem;
       'api::monster.monster': ApiMonsterMonster;

@@ -114,7 +114,7 @@ export interface Place extends StrapiEntity {
     Name: string;
     Description: string | null;
     Banner: StrapiImage | null;
-    Type: 'shop' | 'game' | 'information' | 'battledome' | 'training';
+    Type: 'shop' | 'game' | 'information' | 'battledome' | 'training' | 'neighborhood';
     Biome: BiomeName | null;
     HotspotX: number | null;
     HotspotY: number | null;
@@ -244,7 +244,7 @@ export interface Item extends StrapiEntity {
     description: string | null;
     type: 'weapon' | 'armor' | 'consumable' | 'key' | 'misc';
     rarity: RarityName;
-    category?: 'fruit' | 'vegetable' | 'meat' | 'seafood' | 'legume' | 'totem' | 'weapon' | 'armor' | 'potion' | null;
+    category?: 'fruit' | 'vegetable' | 'meat' | 'seafood' | 'legume' | 'totem' | 'weapon' | 'armor' | 'potion' | 'furniture' | null;
     icon: StrapiImage | null;
     weight: number | null;
     value: number | null;
@@ -545,3 +545,85 @@ export type TrainingInfo =
       ownsDemanded: boolean;
       stats: TrainStatRow[];
     };
+
+// ============ Vecindario / Casas (place de tipo neighborhood) ============
+export type HouseVisibility = 'public' | 'private';
+
+// Una variante de casa que ofrece el vecindario (resumen plano del endpoint).
+export interface HouseDesignInfo {
+  id: number;
+  name: string;
+  imageUrl: string | null;
+  interiorUrl: string | null;
+}
+
+// Estado de una parcela del mapa del vecindario.
+export interface NeighborhoodParcel {
+  index: number;
+  occupied: boolean;
+  owner: { id: number; username: string } | null;
+  visibility: HouseVisibility | null;
+  houseId: number | null;
+  designImageUrl: string | null;
+  canEnter: boolean;
+  mine: boolean;
+}
+
+// Respuesta de GET /neighborhoods/:placeId/parcels.
+export interface NeighborhoodParcels {
+  cols: number;
+  rows: number;
+  price: number;
+  parcelImageUrl: string | null;
+  designs: HouseDesignInfo[];
+  parcels: NeighborhoodParcel[];
+  // Mi casa (una sola en todo el juego); null si todavía no tengo.
+  myHouseId: number | null;
+}
+
+// Diseño de casa en shape REST (devuelto dentro de la casa).
+export interface HouseDesign {
+  id: number;
+  attributes: {
+    Name: string;
+    Image: StrapiImage | null;
+    Interior: StrapiImage | null;
+  };
+}
+
+// Un mueble colocado en un cubo de la casa.
+export interface HousePlacement {
+  id: number;
+  attributes: {
+    x: number;
+    y: number;
+    item?: { data: Item | null };
+  };
+}
+
+// Casa de un usuario (shape REST devuelto por el controller).
+export interface House {
+  id: number;
+  attributes: {
+    parcelIndex: number;
+    visibility: HouseVisibility;
+    width: number;
+    height: number;
+    owner: { id: number; username: string } | null;
+    place: { id: number; Name: string } | null;
+    design?: { data: HouseDesign | null };
+    placements?: { data: HousePlacement[] };
+  };
+}
+
+// Respuesta de los endpoints de casa: { data: House, isOwner }.
+export interface HouseResponse {
+  data: House | null;
+  isOwner: boolean;
+}
+
+// Respuesta de la compra de casa: { data: House, balance }.
+export interface HouseBuyResponse {
+  data: House;
+  balance: number;
+}

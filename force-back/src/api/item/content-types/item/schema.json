@@ -59,7 +59,8 @@
         "totem",
         "weapon",
         "armor",
-        "potion"
+        "potion",
+        "furniture"
       ],
       "required": false
     },

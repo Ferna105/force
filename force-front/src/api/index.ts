@@ -42,6 +42,15 @@ export type {
   TrainStat,
   TrainStatRow,
   DemandedTotem,
+  HouseVisibility,
+  HouseDesignInfo,
+  NeighborhoodParcel,
+  NeighborhoodParcels,
+  HouseDesign,
+  HousePlacement,
+  House,
+  HouseResponse,
+  HouseBuyResponse,
   MonstersResponse,
   WorldsResponse,
   PlacesResponse,
@@ -77,6 +86,7 @@ export {
   battleService,
   gamesService,
   trainingService,
+  housesService,
   dataService,
   authService
 } from './services';

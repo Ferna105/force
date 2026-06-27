@@ -4,8 +4,8 @@
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
-import { usePlace, useMonsters, useDiscoveredMonsters, useActiveCompanion, inventoryService, shopService, battleService, gamesService, trainingService } from '@/api';
-import type { Place, Item, ShopStock, DuelsLobby, GameStatus, GameLeaderboard, TrainingInfo, TrainStat } from '@/api/types';
+import { usePlace, useMonsters, useDiscoveredMonsters, useActiveCompanion, inventoryService, shopService, battleService, gamesService, trainingService, housesService } from '@/api';
+import type { Place, Item, ShopStock, DuelsLobby, GameStatus, GameLeaderboard, TrainingInfo, TrainStat, NeighborhoodParcels, HouseDesignInfo } from '@/api/types';
 import { useAuth } from '@/hooks/useAuth';
 import { useDiscovery } from '@/hooks/useDiscovery';
 import { useToast } from '@/hooks/useToast';
@@ -62,6 +62,7 @@ export default function PlacePage() {
         {a.Type === 'information' && <InfoBody place={place} />}
         {a.Type === 'battledome' && <BattledomeBody placeId={placeId} />}
         {a.Type === 'training' && <TrainingBody placeId={placeId} />}
+        {a.Type === 'neighborhood' && <NeighborhoodBody place={place} />}
       </div>
     </>
   );
@@ -735,5 +736,129 @@ function TrainingBody({ placeId }: { placeId: number }) {
         </>
       )}
     </div>
+  );
+}
+
+/* ============ VECINDARIO (mapa de parcelas) ============ */
+function NeighborhoodBody({ place }: { place: Place }) {
+  const { user, updateUser } = useAuth();
+  const toast = useToast();
+  const router = useRouter();
+  const placeId = place.id;
+  const worldId = place.attributes.World?.data?.id;
+
+  const [data, setData] = useState<NeighborhoodParcels | null>(null);
+  const [loading, setLoading] = useState(true);
+  // Parcela libre seleccionada para comprar (abre el panel de diseño).
+  const [selected, setSelected] = useState<number | null>(null);
+  const [designId, setDesignId] = useState<number | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const d = await housesService.getParcels(placeId);
+      setData(d);
+      setDesignId((cur) => cur ?? d.designs[0]?.id ?? null);
+    } catch {
+      setData(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [placeId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const enter = (houseId: number) => router.push(`/explore/${worldId}/places/${placeId}/houses/${houseId}`);
+
+  const onParcelClick = (p: NeighborhoodParcels['parcels'][number]) => {
+    if (p.occupied) {
+      if (p.canEnter && p.houseId) { enter(p.houseId); return; }
+      toast.show({ tone: 'info', icon: 'info', duration: 3600, message: <>La casa de <b>{p.owner?.username}</b> es privada.</> });
+      return;
+    }
+    if (!user) { toast.show({ tone: 'danger', icon: 'warning', duration: 4000, message: 'Iniciá sesión para comprar una casa.' }); return; }
+    if (data?.myHouseId) { toast.show({ tone: 'info', icon: 'info', duration: 3600, message: 'Ya tenés una casa. Solo podés tener una en todo el juego.' }); return; }
+    setSelected(p.index);
+  };
+
+  const buy = async () => {
+    if (selected == null || !data) return;
+    if ((user?.balance ?? 0) < data.price) { toast.show({ tone: 'danger', icon: 'warning', duration: 4000, message: 'No te alcanza el saldo para comprar la casa.' }); return; }
+    setBusy(true);
+    try {
+      const res = await housesService.buy(placeId, selected, designId);
+      updateUser({ balance: res.balance });
+      setSelected(null);
+      await load();
+      enter(res.data.id);
+    } catch {
+      toast.show({ tone: 'danger', icon: 'warning', duration: 4000, message: 'No se pudo comprar la casa (¿saldo o parcela ocupada?).' });
+      setBusy(false);
+    }
+  };
+
+  if (loading) return <div style={{ marginTop: 26 }}><Loading /></div>;
+  if (!data) return <div className="d-empty" style={{ marginTop: 26 }}>No se pudo cargar el vecindario.</div>;
+
+  const hasHouse = !!data.myHouseId;
+
+  return (
+    <>
+      <div className="sec-title" style={{ marginTop: 26 }}>
+        <h3 className="cinzel">Mapa de parcelas</h3>
+        <a>Saldo: <span className="coin" style={{ verticalAlign: 'middle' }}><span className="c">F</span> {fmt(user?.balance)}</span></a>
+      </div>
+      <p className="sub" style={{ marginBottom: 18 }}>
+        Elegí una parcela libre para construir tu casa (cuesta <b style={{ color: 'var(--gold-soft)' }}>F {fmt(data.price)}</b>). Cada parcela ocupada muestra de quién es; podés entrar a las casas públicas.
+      </p>
+      {hasHouse && <p className="sub" style={{ marginBottom: 14, color: 'var(--gold-soft)' }}>Ya tenés una casa. Tocá tu parcela resaltada para entrar.</p>}
+
+      <div className="nbh-map" style={{ gridTemplateColumns: `repeat(${data.cols}, 1fr)` }}>
+        {data.parcels.map((p) => {
+          const bg = p.occupied
+            ? (p.designImageUrl ? strapiMedia(p.designImageUrl) : '')
+            : (data.parcelImageUrl ? strapiMedia(data.parcelImageUrl) : '');
+          const cls = `nbh-parcel${p.occupied ? ' occupied' : ' free'}${p.mine ? ' mine' : ''}${selected === p.index ? ' selected' : ''}`;
+          return (
+            <button
+              key={p.index}
+              className={cls}
+              onClick={() => onParcelClick(p)}
+              style={bg ? { backgroundImage: `url(${bg})` } : undefined}
+            >
+              {p.occupied ? (
+                <span className="nbh-tag">
+                  {p.visibility === 'private' && <span className="nbh-lock">🔒</span>}
+                  {p.mine ? 'Tu casa' : p.owner?.username}
+                </span>
+              ) : (
+                <span className="nbh-free">Libre</span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {selected != null && !hasHouse && (
+        <div className="panel nbh-buy">
+          <div className="kicker">Construir casa · parcela #{selected + 1}</div>
+          <p className="sub" style={{ margin: '6px 0 12px' }}>Elegí un diseño para tu casa. Precio: <b style={{ color: 'var(--gold-soft)' }}>F {fmt(data.price)}</b>.</p>
+          <div className="nbh-designs">
+            {data.designs.map((d: HouseDesignInfo) => (
+              <button key={d.id} className={`nbh-design${designId === d.id ? ' on' : ''}`} onClick={() => setDesignId(d.id)}>
+                <img src={d.imageUrl ? strapiMedia(d.imageUrl) : thumbFallback(d.name)} alt={d.name} />
+                <span>{d.name}</span>
+              </button>
+            ))}
+            {data.designs.length === 0 && <p className="sub">Este vecindario todavía no tiene diseños configurados.</p>}
+          </div>
+          <div className="cf-actions" style={{ marginTop: 14 }}>
+            <button className="btn btn-primary" disabled={busy} onClick={buy}>{busy ? 'Comprando…' : 'Confirmar compra'}</button>
+            <button className="btn btn-ghost" onClick={() => setSelected(null)}>Cancelar</button>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

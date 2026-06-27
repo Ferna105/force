@@ -33,6 +33,10 @@ import {
   GameLeaderboard,
   TrainingInfo,
   TrainStat,
+  NeighborhoodParcels,
+  HouseResponse,
+  HouseBuyResponse,
+  HouseVisibility,
 } from './types';
 
 // Serializa un objeto/array anidado a la sintaxis de brackets de Strapi 4
@@ -657,6 +661,48 @@ export const trainingService = {
   // Inicia un entrenamiento de `stat`: cobra el tótem exigido y deja al compañero entrenando.
   async start(placeId: number, companionId: number, stat: TrainStat): Promise<TrainingInfo> {
     const response = await apiClient.post(`/training/${placeId}/start`, { companionId, stat });
+    return response.data;
+  },
+};
+
+// Servicio de vecindarios/casas (places de tipo `neighborhood`).
+// El comprador elige una variante de casa en una parcela libre; cada usuario tiene
+// una sola casa en todo el juego, con una grilla interior de muebles. Colocar un
+// mueble consume 1 del inventario; quitarlo lo devuelve.
+export const housesService = {
+  // Mapa de parcelas de un vecindario (público; usa la sesión si hay token).
+  async getParcels(placeId: number): Promise<NeighborhoodParcels> {
+    const response = await apiClient.get(`/neighborhoods/${placeId}/parcels`);
+    return response.data;
+  },
+  // Comprar una casa en una parcela libre (eligiendo una variante de diseño).
+  async buy(placeId: number, parcelIndex: number, designId: number | null): Promise<HouseBuyResponse> {
+    const response = await apiClient.post(`/neighborhoods/${placeId}/buy`, { parcelIndex, designId });
+    return response.data;
+  },
+  // Mi casa (o null si todavía no tengo).
+  async getMine(): Promise<HouseResponse> {
+    const response = await apiClient.get('/houses/mine');
+    return response.data;
+  },
+  // Entrar a una casa (pública para cualquiera, privada solo para el dueño).
+  async getHouse(houseId: number): Promise<HouseResponse> {
+    const response = await apiClient.get(`/houses/${houseId}`);
+    return response.data;
+  },
+  // Colocar un mueble en un cubo (consume 1 del inventario). Devuelve la casa.
+  async place(houseId: number, itemId: number, x: number, y: number): Promise<HouseResponse> {
+    const response = await apiClient.post(`/houses/${houseId}/place`, { itemId, x, y });
+    return response.data;
+  },
+  // Quitar un mueble de un cubo (devuelve 1 al inventario). Devuelve la casa.
+  async remove(houseId: number, x: number, y: number): Promise<HouseResponse> {
+    const response = await apiClient.post(`/houses/${houseId}/remove`, { x, y });
+    return response.data;
+  },
+  // Alternar la visibilidad de la casa (pública / privada).
+  async setVisibility(houseId: number, visibility: HouseVisibility): Promise<HouseResponse> {
+    const response = await apiClient.post(`/houses/${houseId}/visibility`, { visibility });
     return response.data;
   },
 };

@@ -36,7 +36,8 @@
         "game",
         "information",
         "battledome",
-        "training"
+        "training",
+        "neighborhood"
       ],
       "required": true
     },
@@ -93,6 +94,17 @@
         "hard"
       ],
       "required": false
+    },
+    "NeighborhoodConfig": {
+      "type": "json"
+    },
+    "ParcelImage": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "images"
+      ]
     }
   }
 }
