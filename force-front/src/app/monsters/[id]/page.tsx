@@ -60,7 +60,7 @@ function MonsterView() {
       <Topbar crumb={<><Link href="/monsters" style={{ color: 'var(--gold-soft)' }}>Bestiario</Link> · <b>{a.Name}</b></>} />
       <div className="page">
         <div className="mon-top">
-          <div className="mon-stage-big">
+          <div className="mon-stage-big" data-biome={biome ?? ''}>
             {biome && <span className="biome-abs"><BiomeTag biome={biome} /></span>}
             {art && <img src={art} alt={a.Name} />}
             <div className="quick">

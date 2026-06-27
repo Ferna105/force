@@ -26,6 +26,7 @@ por SSH). En prod el binario queda en el volumen `/app/public/uploads`.
 | `place`  | `api::place.place`    | `Name`    | `Banner`                 |
 | `region` | `api::region.region`  | `Name`    | `Banner`                 |
 | `world`  | `api::world.world`    | `Name`    | `Image`                  |
+| `monster`| `api::monster.monster`| `Name`    | `Image`                  |
 | `item`   | `api::item.item`      | `name`    | `icon`                   |
 
 ## Cómo usarla (pasos para el agente)

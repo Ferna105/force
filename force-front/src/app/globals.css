@@ -248,7 +248,7 @@ h1,h2,h3,h4{margin:0;}
 .mon-card{position:relative;border-radius:var(--r-lg);overflow:hidden;border:1px solid var(--ink-line);background:#13100b;cursor:pointer;transition:transform .18s,box-shadow .25s;display:block;}
 .mon-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-pop);}
 .mon-card .stage{position:relative;aspect-ratio:1/1;overflow:hidden;}
-.mon-card .stage img{width:100%;height:100%;object-fit:cover;transition:transform .4s;display:block;}
+.mon-card .stage img{width:100%;height:100%;object-fit:contain;padding:9%;transition:transform .4s;display:block;position:relative;z-index:1;}
 .mon-card:hover .stage img{transform:scale(1.05);}
 .mon-card .stage::after{content:"";position:absolute;inset:0;background:linear-gradient(0deg,rgba(19,16,11,.55),transparent 32%);pointer-events:none;}
 .mon-card .biome-abs{position:absolute;top:12px;left:12px;z-index:2;}
@@ -369,14 +369,42 @@ h1,h2,h3,h4{margin:0;}
 /* ============ MONSTRUO ============ */
 .mon-top{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:stretch;}
 .mon-stage-big{position:relative;border-radius:var(--r-xl);overflow:hidden;border:1px solid var(--ink-line);
-  background:var(--ink);display:flex;align-items:center;justify-content:center;aspect-ratio:1/1;align-self:start;}
-.mon-stage-big img{width:100%;height:100%;object-fit:cover;display:block;}
-.mon-stage-big .biome-abs{position:absolute;top:18px;left:18px;}
-.mon-stage-big .rar-abs{position:absolute;top:18px;right:18px;}
-.mon-stage-big .quick{position:absolute;bottom:18px;left:18px;right:18px;display:flex;gap:10px;}
+  display:flex;align-items:center;justify-content:center;aspect-ratio:1/1;align-self:start;}
+.mon-stage-big img{width:100%;height:100%;object-fit:contain;padding:7%;display:block;position:relative;z-index:1;}
+.mon-stage-big .biome-abs{position:absolute;top:18px;left:18px;z-index:2;}
+.mon-stage-big .rar-abs{position:absolute;top:18px;right:18px;z-index:2;}
+.mon-stage-big .quick{position:absolute;bottom:18px;left:18px;right:18px;display:flex;gap:10px;z-index:2;}
 .mon-stage-big .quick .q{flex:1;background:rgba(20,14,8,.55);backdrop-filter:blur(6px);border-radius:var(--r-md);padding:10px 14px;text-align:center;}
 .mon-stage-big .quick .q b{font-family:var(--font-cinzel);font-weight:700;font-size:20px;color:#fff;display:block;}
 .mon-stage-big .quick .q span{font-family:var(--font-fredoka);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#e8dcc6;}
+
+/* ---- Escenario temático por bioma (arte recortado/transparente del monstruo) ----
+   Las imágenes de monstruo ya no traen fondo, así que el stage le pone uno:
+   un haz de luz cenital del color del bioma + degradé de profundidad. Variables
+   por bioma vía [data-biome]; comparten card del bestiario, ficha grande y la
+   tarjeta del compañero (/companion). */
+.mon-card:not(.undisc) .stage,.mon-stage-big,.cmp-stage{
+  --bio-glow:rgba(230,166,48,.26);--bio-top:#1b1710;--bio-bot:#0c0a06;
+  background:
+    radial-gradient(115% 80% at 50% 8%, var(--bio-glow), transparent 62%),
+    linear-gradient(180deg, var(--bio-top), var(--bio-bot));
+}
+/* Piso: elipse de sombra suave para "apoyar" a la criatura (solo ficha grande;
+   en la card el ::before lo usa el overlay "?" de las no descubiertas). */
+.mon-stage-big::before{
+  content:"";position:absolute;left:50%;bottom:9%;transform:translateX(-50%);
+  width:64%;height:13%;border-radius:50%;z-index:0;pointer-events:none;
+  background:radial-gradient(closest-side, rgba(0,0,0,.5), transparent 78%);
+  filter:blur(2px);
+}
+.mon-stage-big::after{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
+  background:linear-gradient(0deg,rgba(12,10,6,.55),transparent 30%);}
+.mon-card[data-biome="forest"] .stage,.mon-stage-big[data-biome="forest"],.cmp-stage[data-biome="forest"]{--bio-glow:rgba(98,191,86,.32);--bio-top:#16241a;--bio-bot:#0a130d;}
+.mon-card[data-biome="aqua"] .stage,.mon-stage-big[data-biome="aqua"],.cmp-stage[data-biome="aqua"]{--bio-glow:rgba(74,176,214,.32);--bio-top:#122530;--bio-bot:#08131a;}
+.mon-card[data-biome="volcanic"] .stage,.mon-stage-big[data-biome="volcanic"],.cmp-stage[data-biome="volcanic"]{--bio-glow:rgba(234,98,54,.34);--bio-top:#2a1410;--bio-bot:#160a07;}
+.mon-card[data-biome="space"] .stage,.mon-stage-big[data-biome="space"],.cmp-stage[data-biome="space"]{--bio-glow:rgba(152,122,230,.34);--bio-top:#171430;--bio-bot:#0b0a18;}
+.mon-card[data-biome="snow"] .stage,.mon-stage-big[data-biome="snow"],.cmp-stage[data-biome="snow"]{--bio-glow:rgba(176,212,236,.30);--bio-top:#1c2632;--bio-bot:#0d141b;}
+.mon-card[data-biome="arid"] .stage,.mon-stage-big[data-biome="arid"],.cmp-stage[data-biome="arid"]{--bio-glow:rgba(226,182,92,.30);--bio-top:#261d10;--bio-bot:#150f07;}
 .ability{background:rgba(230,166,48,.08);border:1px solid rgba(230,166,48,.28);border-radius:var(--r-md);padding:16px 18px;margin:18px 0;}
 .ability .lbl{font-family:var(--font-fredoka);font-weight:600;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);}
 .ability p{margin:6px 0 0;color:#EFE3CE;}

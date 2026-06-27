@@ -107,7 +107,7 @@ function CompanionView() {
       <Topbar crumb="Mi compañero" />
       <div className="page">
         <section className="panel" style={{ display: 'grid', gridTemplateColumns: '360px 1fr', overflow: 'hidden', borderRadius: 'var(--r-xl)' }}>
-          <div className="cmp-stage">
+          <div className="cmp-stage" data-biome={m.Biome ?? ''}>
             <span style={{ position: 'absolute', top: 16, left: 16, zIndex: 2 }}><BiomeTag biome={m.Biome} /></span>
             {art && <img src={art} alt={m.Name} />}
           </div>
