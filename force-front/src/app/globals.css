@@ -180,6 +180,57 @@ h1,h2,h3,h4{margin:0;}
 /* Descripción corta: recorta el texto a 3 líneas */
 .world.wshort .wb p{display:-webkit-box;-webkit-line-clamp:3;line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
 
+/* ============ SISTEMA SOLAR DE MUNDOS (pantalla Explorar) ============
+   Eryndor al centro (sol) y las 3 lunas en una misma órbita (mismo radio,
+   desfasadas 120°). Una vuelta completa = 1 día (86400s, lentísima). */
+
+/* Tarjeta de fondo negro estrellado, al estilo de los banners de región. */
+.solar-card{position:relative;border-radius:var(--r-xl);overflow:hidden;border:1px solid var(--ink-line);
+  background:radial-gradient(130% 120% at 50% 24%, #161021, #07060c 72%);
+  box-shadow:0 30px 80px -30px rgba(0,0,0,.7);
+  display:flex;align-items:center;justify-content:center;padding:48px;margin-top:26px;}
+.solar-card .stars{position:absolute;inset:0;pointer-events:none;opacity:.7;
+  background-image:radial-gradient(1px 1px at 12% 22%,#fff,transparent),radial-gradient(1px 1px at 28% 64%,#fff8,transparent),radial-gradient(1px 1px at 44% 18%,#fff7,transparent),radial-gradient(1px 1px at 58% 78%,#fff6,transparent),radial-gradient(1px 1px at 70% 32%,#fff,transparent),radial-gradient(1px 1px at 82% 60%,#fff7,transparent),radial-gradient(1px 1px at 92% 14%,#fff6,transparent),radial-gradient(1px 1px at 20% 88%,#fff7,transparent),radial-gradient(2px 2px at 66% 50%,#fff,transparent),radial-gradient(1px 1px at 38% 42%,#fff6,transparent);}
+
+.solar{position:relative;width:min(440px,72vw);aspect-ratio:1;z-index:1;}
+
+/* Sol (Eryndor): más grande que las lunas, fijo al centro. */
+.solar .sun{position:absolute;top:50%;left:50%;width:44%;aspect-ratio:1;transform:translate(-50%,-50%);z-index:5;display:block;text-decoration:none;transition:transform .25s;}
+.solar .sun img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 0 60px rgba(212,85,46,.55));}
+.solar .sun:hover{transform:translate(-50%,-50%) scale(1.05);}
+
+/* Anillos de órbita (sin línea visible): cajas cuadradas centradas que rotan;
+   transform libre para puro rotate, así reusan @keyframes spin. Mismo tamaño en
+   las 3 → misma órbita; el animation-delay las separa 120° (T/3 = 28800s). */
+.orbit{position:absolute;top:50%;left:50%;border-radius:50%;width:84%;height:84%;margin:-42% 0 0 -42%;animation:spin 86400s linear infinite;}
+.orbit.o2{animation-delay:-28800s;}
+.orbit.o3{animation-delay:-57600s;}
+
+/* Luna: pinchada arriba-centro del anillo (lo lleva la rotación del anillo). */
+.orbit .moon{position:absolute;top:0;left:50%;width:clamp(54px,13vw,96px);aspect-ratio:1;transform:translate(-50%,-50%);display:block;text-decoration:none;z-index:4;}
+/* Contra-rotación: cancela el giro del anillo para que arte y nombre queden derechos.
+   El scale de hover va sobre el <img> (no sobre .rev) para no pisar la contra-rotación. */
+.orbit .moon .rev{display:block;position:relative;width:100%;height:100%;animation:spin-rev 86400s linear infinite;}
+.orbit.o2 .rev{animation-delay:-28800s;}
+.orbit.o3 .rev{animation-delay:-57600s;}
+.orbit .moon img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 0 24px rgba(120,140,200,.4));transition:transform .25s,filter .25s;}
+.orbit .moon:hover img{transform:scale(1.12);filter:drop-shadow(0 0 30px rgba(150,170,230,.6));}
+
+/* Nombre de cada mundo: etiqueta estilizada que aparece solo en hover. */
+.solar .nm{position:absolute;top:calc(100% + 9px);left:50%;transform:translate(-50%,5px);white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .22s,transform .22s;
+  font-family:var(--font-cinzel);font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#F6ECD7;
+  background:linear-gradient(180deg,rgba(22,16,33,.92),rgba(8,6,12,.92));border:1px solid rgba(244,201,105,.35);
+  padding:5px 13px;border-radius:var(--r-pill);box-shadow:0 8px 22px -8px rgba(0,0,0,.85);}
+.solar .nm::after{content:"";position:absolute;left:50%;top:-5px;width:8px;height:8px;transform:translateX(-50%) rotate(45deg);
+  background:rgba(22,16,33,.92);border-left:1px solid rgba(244,201,105,.35);border-top:1px solid rgba(244,201,105,.35);}
+.solar .sun .nm{font-size:13px;}
+.orbit .moon .nm{font-size:11px;}
+.solar .sun:hover .nm,.orbit .moon:hover .nm{opacity:1;transform:translate(-50%,0);}
+
+@keyframes spin-rev{to{transform:rotate(-360deg);}}
+
+@media (max-width:600px){.solar-card{padding:30px;}.solar .sun .nm{font-size:16px;}}
+
 /* ============ CARDS: PLACE BANNER ============ */
 .place{position:relative;border-radius:var(--r-lg);overflow:hidden;border:1px solid var(--ink-line);box-shadow:var(--shadow-card);aspect-ratio:3/2;cursor:pointer;transition:transform .18s,box-shadow .25s;display:block;}
 .place:hover{transform:translateY(-4px);box-shadow:var(--shadow-pop);}
