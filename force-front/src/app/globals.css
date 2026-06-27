@@ -303,6 +303,14 @@ h1,h2,h3,h4{margin:0;}
 .hotspot:hover .dot{background:var(--gold-soft);box-shadow:0 0 0 5px rgba(244,201,105,.35),0 0 16px rgba(244,201,105,1);}
 .world-hero .stars{position:absolute;inset:0;background-image:radial-gradient(1px 1px at 20% 30%,#fff,transparent),radial-gradient(1px 1px at 70% 60%,#fff8,transparent),radial-gradient(1px 1px at 40% 80%,#fff6,transparent),radial-gradient(1px 1px at 85% 20%,#fff,transparent),radial-gradient(1px 1px at 55% 15%,#fff7,transparent);opacity:.7;}
 
+/* Mapa de mundo: el planeta en grande (cuadrado) sobre tarjeta negra estrellada,
+   con las regiones tocables (hotspots x/y) — como el mapa de región. */
+.world-map{position:relative;width:min(720px,100%);aspect-ratio:1;margin:26px auto 0;border-radius:var(--r-xl);overflow:hidden;border:1px solid var(--ink-line);
+  background:radial-gradient(130% 120% at 50% 24%, #161021, #07060c 72%);box-shadow:0 30px 80px -30px rgba(0,0,0,.7);}
+.world-map>img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;z-index:1;}
+.world-map .stars{position:absolute;inset:0;pointer-events:none;opacity:.7;
+  background-image:radial-gradient(1px 1px at 12% 22%,#fff,transparent),radial-gradient(1px 1px at 28% 64%,#fff8,transparent),radial-gradient(1px 1px at 44% 18%,#fff7,transparent),radial-gradient(1px 1px at 58% 78%,#fff6,transparent),radial-gradient(1px 1px at 70% 32%,#fff,transparent),radial-gradient(1px 1px at 82% 60%,#fff7,transparent),radial-gradient(1px 1px at 92% 14%,#fff6,transparent),radial-gradient(1px 1px at 20% 88%,#fff7,transparent),radial-gradient(1px 1px at 38% 42%,#fff6,transparent);}
+
 /* Mapa de región: banner grande con los lugares tocables (hotspots por x/y). */
 .region-map{position:relative;width:100%;aspect-ratio:16/9;border-radius:var(--r-xl);overflow:hidden;border:1px solid var(--ink-line);background:#0c0a12;box-shadow:0 30px 80px -30px rgba(0,0,0,.7);}
 .region-map>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
