@@ -7,8 +7,7 @@ import { useRegion } from '@/api';
 import { mediaUrl, placeBannerFallback, PLACE_TYPE } from '@/lib/design';
 import Topbar from '@/components/shell/Topbar';
 import { Loading, ErrorState } from '@/components/ui/states';
-import { SectionTitle, BiomeTag } from '@/components/ui/tags';
-import { PlaceBanner } from '@/components/ui/cards';
+import { BiomeTag } from '@/components/ui/tags';
 
 export default function RegionPage() {
   const params = useParams();
@@ -46,9 +45,6 @@ export default function RegionPage() {
         <div className="kicker">{wName ? `Región de ${wName}` : 'Región'}</div>
         <h1 className="cinzel" style={{ fontSize: 'clamp(38px,5.5vw,68px)', lineHeight: '.97', color: '#F6ECD7', margin: '8px 0 12px', letterSpacing: '.03em' }}>{a.Name}</h1>
         {a.Description && <p className="sub" style={{ fontSize: 17, maxWidth: 760 }}>{a.Description}</p>}
-        <div className="stat-strip" style={{ marginTop: 18 }}>
-          <div className="s"><b>{places.length}</b><span>{places.length === 1 ? 'Lugar' : 'Lugares'}</span></div>
-        </div>
 
         {/* Mapa de la región: imagen grande con los lugares tocables (hotspots por x/y). */}
         <div className="region-map" data-biome={a.Biome ?? ''} style={{ marginTop: 26 }}>
@@ -69,11 +65,6 @@ export default function RegionPage() {
               </Link>
             );
           })}
-        </div>
-
-        <SectionTitle title={`Lugares de ${a.Name}`} />
-        <div className="grid" style={{ gridTemplateColumns: 'repeat(2,1fr)' }}>
-          {places.map((p) => <PlaceBanner key={p.id} place={p} worldId={worldId} worldName={wName} />)}
         </div>
       </div>
     </>
