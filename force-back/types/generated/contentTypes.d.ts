@@ -875,6 +875,11 @@ export interface ApiPlacePlace extends Schema.CollectionType {
       >;
     Name: Attribute.String & Attribute.Required & Attribute.Unique;
     publishedAt: Attribute.DateTime;
+    region: Attribute.Relation<
+      'api::place.place',
+      'manyToOne',
+      'api::region.region'
+    >;
     RestockAt: Attribute.DateTime;
     ShopConfig: Attribute.JSON;
     Type: Attribute.Enumeration<
@@ -890,6 +895,68 @@ export interface ApiPlacePlace extends Schema.CollectionType {
       Attribute.Private;
     World: Attribute.Relation<
       'api::place.place',
+      'manyToOne',
+      'api::world.world'
+    >;
+  };
+}
+
+export interface ApiRegionRegion extends Schema.CollectionType {
+  collectionName: 'regions';
+  info: {
+    description: 'Regi\u00F3n: agrupa lugares dentro de un mundo.';
+    displayName: 'Region';
+    pluralName: 'regions';
+    singularName: 'region';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    Banner: Attribute.Media<'images'>;
+    Biome: Attribute.Enumeration<
+      ['forest', 'aqua', 'volcanic', 'space', 'snow', 'arid']
+    >;
+    createdAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<
+      'api::region.region',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    Description: Attribute.Text;
+    HotspotX: Attribute.Decimal &
+      Attribute.SetMinMax<
+        {
+          max: 100;
+          min: 0;
+        },
+        number
+      >;
+    HotspotY: Attribute.Decimal &
+      Attribute.SetMinMax<
+        {
+          max: 100;
+          min: 0;
+        },
+        number
+      >;
+    Name: Attribute.String & Attribute.Required & Attribute.Unique;
+    places: Attribute.Relation<
+      'api::region.region',
+      'oneToMany',
+      'api::place.place'
+    >;
+    publishedAt: Attribute.DateTime;
+    updatedAt: Attribute.DateTime;
+    updatedBy: Attribute.Relation<
+      'api::region.region',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    World: Attribute.Relation<
+      'api::region.region',
       'manyToOne',
       'api::world.world'
     >;
@@ -1064,6 +1131,11 @@ export interface ApiWorldWorld extends Schema.CollectionType {
       'api::place.place'
     >;
     publishedAt: Attribute.DateTime;
+    regions: Attribute.Relation<
+      'api::world.world',
+      'oneToMany',
+      'api::region.region'
+    >;
     updatedAt: Attribute.DateTime;
     updatedBy: Attribute.Relation<
       'api::world.world',
@@ -1545,6 +1617,7 @@ declare module '@strapi/types' {
       'api::item.item': ApiItemItem;
       'api::monster.monster': ApiMonsterMonster;
       'api::place.place': ApiPlacePlace;
+      'api::region.region': ApiRegionRegion;
       'api::shop-stock.shop-stock': ApiShopStockShopStock;
       'api::trainer.trainer': ApiTrainerTrainer;
       'api::user-event.user-event': ApiUserEventUserEvent;

@@ -35,6 +35,12 @@
       "target": "api::place.place",
       "mappedBy": "World"
     },
+    "regions": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::region.region",
+      "mappedBy": "World"
+    },
     "monsters": {
       "type": "relation",
       "relation": "oneToMany",

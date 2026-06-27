@@ -148,6 +148,49 @@ const PLACE_HOTSPOT = {
   'Ciudadela de la Cumbre Helada': { x: 64, y: 30 },
   'Atalaya de Obsidiana': { x: 36, y: 62 },
 };
+
+// Regiones por mundo (capa intermedia World → Region → Place). El seed las crea
+// idempotentes (find-or-create por Name) y asigna cada place existente (por nombre
+// exacto, tal como está en la DB) a su región. `biome` y `hotspot` (x/y 0..100) se
+// usan para el tema/arte y para ubicar la región en el mapa del mundo; `places`
+// lista los nombres EXACTOS de los lugares ya existentes.
+const WORLD_REGIONS = {
+  Eryndor: [
+    { name: 'Cumbre Helada', biome: 'snow', hotspot: { x: 64, y: 24 },
+      description: 'Picos eternos cubiertos de hielo donde el viento corta como acero.',
+      places: ['Ciudadela de la Cumbre Helada'] },
+    { name: 'Valle de los Ecos Verdes', biome: 'forest', hotspot: { x: 34, y: 40 },
+      description: 'Un valle frondoso donde cada sonido vuelve multiplicado por mil hojas.',
+      places: ['Cañada Verdante', 'Lago Susurrante'] },
+    { name: 'Región del Yunque Ardiente', biome: 'volcanic', hotspot: { x: 52, y: 42 },
+      description: 'Tierra de fraguas y brasas, donde el fuego templa metal y criaturas.',
+      places: ['Fragua de los Maestros', 'Grieta de Brasas'] },
+    { name: 'Meseta de la Guerra Antigua', biome: 'arid', hotspot: { x: 30, y: 66 },
+      description: 'Llanuras resecas sembradas de estandartes rotos y batallas olvidadas.',
+      places: ['La Meseta de los Estandartes Rotos', 'Foso de Escamas'] },
+    { name: 'Isla del Reposo de la Serpiente', biome: 'aqua', hotspot: { x: 72, y: 60 },
+      description: 'Una isla rodeada de aguas tibias donde la serpiente ancestral descansa.',
+      places: ['Isla del Reposo de la Serpiente'] },
+    { name: 'Dunas de Ceniza', biome: 'arid', hotspot: { x: 50, y: 74 },
+      description: 'Mares de arena gris y limo ardiente bajo un sol implacable.',
+      places: ['Dunas de Ceniza', 'Santuario del Limo'] },
+  ],
+  Deo: [
+    { name: 'Corteza de Deo', biome: 'arid', hotspot: { x: 50, y: 48 },
+      description: 'La superficie agrietada de Deo, donde late el corazón del mundo desierto.',
+      places: ['Los Ojos de Deo', 'El Archivo de Piedra', 'Bazar de los Crateres', 'El Corazon Latente', 'Coliseo de las Arenas Eternas'] },
+  ],
+  Egea: [
+    { name: 'Corteza de Egea', biome: 'space', hotspot: { x: 50, y: 48 },
+      description: 'El manto exterior de Egea, entre obsidiana, fisuras y cristal.',
+      places: ['El Corazon Ardiente', 'Templos de Obsidiana', 'La Forja de las Fisuras', 'Cavernas Cristalizadas', 'Coliseo de las Estrellas Caídas'] },
+  ],
+  Koril: [
+    { name: 'Corteza de Koril', biome: 'forest', hotspot: { x: 50, y: 48 },
+      description: 'La espesura bioluminiscente que recubre a Koril de torre a cráter.',
+      places: ['Torres de la Cordillera', 'Laboratorios Esmeralda', 'Mercado Bioluminiscente', 'Crateres Dorados', 'Anfiteatro de la Espesura'] },
+  ],
+};
 // Datos plausibles para items (solo se aplican si faltan). El `value` sigue la
 // escala canónica de precios (ver PRICE_SCALE / priceFor) por rareza×rol.
 const ITEM_DATA = {
@@ -240,6 +283,7 @@ function equipStatsFor(item) {
 
 const PUBLIC_ACTIONS = [
   'api::world.world.find', 'api::world.world.findOne',
+  'api::region.region.find', 'api::region.region.findOne',
   'api::place.place.find', 'api::place.place.findOne',
   'api::monster.monster.find', 'api::monster.monster.findOne',
   'api::item.item.find', 'api::item.item.findOne',
@@ -612,6 +656,44 @@ module.exports = async function seed({ strapi }) {
             const up = await uploadTrainerImage(strapi, th.image, th.name);
             if (up?.id) await strapi.db.query('api::trainer.trainer').update({ where: { id: trainer.id }, data: { image: up.id } });
           } catch (err) { strapi.log.warn(`[seed] No se pudo subir la imagen de ${th.name}: ${err.message}`); }
+        }
+      }
+    }
+
+    // 4c) Regiones (capa intermedia World → Region → Place). Idempotente:
+    //     find-or-create cada región por Name (ligada a su mundo, con bioma/hotspot/
+    //     descripción), y asigna cada place existente a su región (relación place.region,
+    //     sin tocar place.World). Empareja places por nombre normalizado (acentos/case).
+    //     Corre en bootstrap → puebla local y prod (prod en el redeploy).
+    const allPlaces = await strapi.db.query('api::place.place').findMany({});
+    const placeByNorm = new Map(allPlaces.map((p) => [slugify(p.Name), p]));
+    for (const [worldName, regions] of Object.entries(WORLD_REGIONS)) {
+      const world = worlds.find((w) => w.Name === worldName);
+      if (!world) { strapi.log.warn(`[seed] Mundo no encontrado para regiones: ${worldName}`); continue; }
+      for (const r of regions) {
+        let region = await strapi.db.query('api::region.region').findOne({ where: { Name: r.name } });
+        if (!region) {
+          region = await strapi.entityService.create('api::region.region', {
+            data: {
+              Name: r.name,
+              Description: r.description,
+              Biome: r.biome,
+              HotspotX: r.hotspot.x,
+              HotspotY: r.hotspot.y,
+              World: world.id,
+              publishedAt: new Date(),
+            },
+          });
+          strapi.log.info(`[seed] Región creada: ${r.name} (${worldName})`);
+        }
+        // Asignar cada place de la región (solo si aún no apunta a esta región).
+        for (const placeName of r.places) {
+          const place = placeByNorm.get(slugify(placeName));
+          if (!place) { strapi.log.warn(`[seed] Place no encontrado para región ${r.name}: ${placeName}`); continue; }
+          const links = await strapi.db.query('api::place.place').findOne({ where: { id: place.id }, populate: { region: true } });
+          if (links?.region?.id !== region.id) {
+            await strapi.db.query('api::place.place').update({ where: { id: place.id }, data: { region: region.id } });
+          }
         }
       }
     }

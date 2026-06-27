@@ -3,6 +3,8 @@ import {
   MonstersResponse,
   WorldsResponse,
   PlacesResponse,
+  RegionsResponse,
+  RegionResponse,
   ItemsResponse,
   MonsterResponse,
   WorldResponse,
@@ -263,6 +265,31 @@ export const placesService = {
       throw new Error(`Error deleting place ${id}: ${error}`);
     }
   }
+};
+
+// Servicio para Regiones (capa intermedia Mundo → Región → Lugar)
+export const regionsService = {
+  // Obtener todas las regiones
+  async getAll(params?: QueryParams): Promise<RegionsResponse> {
+    try {
+      const queryString = buildQueryParams(params);
+      const response = await apiClient.get(`/regions?${queryString}`);
+      return response.data;
+    } catch (error) {
+      throw new Error(`Error fetching regions: ${error}`);
+    }
+  },
+
+  // Obtener una región por ID
+  async getById(id: number, params?: QueryParams): Promise<RegionResponse> {
+    try {
+      const queryString = buildQueryParams(params);
+      const response = await apiClient.get(`/regions/${id}?${queryString}`);
+      return response.data;
+    } catch (error) {
+      throw new Error(`Error fetching region ${id}: ${error}`);
+    }
+  },
 };
 
 // Servicio para Items

@@ -1,6 +1,6 @@
 /* eslint-disable @next/next/no-img-element */
 import Link from 'next/link';
-import type { World, Place, Monster } from '@/api/types';
+import type { World, Place, Region, Monster } from '@/api/types';
 import {
   RARITY, ITEM_TYPE_ES, mediaUrl,
   worldArtFallback, thumbFallback, placeBannerFallback,
@@ -42,6 +42,27 @@ export function PlaceBanner({ place, worldId, worldName }: { place: Place; world
       <div className="pb">
         <h3 className="cinzel">{a.Name}</h3>
         {wName && <div className="meta">Mundo · <b>{wName}</b></div>}
+      </div>
+    </Link>
+  );
+}
+
+/* ---- Banner de Región (capa intermedia Mundo → Región → Lugar) ---- */
+export function RegionCard({ region, worldId }: { region: Region; worldId: number }) {
+  const a = region.attributes;
+  const places = a.places?.data ?? [];
+  // Sin banner propio caemos al banner (o fallback) del primer lugar de la región.
+  const first = places[0]?.attributes;
+  const fallback = first ? mediaUrl(first.Banner, placeBannerFallback(first.Name)) : '';
+  const img = mediaUrl(a.Banner, fallback);
+  return (
+    <Link className="place" href={`/explore/${worldId}/regions/${region.id}`} data-biome={a.Biome ?? ''}>
+      {img && <img src={img} alt={a.Name} />}
+      <div className="scrim" />
+      <BiomeTag biome={a.Biome} abs />
+      <div className="pb">
+        <h3 className="cinzel">{a.Name}</h3>
+        <div className="meta">◆ {places.length} {places.length === 1 ? 'lugar' : 'lugares'}</div>
       </div>
     </Link>
   );

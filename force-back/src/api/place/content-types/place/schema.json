@@ -46,6 +46,12 @@
       "target": "api::world.world",
       "inversedBy": "places"
     },
+    "region": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::region.region",
+      "inversedBy": "places"
+    },
     "Biome": {
       "type": "enumeration",
       "enum": [

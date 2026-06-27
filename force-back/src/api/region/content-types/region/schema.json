@@ -1,0 +1,68 @@
+{
+  "kind": "collectionType",
+  "collectionName": "regions",
+  "info": {
+    "singularName": "region",
+    "pluralName": "regions",
+    "displayName": "Region",
+    "description": "Región: agrupa lugares dentro de un mundo."
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "attributes": {
+    "Name": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "Description": {
+      "type": "text",
+      "required": false
+    },
+    "Banner": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "Biome": {
+      "type": "enumeration",
+      "enum": [
+        "forest",
+        "aqua",
+        "volcanic",
+        "space",
+        "snow",
+        "arid"
+      ],
+      "required": false
+    },
+    "HotspotX": {
+      "type": "decimal",
+      "required": false,
+      "min": 0,
+      "max": 100
+    },
+    "HotspotY": {
+      "type": "decimal",
+      "required": false,
+      "min": 0,
+      "max": 100
+    },
+    "World": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::world.world",
+      "inversedBy": "regions"
+    },
+    "places": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::place.place",
+      "mappedBy": "region"
+    }
+  }
+}

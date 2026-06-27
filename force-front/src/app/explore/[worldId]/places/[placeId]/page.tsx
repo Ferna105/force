@@ -35,11 +35,12 @@ export default function PlacePage() {
 
   const a = place.attributes;
   const world = a.World?.data;
+  const region = a.region?.data;
 
   return (
     <>
       <Topbar
-        crumb={<>{world && <><Link href={`/explore/${world.id}`} style={{ color: 'var(--gold-soft)' }}>{world.attributes.Name}</Link> · </>}<b>{a.Name}</b></>}
+        crumb={<>{world && <><Link href={`/explore/${world.id}`} style={{ color: 'var(--gold-soft)' }}>{world.attributes.Name}</Link> · </>}{world && region && <><Link href={`/explore/${world.id}/regions/${region.id}`} style={{ color: 'var(--gold-soft)' }}>{region.attributes.Name}</Link> · </>}<b>{a.Name}</b></>}
       />
       <div className="page">
         {/* HERO: el tipo es una etiqueta informativa, no un selector */}

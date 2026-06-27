@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { dataService, monstersService, worldsService, placesService, itemsService, authService, companionsService, inventoryService } from './services';
-import type { Monster, World, Place, Item, Companion, InventoryEntry, QueryParams, LoginRequest, RegisterRequest, AuthUser } from './types';
+import { dataService, monstersService, worldsService, placesService, regionsService, itemsService, authService, companionsService, inventoryService } from './services';
+import type { Monster, World, Place, Region, Item, Companion, InventoryEntry, QueryParams, LoginRequest, RegisterRequest, AuthUser } from './types';
 
 // Hook para manejar estados de carga y error
 interface UseApiState<T> {
@@ -387,7 +387,7 @@ function useEntity<T>(fetcher: () => Promise<T>, deps: unknown[]) {
   return state;
 }
 
-// Un mundo por ID (con lugares poblados)
+// Un mundo por ID (con lugares + regiones poblados)
 export function useWorld(id: number | null) {
   return useEntity<World | null>(
     async () =>
@@ -395,8 +395,27 @@ export function useWorld(id: number | null) {
         ? (
             await worldsService.getById(id, {
               // populate '*' es de un solo nivel: trae los places pero no su Banner.
-              // Poblamos el Banner de cada place para que las tarjetas muestren su imagen.
-              populate: { Image: true, places: { populate: ['Banner'] } },
+              // Poblamos el Banner de cada place y de cada región para las tarjetas.
+              populate: {
+                Image: true,
+                places: { populate: ['Banner'] },
+                regions: { populate: { Banner: true, places: { populate: ['Banner'] } } },
+              },
+            })
+          ).data
+        : null,
+    [id]
+  );
+}
+
+// Una región por ID (con sus lugares + banner poblados)
+export function useRegion(id: number | null) {
+  return useEntity<Region | null>(
+    async () =>
+      id
+        ? (
+            await regionsService.getById(id, {
+              populate: { Banner: true, World: true, places: { populate: ['Banner'] } },
             })
           ).data
         : null,

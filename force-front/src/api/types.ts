@@ -119,6 +119,27 @@ export interface Place extends StrapiEntity {
     HotspotX: number | null;
     HotspotY: number | null;
     World?: { data: World | null };
+    region?: { data: Region | null };
+    createdAt: string;
+    updatedAt: string;
+    publishedAt: string;
+  };
+}
+
+// Región: capa intermedia entre Mundo y Lugar. Agrupa lugares dentro de un mundo
+// y se ubica en el mapa del mundo vía HotspotX/HotspotY.
+export interface Region extends StrapiEntity {
+  attributes: {
+    Name: string;
+    Description: string | null;
+    Banner: StrapiImage | null;
+    Biome: BiomeName | null;
+    HotspotX: number | null;
+    HotspotY: number | null;
+    World?: { data: World | null };
+    places?: {
+      data: Place[];
+    };
     createdAt: string;
     updatedAt: string;
     publishedAt: string;
@@ -133,6 +154,9 @@ export interface World extends StrapiEntity {
     places: {
       data: Place[];
     };
+    regions?: {
+      data: Region[];
+    };
     monsters?: {
       data: Monster[];
     };
@@ -146,11 +170,13 @@ export interface World extends StrapiEntity {
 export type MonstersResponse = StrapiResponse<Monster[]>;
 export type WorldsResponse = StrapiResponse<World[]>;
 export type PlacesResponse = StrapiResponse<Place[]>;
+export type RegionsResponse = StrapiResponse<Region[]>;
 
 // Tipos para respuestas de getById (un solo objeto)
 export type MonsterResponse = StrapiResponse<Monster>;
 export type WorldResponse = StrapiResponse<World>;
 export type PlaceResponse = StrapiResponse<Place>;
+export type RegionResponse = StrapiResponse<Region>;
 
 // Tipos para parámetros de consulta
 export interface QueryParams {
