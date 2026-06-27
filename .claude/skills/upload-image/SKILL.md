@@ -1,6 +1,6 @@
 ---
 name: upload-image
-description: Carga imágenes adjuntas a un place (campo Banner), una region (campo Banner) o un item (campo icon) del juego Force, primero en la base LOCAL (Docker) y luego en PRODUCCIÓN (Railway). Usar cuando el usuario adjunte una o varias imágenes y pida cargarlas/subirlas/asignarlas a un lugar, una región o un objeto del catálogo.
+description: Carga imágenes adjuntas a un place (campo Banner), una region (campo Banner), un world (campo Image) o un item (campo icon) del juego Force, primero en la base LOCAL (Docker) y luego en PRODUCCIÓN (Railway). Usar cuando el usuario adjunte una o varias imágenes y pida cargarlas/subirlas/asignarlas a un lugar, una región, un mundo o un objeto del catálogo.
 ---
 
 # upload-image — Cargar imágenes a places/items (local + prod)
@@ -25,6 +25,7 @@ por SSH). En prod el binario queda en el volumen `/app/public/uploads`.
 |----------|-----------------------|-----------|--------------------------|
 | `place`  | `api::place.place`    | `Name`    | `Banner`                 |
 | `region` | `api::region.region`  | `Name`    | `Banner`                 |
+| `world`  | `api::world.world`    | `Name`    | `Image`                  |
 | `item`   | `api::item.item`      | `name`    | `icon`                   |
 
 ## Cómo usarla (pasos para el agente)

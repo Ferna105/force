@@ -31,6 +31,7 @@ const KINDS = {
   place: { uid: 'api::place.place', matchAttr: 'Name', defaultField: 'Banner' },
   item: { uid: 'api::item.item', matchAttr: 'name', defaultField: 'icon' },
   region: { uid: 'api::region.region', matchAttr: 'Name', defaultField: 'Banner' },
+  world: { uid: 'api::world.world', matchAttr: 'Name', defaultField: 'Image' },
 };
 
 const MIME = {
@@ -50,7 +51,7 @@ async function main() {
       const out = { ...row };
       try {
         const kind = KINDS[row.kind];
-        if (!kind) throw new Error(`kind inválido: "${row.kind}" (usar place|region|item)`);
+        if (!kind) throw new Error(`kind inválido: "${row.kind}" (usar place|region|item|world)`);
         const field = row.field || kind.defaultField;
 
         const filePath = path.join(__dirname, row.file);
