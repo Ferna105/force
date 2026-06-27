@@ -4,7 +4,7 @@
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useRegion } from '@/api';
-import { mediaUrl, placeBannerFallback } from '@/lib/design';
+import { mediaUrl, placeBannerFallback, PLACE_TYPE } from '@/lib/design';
 import Topbar from '@/components/shell/Topbar';
 import { Loading, ErrorState } from '@/components/ui/states';
 import { SectionTitle, BiomeTag } from '@/components/ui/tags';
@@ -27,6 +27,8 @@ export default function RegionPage() {
   const first = places[0]?.attributes;
   const fallback = first ? mediaUrl(first.Banner, placeBannerFallback(first.Name)) : '';
   const art = mediaUrl(a.Banner, fallback);
+  // Lugares ubicables sobre la imagen (los que tienen posición x/y).
+  const pinned = places.filter((p) => p.attributes.HotspotX != null && p.attributes.HotspotY != null);
 
   return (
     <>
@@ -41,23 +43,33 @@ export default function RegionPage() {
         }
       />
       <div className="page">
-        <section className="world-hero">
-          <div className="stars" />
-          <div className="txt">
-            <div className="kicker">{wName ? `Región de ${wName}` : 'Región'}</div>
-            <h1 className="cinzel" style={{ fontSize: 'clamp(40px,6vw,72px)', lineHeight: '.97', color: '#F6ECD7', margin: '12px 0 14px', letterSpacing: '.03em' }}>{a.Name}</h1>
-            {a.Description && <p className="sub" style={{ fontSize: 18 }}>{a.Description}</p>}
-            <div className="stat-strip">
-              <div className="s"><b>{places.length}</b><span>{places.length === 1 ? 'Lugar' : 'Lugares'}</span></div>
-            </div>
-          </div>
-          <div className="orbwrap">
-            <div className="planet">
-              {art && <img src={art} alt={a.Name} />}
-              <BiomeTag biome={a.Biome} abs />
-            </div>
-          </div>
-        </section>
+        <div className="kicker">{wName ? `Región de ${wName}` : 'Región'}</div>
+        <h1 className="cinzel" style={{ fontSize: 'clamp(38px,5.5vw,68px)', lineHeight: '.97', color: '#F6ECD7', margin: '8px 0 12px', letterSpacing: '.03em' }}>{a.Name}</h1>
+        {a.Description && <p className="sub" style={{ fontSize: 17, maxWidth: 760 }}>{a.Description}</p>}
+        <div className="stat-strip" style={{ marginTop: 18 }}>
+          <div className="s"><b>{places.length}</b><span>{places.length === 1 ? 'Lugar' : 'Lugares'}</span></div>
+        </div>
+
+        {/* Mapa de la región: imagen grande con los lugares tocables (hotspots por x/y). */}
+        <div className="region-map" data-biome={a.Biome ?? ''} style={{ marginTop: 26 }}>
+          {art && <img src={art} alt={a.Name} />}
+          <div className="map-scrim" />
+          <BiomeTag biome={a.Biome} abs />
+          {pinned.map((p) => {
+            const pa = p.attributes;
+            return (
+              <Link
+                key={p.id}
+                className="region-hotspot"
+                style={{ top: `${pa.HotspotY}%`, left: `${pa.HotspotX}%` }}
+                href={`/explore/${worldId}/places/${p.id}`}
+              >
+                <span className="dot" />
+                <span className="lbl">{pa.Name}<b>{PLACE_TYPE[pa.Type].label}</b></span>
+              </Link>
+            );
+          })}
+        </div>
 
         <SectionTitle title={`Lugares de ${a.Name}`} />
         <div className="grid" style={{ gridTemplateColumns: 'repeat(2,1fr)' }}>
