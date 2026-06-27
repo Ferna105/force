@@ -34,16 +34,22 @@ function InventoryContent() {
   const [rarity, setRarity] = useState<Rarity | 'all'>('all');
   const [sel, setSel] = useState(0);
 
-  // Copia local del compañero para reflejar equipar/quitar sin recargar.
+  // Copia local del compañero para reflejar equipar/quitar/alimentar sin recargar.
   const [companion, setCompanion] = useState<Companion | null>(null);
   const [busyItem, setBusyItem] = useState<number | null>(null);
   useEffect(() => { setCompanion(activeCompanion ?? null); }, [activeCompanion]);
 
+  // Copia local del inventario: al alimentar se consume 1 unidad (o desaparece
+  // la entrada si era la última) sin tener que recargar la página.
+  const [items, setItems] = useState<InventoryEntry[]>([]);
+  useEffect(() => { setItems(entries ?? []); }, [entries]);
+
   const equipped = useMemo(() => companion?.attributes.equippedItems?.data ?? [], [companion]);
   const equippedIds = useMemo(() => new Set(equipped.map((it) => it.id)), [equipped]);
   const equipFull = equipped.length >= MAX_EQUIP;
+  const companionName = companion?.attributes.monster?.data?.attributes.Name ?? 'tu compañero';
 
-  const all = useMemo(() => (entries ?? []).filter((e) => e.attributes.item?.data), [entries]);
+  const all = useMemo(() => items.filter((e) => e.attributes.item?.data), [items]);
   const visible = useMemo(
     () => all.filter((e) => rarity === 'all' || e.attributes.item!.data!.attributes.rarity === rarity),
     [all, rarity]
@@ -72,6 +78,56 @@ function InventoryContent() {
     } finally {
       setBusyItem(null);
     }
+  };
+
+  // Consume el alimento para curar al compañero activo: descuenta 1 unidad del
+  // inventario local (o quita la entrada si era la última) y refleja la salud.
+  const feedCompanion = async (entry: InventoryEntry) => {
+    const it = entry.attributes.item!.data!;
+    if (!companion) {
+      toast.show({ tone: 'gold', icon: 'warning', message: 'Primero necesitás un compañero para alimentar.', primary: { label: 'Entendido' } });
+      return;
+    }
+    setBusyItem(it.id);
+    try {
+      const res = await companionsService.heal(companion.id, it.id);
+      setCompanion(res.data);
+      // Descontar la unidad consumida del inventario local.
+      setItems((prev) =>
+        prev
+          .map((e) => (e.id === entry.id ? { ...e, attributes: { ...e.attributes, quantity: e.attributes.quantity - 1 } } : e))
+          .filter((e) => e.attributes.quantity > 0)
+      );
+      toast.show({
+        tone: 'verdant', icon: 'success', duration: 3600,
+        message: <>Alimentaste a <b>{companionName}</b> con <b>{it.attributes.name}</b>. +{it.attributes.heal} de salud.</>,
+      });
+    } catch (err) {
+      // El backend rechaza con 400 si el compañero ya tiene la salud completa;
+      // su mensaje viene en response.data.error.message (axios).
+      const backendMsg = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message;
+      const msg = backendMsg && /salud completa/i.test(backendMsg)
+        ? `${companionName} ya tiene la salud completa.`
+        : 'No se pudo alimentar al compañero. Intentá de nuevo.';
+      toast.show({ tone: 'danger', icon: 'warning', message: msg, primary: { label: 'Entendido' } });
+    } finally {
+      setBusyItem(null);
+    }
+  };
+
+  // Abre el toast de confirmación antes de consumir el alimento.
+  const confirmFeed = (entry: InventoryEntry) => {
+    const it = entry.attributes.item!.data!.attributes;
+    if (!companion) {
+      toast.show({ tone: 'gold', icon: 'warning', message: 'Primero necesitás un compañero para alimentar.', primary: { label: 'Entendido' } });
+      return;
+    }
+    toast.show({
+      tone: 'gold', icon: 'question',
+      message: <>¿Alimentar a <b>{companionName}</b> con <b>{it.name}</b>? Recuperará <b>{it.heal}</b> de salud y se consumirá.</>,
+      secondary: { label: 'Cancelar' },
+      primary: { label: 'Alimentar', variant: 'verdant', onClick: () => feedCompanion(entry) },
+    });
   };
 
   return (
@@ -124,14 +180,18 @@ function InventoryContent() {
               const it = selected.attributes.item!.data!;
               const equippable = it.attributes.attack > 0 || it.attributes.defense > 0;
               const isEquipped = equippedIds.has(it.id);
+              // Alimentable: cualquier objeto que cure (alimentos y pociones).
+              const feedable = (it.attributes.heal ?? 0) > 0;
               return (
                 <Detail
                   entry={selected}
                   equippable={equippable}
                   isEquipped={isEquipped}
                   canEquip={!!companion && (isEquipped || !equipFull)}
+                  feedable={feedable}
                   busy={busyItem === it.id}
                   onToggleEquip={() => toggleEquip(it.id, it.attributes.name, isEquipped)}
+                  onUse={() => confirmFeed(selected)}
                 />
               );
             })()}
@@ -143,14 +203,16 @@ function InventoryContent() {
 }
 
 function Detail({
-  entry, equippable, isEquipped, canEquip, busy, onToggleEquip,
+  entry, equippable, isEquipped, canEquip, feedable, busy, onToggleEquip, onUse,
 }: {
   entry: InventoryEntry;
   equippable: boolean;
   isEquipped: boolean;
   canEquip: boolean;
+  feedable: boolean;
   busy: boolean;
   onToggleEquip: () => void;
+  onUse: () => void;
 }) {
   const it = entry.attributes.item!.data!.attributes;
   const r = RARITY[it.rarity];
@@ -167,6 +229,7 @@ function Detail({
         <div className="drow"><span>Tipo</span><b>{ITEM_TYPE_ES[it.type]}</b></div>
         {it.attack > 0 && <div className="drow"><span>Ataque</span><b style={{ color: '#f0a17a' }}>+{it.attack}</b></div>}
         {it.defense > 0 && <div className="drow"><span>Defensa</span><b style={{ color: '#73b0f0' }}>+{it.defense}</b></div>}
+        {feedable && <div className="drow"><span>Salud</span><b style={{ color: '#6cc063' }}>+{it.heal}</b></div>}
         <div className="drow"><span>Valor</span><b style={{ color: 'var(--gold-soft)' }}>F {fmt(it.value)}</b></div>
         <div className="drow"><span>Peso</span><b>{(it.weight ?? 0).toLocaleString('es')} kg</b></div>
         <div className="drow"><span>Cantidad</span><b>×{entry.attributes.quantity}</b></div>
@@ -187,7 +250,16 @@ function Detail({
             {busy ? '…' : isEquipped ? 'Quitar' : 'Equipar'}
           </button>
         )}
-        {it.usable && <button className="btn btn-verdant" style={{ flex: 1, justifyContent: 'center' }}>Usar</button>}
+        {feedable && (
+          <button
+            className="btn btn-verdant"
+            style={{ flex: 1, justifyContent: 'center' }}
+            disabled={busy}
+            onClick={onUse}
+          >
+            {busy ? '…' : 'Usar'}
+          </button>
+        )}
         <button className="btn btn-secondary" style={{ flex: 1, justifyContent: 'center' }}>Vender</button>
       </div>
     </aside>

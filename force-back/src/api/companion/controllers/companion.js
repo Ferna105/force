@@ -214,8 +214,10 @@ module.exports = createCoreController(UID, () => ({
     return sendCompanion(ctx, id);
   },
 
-  // Curar al compañero con un objeto poción (heal>0). Consume 1 del inventario
-  // y sube currentHealth (tope = health máxima). Reactiva compañeros debilitados.
+  // Curar/alimentar al compañero con un objeto que cura (heal>0): pociones y
+  // todos los alimentos (fruit/vegetable/meat/seafood/legume). Consume 1 del
+  // inventario y sube currentHealth (tope = health máxima). Si era la última
+  // unidad, la entrada de inventario se borra (el objeto desaparece de la mochila).
   async heal(ctx) {
     const user = ctx.state.user;
     if (!user) return ctx.unauthorized('Debés iniciar sesión.');
@@ -236,14 +238,18 @@ module.exports = createCoreController(UID, () => ({
     const cur = companion.currentHealth ?? max;
     if (cur >= max) return ctx.badRequest('Tu compañero ya tiene la salud completa.');
 
-    // Debe poseer la poción (entrada de inventario con cantidad > 0).
+    // Debe poseer el objeto (entrada de inventario con cantidad > 0).
     const entry = await strapi.db.query(ENTRY_UID).findOne({
       where: { user: user.id, item: itemId, quantity: { $gt: 0 } },
     });
-    if (!entry) return ctx.badRequest('No tenés esa poción en tu inventario.');
+    if (!entry) return ctx.badRequest('No tenés ese objeto en tu inventario.');
 
-    // Consumir 1 unidad y aplicar la curación.
-    await strapi.entityService.update(ENTRY_UID, entry.id, { data: { quantity: entry.quantity - 1 } });
+    // Consumir 1 unidad: si era la última, borrar la entrada (desaparece de la mochila).
+    if (entry.quantity > 1) {
+      await strapi.entityService.update(ENTRY_UID, entry.id, { data: { quantity: entry.quantity - 1 } });
+    } else {
+      await strapi.entityService.delete(ENTRY_UID, entry.id);
+    }
     const next = Math.min(max, cur + item.heal);
     await strapi.entityService.update(UID, id, { data: { currentHealth: next } });
 

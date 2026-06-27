@@ -155,7 +155,19 @@ A `companion` (user↔monster bond) carries two independent groups of stats:
   **species base**, read from the monster's `Base*` fields (`BaseHealth`/`BaseStrength`/
   `BaseDefense`/`BaseSpeed`/`BaseLuck`/`BaseLevel` on the monster schema). The methods to
   **raise** these stats are not implemented yet — the stats are stored as the mutable current
-  values, ready to be bumped later.
+  values, ready to be bumped later. `currentHealth` (≤ `health`) is the live HP that drops in
+  duels and is restored by the **heal/feed** action below.
+
+**Healing/feeding** — `POST /companions/:id/heal { itemId }` (controller `heal()`) consumes 1
+unit of any item with `heal>0` and raises `currentHealth` (clamped to `health`); if it was the
+last unit the inventory entry is **deleted** (the item disappears from the bag). Two item
+families carry `heal`: **potions** (`POTIONS`, premium combat restore, 40/80/140/220/400 by
+rarity) and **every food** (categories fruit/vegetable/meat/seafood/legume — all `usable`,
+roughly half a potion's heal). Food heal is seeded fill-if-missing in `src/seed.js` from
+`FOOD_HEAL` (nature × rarity: fruit lightest … meat heartiest), kept below potions so a single
+item rarely tops off a leveled companion. Frontend: the `/inventory` "Usar" button on any
+`heal>0` item opens a confirm toast ("¿Alimentar a {compañero}…?") and on confirm calls
+`companionsService.heal`, then decrements/removes the entry locally.
 
 **Base stats are balanced per species and capped at ≤10 each** (so the training school's
 `2×level` cap is meaningful — see the Training engine; no base stat ever exceeds 10), varied by

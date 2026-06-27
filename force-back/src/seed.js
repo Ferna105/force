@@ -217,6 +217,31 @@ const PRICE_SCALE = {
 };
 const FOOD_CATEGORIES = new Set(['fruit', 'vegetable', 'meat', 'seafood', 'legume']);
 
+// ─── Salud que recupera cada ALIMENTO al consumirlo (campo `item.heal`) ──────
+// Todo alimento (fruit/vegetable/meat/seafood/legume) sirve para alimentar al
+// compañero y subirle `currentHealth`. El valor se modela por dos ejes:
+//   · rareza  — eje principal (cuanto más raro, más cura).
+//   · naturaleza (category) — fruta = snack liviano … carne = lo más sustancioso.
+// Balance: deliberadamente POR DEBAJO de las pociones (POTIONS: 40/80/140/220/400,
+// ~2× estos valores) — la comida es el restaurador casual/barato, la poción el
+// curador premium de combate. Como la salud máxima del compañero crece con el
+// nivel (tope 4×nivel), un solo alimento no alcanza para llenarla salvo a nivel
+// muy bajo: hay que encadenar varios o pasar a pociones.
+const FOOD_HEAL = {
+  fruit:     { common: 10, uncommon: 22, rare: 42, epic: 70,  legendary: 120 },
+  vegetable: { common: 12, uncommon: 26, rare: 48, epic: 80,  legendary: 135 },
+  legume:    { common: 14, uncommon: 30, rare: 54, epic: 90,  legendary: 150 },
+  seafood:   { common: 16, uncommon: 34, rare: 62, epic: 102, legendary: 170 },
+  meat:      { common: 18, uncommon: 40, rare: 72, epic: 120, legendary: 200 },
+};
+
+// Salud que recupera un alimento según naturaleza×rareza (0 si no es alimento o
+// le falta la rareza). Para usar en el backfill del seed.
+function foodHealFor(item) {
+  if (!FOOD_CATEGORIES.has(item.category) || !item.rarity) return 0;
+  return FOOD_HEAL[item.category]?.[item.rarity] ?? 0;
+}
+
 // Rol de precio de un item a partir de su categoría (con fallback a heal/type).
 function priceRole(item) {
   if (FOOD_CATEGORIES.has(item.category)) return 'food';
@@ -722,6 +747,16 @@ module.exports = async function seed({ strapi }) {
         if (!it.type) data.type = d.type;
         if (d.is_stackable && !it.is_stackable) { data.is_stackable = true; data.max_stack = d.max_stack; }
         if (d.usable && !it.usable) { data.usable = true; data.cooldown = d.cooldown; }
+      }
+      // Alimentos: todo objeto comestible (fruit/vegetable/meat/seafood/legume)
+      // recupera salud al consumirlo y es `usable` (botón "Usar" en el inventario).
+      // Backfill "rellenar-si-falta" (heal en 0/null) para respetar ediciones del
+      // admin; idempotente y aplica a local y prod en el próximo redeploy.
+      const itForFood = { ...it, category: it.category || data.category, rarity: it.rarity || data.rarity };
+      if (FOOD_CATEGORIES.has(itForFood.category)) {
+        const hp = foodHealFor(itForFood);
+        if (hp > 0 && !it.heal) data.heal = hp;
+        if (!it.usable) data.usable = true;
       }
       // Reescala de precios a la escala canónica (rareza×rol). A diferencia de los
       // backfills "rellenar-si-falta", esto PISA el value viejo (era el objetivo del
