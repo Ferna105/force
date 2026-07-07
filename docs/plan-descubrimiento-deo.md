@@ -50,7 +50,15 @@
   - **Monstruo Deo**: `DiscoveryStrategy` = `read_book(deo-luna-origen)` (se descubre al descifrar el libro).
   - **Drop del cristal**: `maybeDropCrystal` (enganchado en `/discovery/event` al visitar) otorga "Cristal blanco oxidado" (chance 0.4) solo si el usuario está parado en el paso `get_crystal` y no lo tiene.
   - Verificado (DB real, questline completo con usuario nuevo): los 13 pasos en orden, validación de traducción/coords (rechaza incorrectas), gate del telescopio (rechaza hora 14, acepta 22), drop del cristal, y **recompensa final una sola vez** (balance +1000, Garras al inventario, mundo Deo 404→200 con su región y lugares). `event-progress` = `completed` (13/13).
-- **PR5b — Escenas interactivas del front (Fase 2): ⏭️ SIGUIENTE.** NPC "Una criatura extraña", Biblioteca de los Secretos, Estelas de la Guerra Antigua, Telescopio Ancestral y terminal de la nave — usando `DeoText`/`.deo-*` + los endpoints del evento + los specs del handoff. Al terminar, **activar el evento** (`active:true`).
+- **PR5b — Escenas interactivas del front (Fase 2): 🔧 CASI (4/4 escenas hechas; falta verificación en navegador + activar).**
+  - **Infra generalizada (agnóstica al evento)** en `components/scenes/`: `registry.tsx` (nombre de lugar → escena; único punto de extensión), `useQuestEvent(eventName?)` (resuelve el evento activo o uno por nombre), `types.ts` (`PlaceSceneProps`). La página de lugar usa `InformationBody` → `getInfoScene(name)` (sin nombres hardcodeados ni acople a Deo). Los lugares reutilizables (Biblioteca, Telescopio) sirven a cualquier questline futuro.
+  - **Escenas** (usan `DeoText` + `.deo-*`/`.npc-*`/`.scope` del handoff):
+    - **Biblioteca de los Secretos** — estantes A–Z, libro clave en D → `read_book` (descubre a Deo) + `read_final`.
+    - **Estelas de la Guerra Antigua** — 2 inscripciones bilingües → `read_estelas`.
+    - **Una criatura extraña (NPC)** — máquina de estados por paso: diálogo en glyphs, botón «Deo» (`react_deo`), nave en escombros + input de traducción (`translate_ship`), traer el cristal (`use_ship`), terminal de coordenadas (`travel`); pistas para los pasos que ocurren en otros lugares.
+    - **Telescopio Ancestral** — minijuego de cielo arrastrable + retícula, gate horario 21–23 h (valida el backend con la hora local); al fijar el punto revela las coordenadas en `state` → `travel`.
+  - Backend: el resolver `telescope` ahora guarda `coordinates` en el `state` (la escena las muestra; el jugador las tipea en la nave).
+  - Verificado: `tsc`+`eslint` limpios, las 4 rutas compilan (200). **Pendiente: prueba en navegador del flujo completo y luego activar el evento** (`active:true` en el seed).
 
 ---
 

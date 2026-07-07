@@ -114,7 +114,9 @@ const STEP_RESOLVERS = {
     if (!inRange) {
       return { ok: false, error: 'No es un buen momento para mirar al cielo. Volvé de noche (21–23 h).' };
     }
-    return { ok: true, patch: { [flagKey(step)]: true } };
+    // Revela las coordenadas en el estado para que la escena las muestre (el
+    // jugador las anota y luego las tipea en la nave — paso `travel`).
+    return { ok: true, patch: { [flagKey(step)]: true, coordinates: step.params?.coordinates ?? null } };
   },
 };
 

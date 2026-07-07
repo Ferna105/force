@@ -2,6 +2,8 @@ import type { ComponentType } from 'react';
 import type { PlaceSceneProps } from './types';
 import LibraryScene from './LibraryScene';
 import EstelasScene from './EstelasScene';
+import CreatureScene from './CreatureScene';
+import TelescopeScene from './TelescopeScene';
 
 /**
  * Registro de escenas interactivas de lugares `information`.
@@ -18,6 +20,8 @@ import EstelasScene from './EstelasScene';
 const INFO_SCENES: Record<string, ComponentType<PlaceSceneProps>> = {
   'Biblioteca de los Secretos': LibraryScene,
   'Estelas de la Guerra Antigua': EstelasScene,
+  'Una criatura extraña': CreatureScene,
+  'Telescopio Ancestral': TelescopeScene,
 };
 
 export function getInfoScene(placeName: string): ComponentType<PlaceSceneProps> | undefined {

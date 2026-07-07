@@ -19,40 +19,57 @@ const DEO_BOOK_TITLE = 'Deo, la luna del origen';
 const LORE = 'Deo no es una luna. Es un reino perdido en el espacio, dormido tras una guerra olvidada. Quien lea esta lengua carga con su memoria.';
 const FINAL = 'Solo un emergente fuerte logrará recuperar un reino perdido en el espacio.';
 
-// Libros de relleno: títulos mundanos + un párrafo genérico. Deterministas por letra.
+// Libros de relleno: títulos mundanos + un párrafo inventado de tema diverso.
+// Nada relacionado con lunas ni guerras: el jugador debe descubrir el libro
+// especial por su cuenta (no se distingue de los demás).
 const FILLER_TITLES = [
   'Herbología del valle', 'Bestiario menor', 'Diario de cosecha', 'Tratado de fraguas',
-  'Cantares de la nieve', 'Rutas de comercio', 'Anales de la ciudadela', 'Recetas de brasa',
-  'El arte del pastoreo', 'Mapas de mareas', 'Crónica de estandartes', 'Aves del deshielo',
+  'Cantares del deshielo', 'Rutas de comercio', 'Manual del relojero', 'Recetas de brasa',
+  'El arte del pastoreo', 'Cartas de un cartógrafo', 'Tintes y tejidos', 'Aves de la ciudadela',
+];
+const FILLER_TEXTS = [
+  'El cultivo de la menta plateada prefiere la sombra parcial y el riego al alba; sus hojas perfuman el pan y ahuyentan a las polillas.',
+  'Anotaciones sobre el canto de los mirlos: repiten su melodía al amanecer y la abandonan apenas sube el calor del día.',
+  'Recetario de fraguas: para templar una hoja fina, tres inmersiones breves valen más que una sola larga.',
+  'Diario de cosecha: la calabaza de invierno madura mejor si se la deja secar dos semanas al sol antes de guardarla.',
+  'Sobre el comercio de la sal: un saco pesado en el sur equivale a tres medidas de lino en el norte.',
+  'Notas de un pastor: las ovejas de vellón oscuro resisten mejor la escarcha, aunque rinden algo menos de lana.',
+  'Herbolario menor: la raíz de jengibre calma el estómago y la flor de manzanilla concilia el sueño.',
+  'Cuaderno de un cartógrafo: los ríos de la meseta cambian de curso cada década; conviene rehacer los mapas a menudo.',
+  'Tratado de quesos: el de cabra madura en cuevas frescas y gana sabor si se lo frota con hierbas del monte.',
+  'Sobre los tejidos: el hilo teñido con cáscara de nuez conserva su color aunque se lo lave mil veces.',
+  'Apuntes de un relojero: un péndulo más largo mide el tiempo más lento; todo está en dar con la longitud justa.',
+  'Del buen pan: la masa levada con paciencia toda una noche pesa menos y dura más fresca que la apurada.',
 ];
 const SPINE_COLORS = ['#6b3b2a', '#3a5540', '#4a3b6b', '#7a5a2a', '#2f4a58', '#5c2f3a', '#455036', '#603a52'];
-const FILLER_TEXT = 'Páginas amarillentas de saber cotidiano: notas, listas y observaciones sin misterio alguno. Nada aquí habla de lunas ni de guerras olvidadas.';
 
 // hash simple determinista
 function h(s: string) { let n = 0; for (let i = 0; i < s.length; i++) n = (n * 31 + s.charCodeAt(i)) >>> 0; return n; }
 
 interface Book { id: string; title: string; color: string; w: number; hgt: number; key?: boolean; content?: string; }
 
+// Un libro con aspecto normal (color/tamaño deterministas por su semilla).
+function makeBook(id: string, seed: number, over: Partial<Book> = {}): Book {
+  return {
+    id,
+    title: FILLER_TITLES[seed % FILLER_TITLES.length],
+    color: SPINE_COLORS[seed % SPINE_COLORS.length],
+    w: 28 + (seed % 5) * 3,
+    hgt: 150 + (seed % 5) * 12,
+    content: FILLER_TEXTS[seed % FILLER_TEXTS.length],
+    ...over,
+  };
+}
+
 function shelfBooks(letter: string): Book[] {
-  const seed = h(letter);
-  const count = 5 + (seed % 4);
+  const count = 5 + (h(letter) % 4);
   const books: Book[] = [];
-  for (let i = 0; i < count; i++) {
-    const k = h(letter + i);
-    books.push({
-      id: `${letter}-${i}`,
-      title: FILLER_TITLES[k % FILLER_TITLES.length],
-      color: SPINE_COLORS[k % SPINE_COLORS.length],
-      w: 28 + (k % 5) * 3,
-      hgt: 150 + (k % 5) * 12,
-      content: FILLER_TEXT,
-    });
-  }
+  for (let i = 0; i < count; i++) books.push(makeBook(`${letter}-${i}`, h(letter + i)));
   if (letter === 'D') {
-    // el libro clave, en el medio del estante
-    books.splice(Math.floor(books.length / 2), 0, {
-      id: 'deo', title: DEO_BOOK_TITLE, color: '#241f36', w: 34, hgt: 196, key: true,
-    });
+    // El libro clave, sin ninguna marca visual: mismo aspecto que el resto (su
+    // color/tamaño salen del hash como cualquier otro). `key` es solo lógico.
+    const book = makeBook('deo', h('deo'), { title: DEO_BOOK_TITLE, key: true, content: undefined });
+    books.splice(Math.floor(books.length / 2), 0, book);
   }
   return books;
 }
@@ -107,9 +124,8 @@ export default function LibraryScene({ place }: PlaceSceneProps) {
               background: l === letter ? 'var(--gold)' : 'var(--ink-2)',
               color: l === letter ? '#241a08' : 'var(--mist)',
               borderColor: 'var(--ink-line)',
-              fontWeight: l === 'D' ? 800 : 600,
+              fontWeight: 600,
             }}
-            title={l === 'D' ? 'Algo brilla en este estante…' : undefined}
           >
             {l}
           </button>
@@ -123,7 +139,7 @@ export default function LibraryScene({ place }: PlaceSceneProps) {
           {books.map((b) => (
             <div
               key={b.id}
-              className={`book${b.key ? ' key' : ''}`}
+              className="book"
               onClick={() => setOpen(b)}
               style={{ width: b.w, height: b.hgt, background: b.color }}
             >
@@ -141,7 +157,7 @@ export default function LibraryScene({ place }: PlaceSceneProps) {
           <div className="deo-card" onClick={(e) => e.stopPropagation()}>
             {open.key ? (
               <>
-                <div className="deo-chip" style={{ marginBottom: 12 }}>Estante D · idioma de Deo</div>
+                <div className="deo-chip" style={{ marginBottom: 12 }}>Idioma desconocido</div>
                 <h3>{DEO_BOOK_TITLE}</h3>
                 <div style={{ margin: '18px 0' }}>
                   <DeoText text={LORE} size="md" reveal={readDone ? revealFrac : 0} />

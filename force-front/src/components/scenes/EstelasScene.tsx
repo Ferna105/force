@@ -56,7 +56,7 @@ export default function EstelasScene({ place }: PlaceSceneProps) {
       </div>
 
       <div style={{ marginTop: 20, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-        {!canRead && <span className="npc-hint">No entendés estos símbolos… todavía. Descifrá primero el libro de la biblioteca.</span>}
+        {!canRead && <span className="npc-hint">No entendés estos símbolos… todavía.</span>}
         {done && <span className="deo-chip">✓ Inscripciones leídas</span>}
         {isActiveStep && (
           <button className="btn btn-primary" disabled={busy} onClick={confirmar}>
