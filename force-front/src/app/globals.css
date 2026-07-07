@@ -954,3 +954,46 @@ h1,h2,h3,h4{margin:0;}
 .house-pal-item img{width:100%;height:100%;object-fit:contain;}
 .house-pal-item.on{border-color:var(--gold);box-shadow:0 0 0 2px rgba(230,166,48,.35);}
 .house-pal-item .qty{position:absolute;bottom:3px;right:5px;font-family:var(--font-fredoka);font-weight:700;font-size:11px;color:var(--gold-soft);background:rgba(16,13,9,.75);padding:1px 6px;border-radius:var(--r-pill);}
+
+/* ============================================================
+   EL IDIOMA DE DEO — tipografía de glyphs (idioma cifrado)
+   Portado del handoff de diseño (deo/deo.css). El modal de
+   descubrimiento (.disc-*) y la caja de diálogo NPC (.npc-*) se
+   agregan en la fase de las escenas del questline.
+   ============================================================ */
+:root{
+  --deo:#8a7fe8;              /* violeta base */
+  --deo-soft:#c3bcff;         /* violeta claro (texto acento) */
+  --deo-dim:#6a63b8;
+  --deo-ice:#EAF0FF;          /* blanco frío (texto) */
+  --deo-ink:#0a0b12;          /* fondo espacial profundo */
+  --deo-ink2:#12131d;
+  --deo-stone:#3a4150;
+  --deo-stone-lit:#5b6478;
+  --deo-glow:rgba(138,127,232,.55);
+  --deo-glow-strong:rgba(138,127,232,.9);
+}
+
+/* contenedor de texto en idioma de Deo */
+.deo{color:var(--deo-soft);line-height:1.5;word-break:break-word;}
+.deo-word{display:inline-flex;flex-wrap:wrap;vertical-align:baseline;}
+.deo-sp{display:inline-block;width:.42em;}
+.deo-ch{position:relative;display:inline-grid;place-items:center;width:.82em;height:1.32em;vertical-align:-.28em;}
+.deo-g,.deo-l{grid-area:1/1;transition:opacity .5s ease, transform .5s ease;}
+.deo-g{display:inline-flex;filter:drop-shadow(0 0 5px var(--deo-glow));}
+.deo-svg{height:1.26em;width:auto;display:block;overflow:visible;}
+.deo-svg .df{fill:currentColor;stroke:none;}
+/* gemelo latino (traducción) — oculto hasta revelar */
+.deo-l{font-family:var(--font-cinzel),serif;font-weight:600;color:var(--deo-ice);opacity:0;transform:scale(.7);font-size:.92em;line-height:1;}
+.deo-ch.punct .deo-g{filter:none;color:var(--deo-soft);font-family:var(--font-cinzel),serif;}
+.deo-ch.punct .deo-l{opacity:0;}
+/* estado revelado: el glyph se apaga, aparece el español */
+.deo-ch.is-latin .deo-g{opacity:0;transform:scale(1.25);}
+.deo-ch.is-latin .deo-l{opacity:1;transform:scale(1);}
+.deo-ch.is-latin.punct .deo-g{opacity:1;transform:none;}
+/* tamaños utilitarios de glyphs */
+.deo-xs{font-size:15px;}
+.deo-sm{font-size:20px;}
+.deo-md{font-size:27px;}
+.deo-lg{font-size:38px;}
+.deo-xl{font-size:52px;}

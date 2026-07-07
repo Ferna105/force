@@ -16,9 +16,14 @@
       "enum": [
         "visit_place",
         "play_place",
-        "buy_item"
+        "buy_item",
+        "read_book",
+        "raise_stat_in_training"
       ],
       "required": true
+    },
+    "data": {
+      "type": "json"
     },
     "user": {
       "type": "relation",

@@ -26,7 +26,19 @@
   - Front (data layer + tracker mínimo pre-diseño): `eventsService` (`getActive`/`getOne`/`resolveStep`), tipos `EventView`/`EventStepResponse`, hook `useActiveEvents`, y página `/events` funcional (checklist de pasos + resolver el paso flag actual + toast de recompensa).
   - Verificado en Docker (DB real, usuario nuevo): lista/detalle, **orden** (paso fuera de turno → 400), paso `flag` avanza, paso pasivo (`visit_place`) auto-completa, y al completar se otorgan **coins + item + discoverWorld** (balance +N, item al inventario, Deo pasa de 404→200 con su región y lugares) **una sola vez** (idempotente). `tsc`+`eslint` limpios; `/events` compila 200.
   - **Decisión:** el reward `discoverWorld` reusa el `discoverWorldTree` de PR1, cerrando el circuito Evento→descubrimiento. Los **resolvers de puzzle** (traducción/telescopio/coordenadas) y los tipos de paso `own_companion`/`companion_level_at_least`/`raise_stat_in_training` quedan para PR3/PR5.
-- **PR3 — Event/task types genéricos + integración training (Fase 2): ⏭️ SIGUIENTE.**
+- **PR3 — Event/task types genéricos + integración training (Fase 2): ✅ HECHO.** (backend-only)
+  - Nuevos evaluadores en `discovery/engine.js` (`EVALUATORS`, reutilizados por descubrimiento y por el motor de eventos): `own_companion` (monsterName/Id), `companion_level_at_least` (monsterName/Id + level), `read_book` (bookId), `raise_stat_in_training` (stat). `loadContext` ahora carga los **compañeros** del usuario y arrastra el campo `data` de cada `user-event`.
+  - `user-event`: enum extendido con `read_book` y `raise_stat_in_training` + campo `data` (json) para params (bookId/stat).
+  - `/discovery/event` acepta `read_book` con `bookId`. `raise_stat_in_training` es **server-only**: lo emite `companion.service.resolveTraining` al completar un entrenamiento (una sola vez, junto con el +stat).
+  - Compañeros: se reusa el `adopt` existente (sin cambios) vía los tasks de estado.
+  - Verificado (DB real): 8/8 asserts unitarios de evaluadores; integración real → adopt + read_book + entrenamiento vencido resuelto por `/companions/mine` (emite el evento, +1 fuerza) ⇒ evento con los 3 pasos nuevos **completado** con recompensa.
+- **PR4 — Contenido + idioma Deo (Fase 3, sin puzzles): ✅ HECHO.**
+  - **4 places nuevos** (seed idempotente, `information`, **visibles** en Eryndor — son las entradas al questline): "Una criatura extraña" (Dunas de Ceniza, arid), "Biblioteca de los Secretos" (Cumbre Helada, snow), "Estelas de la Guerra Antigua" (Meseta de la Guerra Antigua, arid), "Telescopio Ancestral" (Cumbre Helada, snow). Nombres/descripciones tomados del handoff de diseño. Sin banner (fallback).
+  - **2 items nuevos** (seed): "Cristal blanco oxidado" (`key`/`rare`, item de quest) y "Garras blancas de piedra espacial" (`weapon`/`uncommon`, `attack` backfilled = arma exclusiva de recompensa). **Sin ícono** (fallback); el arte 3D-render final se genera luego con `item-generator` a partir de la dirección de arte del handoff.
+  - **Idioma de Deo**: `deo-glyph.js` del handoff **portado** a `force-front/src/lib/deoGlyph.ts` (módulo TS puro, SSR-safe, cifrado 1:1 ES→glyphs SVG inline apto CSP) + componente `DeoText` (`components/ui/DeoText.tsx`, con reveal a español) + estilos `.deo-*` en `globals.css`.
+  - **Fuente del arte**: handoff de diseño (`Force-handoff.zip`) — trae specs de todas las escenas, el idioma, y arte de Deo. Para los 2 items solo hay dirección de arte (no PNG final) ⇒ decisión: fallback ahora, `item-generator` después.
+  - Verificado (DB real): 4 places visibles con región/bioma correctos; items con stats backfilled; **port del idioma idéntico al original (27/27 glyphs + render)**; `tsc`+`eslint` limpios.
+- **PR5 — Pasos del evento Deo + escenas (Fase 2): ⏭️ SIGUIENTE.**
 
 ---
 

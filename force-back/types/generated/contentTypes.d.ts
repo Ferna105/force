@@ -1324,6 +1324,7 @@ export interface ApiUserEventUserEvent extends Schema.CollectionType {
       'admin::user'
     > &
       Attribute.Private;
+    data: Attribute.JSON;
     item: Attribute.Relation<
       'api::user-event.user-event',
       'manyToOne',
@@ -1334,7 +1335,15 @@ export interface ApiUserEventUserEvent extends Schema.CollectionType {
       'manyToOne',
       'api::place.place'
     >;
-    type: Attribute.Enumeration<['visit_place', 'play_place', 'buy_item']> &
+    type: Attribute.Enumeration<
+      [
+        'visit_place',
+        'play_place',
+        'buy_item',
+        'read_book',
+        'raise_stat_in_training'
+      ]
+    > &
       Attribute.Required;
     updatedAt: Attribute.DateTime;
     updatedBy: Attribute.Relation<

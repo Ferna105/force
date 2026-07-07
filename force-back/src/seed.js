@@ -168,6 +168,11 @@ const PLACE_BIOME = {
   'Isla del Reposo de la Serpiente': 'aqua',
   'Ciudadela de la Cumbre Helada': 'snow',
   'Atalaya de Obsidiana': 'volcanic',
+  // Places del questline de Deo (bioma según su región).
+  'Una criatura extraña': 'arid',
+  'Biblioteca de los Secretos': 'snow',
+  'Estelas de la Guerra Antigua': 'arid',
+  'Telescopio Ancestral': 'snow',
 };
 const PLACE_HOTSPOT = {
   'Cañada Verdante': { x: 38, y: 42 },
@@ -218,6 +223,45 @@ const WORLD_REGIONS = {
       places: ['Torres de la Cordillera', 'Laboratorios Esmeralda', 'Mercado Bioluminiscente', 'Crateres Dorados', 'Anfiteatro de la Espesura'] },
   ],
 };
+
+// Places nuevos del questline de Deo (escenas `information` en Eryndor, visibles
+// por defecto: son las entradas al misterio de la luna). Idempotentes por Name.
+// Las escenas interactivas (biblioteca, NPC, telescopio, meseta) se implementan
+// en una fase posterior; acá solo se crea el lugar (contenido).
+const QUEST_PLACES = [
+  {
+    name: 'Una criatura extraña', region: 'Dunas de Ceniza', biome: 'arid', hotspot: { x: 38, y: 62 },
+    description: 'Entre las dunas grises yace una criatura perdida que no habla ninguna lengua conocida: se expresa en glyphs de una luna olvidada. Cerca, los restos de una nave destrozada esperan una chispa para volver a encenderse.',
+  },
+  {
+    name: 'Biblioteca de los Secretos', region: 'Cumbre Helada', biome: 'snow', hotspot: { x: 40, y: 34 },
+    description: 'Estanterías ordenadas por letra guardan tratados de herbología, bestiarios y diarios de cosecha. Casi todo es relleno… salvo un libro en el estante D que nadie supo leer: «Deo, la luna del origen», cuyos glyphs se traducen a medida que avanza el misterio.',
+  },
+  {
+    name: 'Estelas de la Guerra Antigua', region: 'Meseta de la Guerra Antigua', biome: 'arid', hotspot: { x: 58, y: 40 },
+    description: 'En lo alto de la meseta sobreviven dos inscripciones de piedra, talladas en el idioma de Deo con su traducción debajo. Cuentan el final de una guerra que terminó en silencio.',
+  },
+  {
+    name: 'Telescopio Ancestral', region: 'Cumbre Helada', biome: 'snow', hotspot: { x: 76, y: 18 },
+    description: 'En la cima de la Cumbre Helada, un telescopio milenario escruta el vacío. Solo de noche, entre miles de estrellas, titila un punto: las coordenadas de un reino perdido en el espacio.',
+  },
+];
+
+// Items nuevos del questline. Se crean sin ícono (fallback en el front); el arte
+// 3D-render final se genera luego con la skill item-generator a partir de la
+// dirección de arte del handoff de diseño. La backfill de items (paso 5) completa
+// attack/defense/value del arma según su familia×rareza (EQUIP_STATS/priceFor).
+const QUEST_ITEMS = [
+  {
+    name: 'Cristal blanco oxidado', type: 'key', rarity: 'rare', category: null, value: 0,
+    description: 'Una esquirla de cristal facetado, blanco lechoso con óxido tenue en los bordes y un núcleo que insinúa violeta. Piedra-cristal de la corteza de Deo: fría, semitranslúcida, dormida. No brilla — apenas late.',
+  },
+  {
+    name: 'Garras blancas de piedra espacial', type: 'weapon', rarity: 'uncommon', category: 'weapon',
+    description: 'Tres garras curvas de piedra espacial tallada, montadas en una manopla de cuero oscuro. Piedra blanca pulida con vetas grises y un destello violeta en la base. Reliquia de una guerra antigua: elegante y letal. Recompensa exclusiva del descubrimiento de Deo.',
+  },
+];
+
 // Datos plausibles para items (solo se aplican si faltan). El `value` sigue la
 // escala canónica de precios (ver PRICE_SCALE / priceFor) por rareza×rol.
 const ITEM_DATA = {
@@ -879,6 +923,52 @@ module.exports = async function seed({ strapi }) {
           data: { steps: demo.steps, rewards: demo.rewards, active: demo.active, startsAt: demo.startsAt },
         });
       }
+    }
+
+    // 4f) Places del questline de Deo (escenas `information` visibles en Eryndor).
+    //     Idempotente por Name: crea el lugar ligado a Eryndor + su región + bioma/
+    //     hotspot/descripción. Sin banner (fallback en el front).
+    if (eryndor) {
+      for (const qp of QUEST_PLACES) {
+        const exists = await strapi.db.query('api::place.place').findOne({ where: { Name: qp.name } });
+        if (exists) continue;
+        const region = await strapi.db.query('api::region.region').findOne({ where: { Name: qp.region } });
+        if (!region) { strapi.log.warn(`[seed] Región no encontrada para quest place ${qp.name}: ${qp.region}`); continue; }
+        await strapi.entityService.create('api::place.place', {
+          data: {
+            Name: qp.name,
+            Description: qp.description,
+            Type: 'information',
+            World: eryndor.id,
+            region: region.id,
+            Biome: qp.biome,
+            HotspotX: qp.hotspot.x,
+            HotspotY: qp.hotspot.y,
+            publishedAt: new Date(),
+          },
+        });
+        strapi.log.info(`[seed] Quest place creado: ${qp.name} (${qp.region})`);
+      }
+    }
+
+    // 4g) Items del questline de Deo (find-or-create por Name; sin ícono). La
+    //     backfill (paso 5) completa attack/defense/value según familia×rareza.
+    for (const qi of QUEST_ITEMS) {
+      const exists = await strapi.db.query('api::item.item').findOne({ where: { name: qi.name } });
+      if (exists) continue;
+      await strapi.entityService.create('api::item.item', {
+        data: {
+          name: qi.name,
+          slug: slugify(qi.name),
+          description: qi.description,
+          type: qi.type,
+          rarity: qi.rarity,
+          category: qi.category ?? null,
+          value: qi.value ?? null,
+          publishedAt: new Date(),
+        },
+      });
+      strapi.log.info(`[seed] Quest item creado: ${qi.name}`);
     }
 
     // 5) Completar datos de items faltantes

@@ -19,7 +19,9 @@ const { evaluateUser } = require('../engine');
 const PLACE_UID = 'api::place.place';
 const EVENT_UID = 'api::user-event.user-event';
 
-const EVENT_TYPES = ['visit_place', 'play_place', 'buy_item'];
+// Tipos recordables por el cliente. `raise_stat_in_training` NO está: lo emite
+// el motor de training server-side al completar un entrenamiento.
+const EVENT_TYPES = ['visit_place', 'play_place', 'buy_item', 'read_book'];
 
 module.exports = {
   async event(ctx) {
@@ -45,6 +47,14 @@ module.exports = {
       worldId = place.World?.id ?? null;
     }
 
+    // Params extra por tipo (p. ej. bookId para read_book) → campo json `data`.
+    let data = null;
+    if (type === 'read_book') {
+      const bookId = body.bookId ?? body.data?.bookId ?? null;
+      if (bookId == null) return ctx.badRequest('Falta bookId para read_book.');
+      data = { bookId };
+    }
+
     await strapi.entityService.create(EVENT_UID, {
       data: {
         type,
@@ -52,6 +62,7 @@ module.exports = {
         place: placeId || null,
         world: worldId,
         item: itemId || null,
+        data,
       },
     });
 

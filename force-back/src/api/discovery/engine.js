@@ -31,6 +31,10 @@
  *   - own_item_of_type           { type }
  *   - enter_place_in_time_range  { placeName | placeId, fromHour, toHour }
  *   - discover_monster           { monsterName | monsterId }
+ *   - own_companion              { monsterName | monsterId }
+ *   - companion_level_at_least   { monsterName | monsterId, level }
+ *   - read_book                  { bookId }        (evento read_book con ese bookId)
+ *   - raise_stat_in_training     { stat }          (entrenó +1 esa stat en una escuela)
  */
 
 const USER_UID = 'plugin::users-permissions.user';
@@ -41,6 +45,7 @@ const PLACE_UID = 'api::place.place';
 const EVENT_UID = 'api::user-event.user-event';
 const ENTRY_UID = 'api::inventory-entry.inventory-entry';
 const ITEM_UID = 'api::item.item';
+const COMPANION_UID = 'api::companion.companion';
 
 const EPOCH = new Date(0);
 
@@ -186,6 +191,42 @@ const EVALUATORS = {
     const done = monsterId != null && ctx.discoveredIds.has(monsterId);
     return { done, completedAt: null };
   },
+
+  own_companion(params, ctx) {
+    const monsterId = params.monsterId != null
+      ? Number(params.monsterId)
+      : ctx.monstersByName.get(String(params.monsterName || '').toLowerCase())?.id ?? null;
+    const done = monsterId != null && ctx.companions.some((c) => c.monsterId === monsterId);
+    return { done, completedAt: null };
+  },
+
+  companion_level_at_least(params, ctx) {
+    const monsterId = params.monsterId != null
+      ? Number(params.monsterId)
+      : ctx.monstersByName.get(String(params.monsterName || '').toLowerCase())?.id ?? null;
+    const minLevel = Number(params.level) || 1;
+    const done = monsterId != null
+      && ctx.companions.some((c) => c.monsterId === monsterId && (c.level || 0) >= minLevel);
+    return { done, completedAt: null };
+  },
+
+  read_book(params, ctx, events) {
+    const bookId = params.bookId != null ? String(params.bookId) : null;
+    const at = firstEventTime(
+      events,
+      (e) => e.type === 'read_book' && bookId != null && String(e.data?.bookId) === bookId
+    );
+    return { done: at != null, completedAt: at };
+  },
+
+  raise_stat_in_training(params, ctx, events) {
+    const stat = String(params.stat || '').toLowerCase();
+    const at = firstEventTime(
+      events,
+      (e) => e.type === 'raise_stat_in_training' && nameEq(e.data?.stat, stat)
+    );
+    return { done: at != null, completedAt: at };
+  },
 };
 
 /* ============ Evaluación de una estrategia completa ============ */
@@ -219,7 +260,7 @@ function evaluateStrategy(strategy, ctx) {
 
 /* ============ Carga de contexto del usuario ============ */
 async function loadContext(strapi, userId) {
-  const [worlds, regions, places, monsters, items, events, inventory] = await Promise.all([
+  const [worlds, regions, places, monsters, items, events, inventory, companions] = await Promise.all([
     strapi.entityService.findMany(WORLD_UID, {
       fields: ['id', 'Name', 'Description', 'Hidden', 'DiscoveryStrategy'],
       populate: { Image: true },
@@ -253,6 +294,11 @@ async function loadContext(strapi, userId) {
     strapi.entityService.findMany(ENTRY_UID, {
       filters: { user: userId },
       populate: { item: { fields: ['id', 'rarity', 'type'] } },
+    }),
+    strapi.entityService.findMany(COMPANION_UID, {
+      filters: { user: userId },
+      fields: ['id', 'level'],
+      populate: { monster: { fields: ['id', 'Name'] } },
     }),
   ]);
 
@@ -289,7 +335,14 @@ async function loadContext(strapi, userId) {
     placeId: e.place?.id ?? null,
     worldId: e.world?.id ?? null,
     itemId: e.item?.id ?? null,
+    data: e.data ?? null,
     _date: new Date(e.createdAt),
+  }));
+
+  // Compañeros del usuario (para tareas own_companion / companion_level_at_least)
+  const normCompanions = companions.map((c) => ({
+    monsterId: c.monster?.id ?? null,
+    level: c.level ?? 0,
   }));
 
   // Inventario normalizado
@@ -316,6 +369,7 @@ async function loadContext(strapi, userId) {
     placesByWorld,
     events: normEvents,
     inventory: normInventory,
+    companions: normCompanions,
     now: new Date(),
   };
 }

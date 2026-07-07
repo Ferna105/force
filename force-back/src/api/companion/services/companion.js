@@ -55,6 +55,22 @@ module.exports = createCoreService(UID, ({ strapi }) => ({
     const updated = await strapi.entityService.update(UID, c.id, {
       data: { [stat]: next, trainingStat: null, trainingEndsAt: null, trainingGain: 1 },
     });
+
+    // Emitir un evento de descubrimiento: el usuario subió `stat` en una escuela.
+    // Alimenta la tarea/paso `raise_stat_in_training` (motor de descubrimiento y
+    // de eventos). Se emite una sola vez porque acá se limpia `trainingStat`.
+    try {
+      const ownerId = c.user?.id
+        ?? (await strapi.db.query(UID).findOne({ where: { id: c.id }, populate: { user: true } }))?.user?.id;
+      if (ownerId) {
+        await strapi.entityService.create('api::user-event.user-event', {
+          data: { type: 'raise_stat_in_training', user: ownerId, data: { stat } },
+        });
+      }
+    } catch (err) {
+      strapi.log.warn(`[training] No se pudo emitir raise_stat_in_training: ${err.message}`);
+    }
+
     return { ...c, ...updated };
   },
 
