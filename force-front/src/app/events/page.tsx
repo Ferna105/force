@@ -1,79 +1,19 @@
 'use client';
 
 /**
- * Tracker de eventos (PR2 — motor de eventos). Versión funcional mínima
- * (pre-diseño): lista los eventos activos con su progreso, checklist de pasos y
- * un botón para resolver el paso interactivo (flag) actual. El hub visual
- * definitivo lo diseña Claude Design (ver sección de diseño del plan).
+ * Lista de eventos del usuario. Solo un resumen (nombre + avance) que linkea a la
+ * página interna de cada evento (`/events/[id]`), donde se ve el detalle del
+ * progreso y las recompensas. No revela los pasos pendientes.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { eventsService } from '@/api';
 import type { EventView } from '@/api/types';
 import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/hooks/useToast';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import Topbar from '@/components/shell/Topbar';
 import { Loading } from '@/components/ui/states';
-
-function EventCard({ ev, onChanged }: { ev: EventView; onChanged: (v: EventView) => void }) {
-  const { show } = useToast();
-  const [busy, setBusy] = useState(false);
-  const current = ev.steps.find((s) => s.current) ?? null;
-
-  const resolveCurrent = useCallback(async () => {
-    if (!current || current.type !== 'flag') return;
-    setBusy(true);
-    try {
-      const res = await eventsService.resolveStep(ev.eventId, current.key);
-      onChanged(res.view);
-      const r = res.rewardsGranted;
-      if (r) {
-        const parts: string[] = [];
-        if (r.coins) parts.push(`+${r.coins} monedas`);
-        if (r.items?.length) parts.push(`${r.items.length} objeto(s)`);
-        if (r.discovery?.world) parts.push(`descubriste ${r.discovery.world.attributes.Name}`);
-        show({ tone: 'verdant', icon: 'success', message: `¡Evento completado! ${parts.join(' · ')}`, duration: 6000 });
-      }
-    } catch {
-      show({ tone: 'danger', icon: 'warning', message: 'No se pudo resolver el paso.', duration: 4000 });
-    } finally {
-      setBusy(false);
-    }
-  }, [current, ev.eventId, onChanged, show]);
-
-  const doneCount = ev.steps.filter((s) => s.done).length;
-
-  return (
-    <section className="panel" style={{ padding: 24, marginBottom: 18 }}>
-      <div className="kicker">Evento{ev.status === 'completed' ? ' · completado' : ''}</div>
-      <h2 className="cinzel" style={{ fontSize: 28, color: '#F6ECD7', margin: '6px 0 8px' }}>{ev.name}</h2>
-      {ev.description && <p className="sub" style={{ marginBottom: 14 }}>{ev.description}</p>}
-
-      <div className="sub" style={{ marginBottom: 12 }}>Progreso: <b>{doneCount}/{ev.total}</b></div>
-
-      <ol style={{ listStyle: 'none', padding: 0, margin: '0 0 16px', display: 'grid', gap: 8 }}>
-        {ev.steps.map((s) => (
-          <li key={s.key} style={{ display: 'flex', alignItems: 'center', gap: 10, opacity: s.done ? 1 : s.current ? 1 : 0.55 }}>
-            <span aria-hidden style={{ width: 20 }}>{s.done ? '✅' : s.current ? '▶️' : '⬜'}</span>
-            <span style={{ color: s.current ? 'var(--gold-soft)' : undefined }}>{s.label ?? s.key}</span>
-          </li>
-        ))}
-      </ol>
-
-      {ev.status !== 'completed' && current && current.type === 'flag' && (
-        <button className="btn btn-primary" disabled={busy} onClick={resolveCurrent}>
-          {busy ? 'Procesando…' : `Marcar: ${current.label ?? current.key}`}
-        </button>
-      )}
-      {ev.status !== 'completed' && current && current.type !== 'flag' && (
-        <div className="sub" style={{ fontStyle: 'italic' }}>
-          Este paso se completa jugando: {current.label ?? current.key}
-        </div>
-      )}
-    </section>
-  );
-}
 
 function EventsBody() {
   const { user } = useAuth();
@@ -84,22 +24,40 @@ function EventsBody() {
     eventsService.getActive().then(setEvents).catch(() => setEvents([]));
   }, [user]);
 
-  const onChanged = (v: EventView) =>
-    setEvents((prev) => (prev ?? []).map((e) => (e.eventId === v.eventId ? v : e)));
-
   return (
     <div className="page">
       <div className="kicker">El universo Force</div>
       <h1 className="h-page" style={{ margin: '8px 0 8px' }}>Eventos</h1>
-      <p className="sub">Aventuras por etapas con recompensas al completarlas.</p>
+      <p className="sub">Tus aventuras por etapas. Entrá a cada una para ver tu avance y tus recompensas.</p>
 
       {events === null && <Loading />}
       {events !== null && events.length === 0 && (
-        <section className="panel" style={{ padding: 24 }}>
+        <div className="panel" style={{ padding: 24, marginTop: 18 }}>
           <p className="sub" style={{ margin: 0 }}>No hay eventos activos en este momento.</p>
-        </section>
+        </div>
       )}
-      {events?.map((ev) => <EventCard key={ev.eventId} ev={ev} onChanged={onChanged} />)}
+
+      <div style={{ display: 'grid', gap: 14, marginTop: 18 }}>
+        {events?.map((ev) => {
+          const done = ev.steps.filter((s) => s.done).length;
+          const pct = ev.total ? Math.round((done / ev.total) * 100) : 0;
+          const completed = ev.status === 'completed';
+          return (
+            <Link key={ev.eventId} href={`/events/${ev.eventId}`} className="panel" style={{ padding: '22px 26px', display: 'block', textDecoration: 'none' }}>
+              <div className="kicker">Evento{completed ? ' · completado' : ''}</div>
+              <h2 className="cinzel" style={{ fontSize: 24, color: '#F6ECD7', margin: '6px 0 6px' }}>{ev.name}</h2>
+              {ev.description && <p className="sub" style={{ margin: '0 0 12px' }}>{ev.description}</p>}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <b className="fred" style={{ color: 'var(--gold-soft)' }}>{done} de {ev.total} pasos</b>
+                <span className="fred" style={{ color: 'var(--gold-soft)' }}>Ver avance →</span>
+              </div>
+              <div style={{ height: 8, borderRadius: 99, background: 'var(--ink-3)', overflow: 'hidden', marginTop: 12 }}>
+                <div style={{ height: '100%', width: `${pct}%`, background: 'linear-gradient(90deg,var(--deo),var(--gold))', borderRadius: 99 }} />
+              </div>
+            </Link>
+          );
+        })}
+      </div>
     </div>
   );
 }

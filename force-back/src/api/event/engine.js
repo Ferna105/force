@@ -176,9 +176,13 @@ async function getOrCreateProgress(strapi, userId, eventId) {
 }
 
 // Vista para el front: el evento + el progreso del usuario con cada paso anotado.
+// - El `label` de un paso solo se revela si ya está cumplido: los pasos pendientes
+//   se descubren jugando en el mundo, no se listan de antemano.
+// - Las `rewards` solo se exponen al completar el evento (nada de spoilers).
 function toView(event, progress, completedKeys, currentStep) {
   const steps = Array.isArray(event.steps) ? event.steps : [];
   const doneSet = new Set(completedKeys);
+  const completed = progress.status === 'completed';
   return {
     eventId: event.id,
     name: event.Name,
@@ -190,11 +194,12 @@ function toView(event, progress, completedKeys, currentStep) {
     total: steps.length,
     steps: steps.map((s, i) => ({
       key: s.key,
-      label: s.label ?? null,
+      label: doneSet.has(s.key) ? (s.label ?? null) : null,
       type: s.type,
       done: doneSet.has(s.key),
       current: i === currentStep && !doneSet.has(s.key),
     })),
+    rewards: completed ? (event.rewards ?? null) : null,
     state: progress.state || {},
   };
 }

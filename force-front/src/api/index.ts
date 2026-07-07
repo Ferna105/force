@@ -26,6 +26,7 @@ export type {
   EventStatus,
   EventStepView,
   EventView,
+  EventRewardsConfig,
   EventRewardResult,
   EventStepResponse,
   DuelStatus,

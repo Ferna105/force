@@ -367,6 +367,13 @@ export interface EventStepView {
   current: boolean;
 }
 
+// Config de recompensas del evento (solo se expone al completarlo).
+export interface EventRewardsConfig {
+  coins?: number;
+  items?: { name: string; quantity?: number }[];
+  discoverWorld?: string;
+}
+
 // Vista de un evento + el progreso del usuario (GET /events/active, /events/:id).
 export interface EventView {
   eventId: number;
@@ -378,6 +385,7 @@ export interface EventView {
   currentStep: number;
   total: number;
   steps: EventStepView[];
+  rewards?: EventRewardsConfig | null;
   state: Record<string, unknown>;
 }
 

@@ -11,6 +11,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 import { useState } from 'react';
+import Link from 'next/link';
 import DeoText from '@/components/ui/DeoText';
 import { useMonsters } from '@/api';
 import { mediaUrl, monsterArtFallback } from '@/lib/design';
@@ -91,6 +92,11 @@ export default function CreatureScene({ place }: PlaceSceneProps) {
             <div className="npc-dialog">
               <div className="npc-name"><span className="badge" /> La luna del origen</div>
               <p className="npc-line">La nave se enciende, se eleva entre las dunas y se desvanece rumbo al cielo. Recuperaste un reino perdido en el espacio: <b>Deo</b> ya es parte de tu mapa.</p>
+              {event && (
+                <div className="npc-foot">
+                  <Link className="btn btn-primary" href={`/events/${event.eventId}`}>Ver el evento y tus recompensas →</Link>
+                </div>
+              )}
             </div>
           ) : (
             <div className="npc-dialog">
