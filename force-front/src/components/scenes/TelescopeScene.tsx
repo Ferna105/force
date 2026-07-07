@@ -12,10 +12,16 @@ import { useEffect, useRef, useState } from 'react';
 import { useQuestEvent } from './useQuestEvent';
 import type { PlaceSceneProps } from './types';
 
-// Posición fija del objetivo en el cielo (px desde el centro). El jugador debe
-// arrastrar el cielo (ox,oy) hasta ≈ (-TX,-TY) para centrarlo.
-const TX = 240, TY = -140, TOL = 26;
+// ⚠️ TEMPORAL (pruebas): fuerza la hora del telescopio para poder usarlo fuera del
+// horario real. La escena manda esta hora al backend, así que pasa el gate en ambos
+// lados. Volver a `null` para restaurar el horario real (21–23 h).
+const TEST_HOUR: number | null = 22;
+
+// Área navegable enorme: el cielo se panea hasta ±PAN_* px. El objetivo aparece
+// en una posición aleatoria dentro de un rango amplio (hay que buscarlo de verdad).
+const PAN_X = 2600, PAN_Y = 2200, TOL = 26;
 const clamp = (v: number, m: number) => Math.max(-m, Math.min(m, v));
+const rand = (n: number) => Math.round((Math.random() * 2 - 1) * n);
 
 export default function TelescopeScene({ place }: PlaceSceneProps) {
   const a = place.attributes;
@@ -25,29 +31,50 @@ export default function TelescopeScene({ place }: PlaceSceneProps) {
   const [oy, setOy] = useState(0);
   const [grab, setGrab] = useState(false);
   const [busy, setBusy] = useState(false);
+  // Posición del objetivo, aleatoria por montaje dentro del área navegable.
+  const [target] = useState(() => ({ tx: rand(2000), ty: rand(1600) }));
   const drag = useRef<{ sx: number; sy: number; ox: number; oy: number } | null>(null);
 
-  useEffect(() => { setHour(new Date().getHours()); }, []);
+  useEffect(() => { setHour(TEST_HOUR ?? new Date().getHours()); }, []);
 
   const done = stepDone('telescope');
-  const active = reachedIndex('telescope') && !done;
+  const reached = reachedIndex('telescope');   // ya llegó al paso (o lo completó)
   const isNight = hour != null && hour >= 21 && hour < 23;
+
+  // Navegación por teclado: las flechas panean el cielo en su dirección (mirar).
+  // Sigue navegable incluso después de fijar (para volver a ver el punto marcado).
+  useEffect(() => {
+    if (!isNight || !reached) return;
+    const STEP = 140;
+    const onKey = (e: KeyboardEvent) => {
+      let dx = 0, dy = 0;
+      if (e.key === 'ArrowLeft') dx = STEP;
+      else if (e.key === 'ArrowRight') dx = -STEP;
+      else if (e.key === 'ArrowUp') dy = STEP;
+      else if (e.key === 'ArrowDown') dy = -STEP;
+      else return;
+      e.preventDefault();
+      setOx((v) => clamp(v + dx, PAN_X));
+      setOy((v) => clamp(v + dy, PAN_Y));
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isNight, reached]);
   const coords = (event?.state?.coordinates as string) || null;
-  const aligned = Math.hypot(TX + ox, TY + oy) < TOL;
+  const aligned = Math.hypot(target.tx + ox, target.ty + oy) < TOL;
 
   const onDown = (e: React.PointerEvent) => {
-    if (!isNight || !active) return;
+    if (!isNight || !reached) return;
     drag.current = { sx: e.clientX, sy: e.clientY, ox, oy };
     setGrab(true);
     (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
   };
   const onMove = (e: React.PointerEvent) => {
     if (!drag.current) return;
-    setOx(clamp(drag.current.ox + (e.clientX - drag.current.sx), 460));
-    setOy(clamp(drag.current.oy + (e.clientY - drag.current.sy), 320));
+    setOx(clamp(drag.current.ox + (e.clientX - drag.current.sx), PAN_X));
+    setOy(clamp(drag.current.oy + (e.clientY - drag.current.sy), PAN_Y));
   };
   const onUp = () => { drag.current = null; setGrab(false); };
-  const autoFind = () => { setOx(-TX); setOy(-TY); };
 
   const fijar = async () => {
     if (hour == null) return;
@@ -62,18 +89,19 @@ export default function TelescopeScene({ place }: PlaceSceneProps) {
         <p style={{ color: '#EFE3CE', fontSize: 16, margin: '10px 0 0', lineHeight: 1.6 }}>{a.Description}</p>
       </div>
 
-      {done ? (
-        <div className="npc-dialog no-tip">
-          <div className="npc-name"><span className="badge" /> Coordenadas fijadas</div>
-          <p className="npc-line">Anotá bien este rumbo. Sabrás dónde ingresarlo.</p>
-          {coords && <div className="coords-read" style={{ marginTop: 12 }}>Coordenadas: <b>{coords}</b></div>}
-        </div>
-      ) : !active ? (
+      {!reached ? (
         <div className="npc-dialog no-tip">
           <p className="npc-line">El telescopio apunta al vacío. Todavía no es momento de buscar aquí.</p>
         </div>
       ) : (
         <>
+          {done && (
+            <div className="npc-dialog no-tip" style={{ marginBottom: 14 }}>
+              <div className="npc-name"><span className="badge" /> Coordenadas fijadas</div>
+              <p className="npc-line">Este es el rumbo. Ingresalo en la nave para partir. Podés seguir explorando el cielo: el punto marcado señala a Deo.</p>
+              {coords && <div className="coords-read" style={{ marginTop: 12 }}>Coordenadas: <b>{coords}</b></div>}
+            </div>
+          )}
           <div
             className={`scope${grab ? ' grab' : ''}`}
             data-mode={isNight ? 'night' : 'day'}
@@ -85,14 +113,26 @@ export default function TelescopeScene({ place }: PlaceSceneProps) {
             <div className="sky-layer" style={isNight ? { transform: `translate(${ox}px, ${oy}px)` } : undefined} />
             {isNight ? (
               <>
-                <div className="target" style={{ left: `calc(50% + ${TX + ox}px)`, top: `calc(50% + ${TY + oy}px)` }} />
-                <div className={`reticle${aligned ? ' locked' : ''}`}>
-                  <div className="ring" /><div className="ring in" />
-                  <div className="cross h" /><div className="cross v" />
-                </div>
-                <div className="scope-hint">
-                  {aligned ? 'Punto centrado — fijá las coordenadas' : 'Arrastrá para escanear el cielo · centrá el punto que titila'}
-                </div>
+                <div
+                  className={`target${done ? ' found' : ''}`}
+                  style={{ left: `calc(50% + ${target.tx + ox}px)`, top: `calc(50% + ${target.ty + oy}px)` }}
+                />
+                {done && coords && (
+                  <div className="coord-tag" style={{ left: `calc(50% + ${target.tx + ox}px)`, top: `calc(50% + ${target.ty + oy}px)` }}>
+                    ✧ {coords}
+                  </div>
+                )}
+                {!done && (
+                  <>
+                    <div className={`reticle${aligned ? ' locked' : ''}`}>
+                      <div className="ring" /><div className="ring in" />
+                      <div className="cross h" /><div className="cross v" />
+                    </div>
+                    <div className="scope-hint">
+                      {aligned ? 'Punto centrado — fijá las coordenadas' : 'Arrastrá o usá las flechas para escanear el cielo'}
+                    </div>
+                  </>
+                )}
               </>
             ) : (
               <div className="lock-ov">
@@ -107,13 +147,11 @@ export default function TelescopeScene({ place }: PlaceSceneProps) {
           </div>
 
           <div style={{ marginTop: 14, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-            {isNight && <button className="btn btn-secondary" onClick={autoFind}>✧ Autoencontrar</button>}
-            {isNight && (
+            {isNight && !done && (
               <button className="btn btn-primary" disabled={!aligned || busy} onClick={fijar}>
                 {busy ? 'Fijando…' : 'Fijar coordenadas'}
               </button>
             )}
-            {hour != null && <span className="npc-hint">Hora local: {String(hour).padStart(2, '0')}:00</span>}
           </div>
         </>
       )}
