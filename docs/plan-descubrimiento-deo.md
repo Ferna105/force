@@ -9,6 +9,27 @@
 
 ---
 
+## Estado de ejecución
+
+- **PR1 — Fundación descubrimiento (Fase 0): ✅ HECHO y commiteado.**
+  - Schema: `user.discoveredWorlds/Regions/Places` (M2N); `Hidden` (boolean) + `DiscoveryStrategy` (json) en world/region/place.
+  - Motor (`discovery/engine.js`) generalizado: evalúa estrategias de world/region/place además de monstruos; helpers `visibleFor` (set visible) y `discoverWorldTree` (conecta mundo+región+lugares de una, para la recompensa del evento). `evaluateUser` devuelve `{ newlyDiscovered, newWorlds, newRegions, newPlaces }`.
+  - Gating **a nivel de controller** (`world`/`region`/`place` overridean `find`/`findOne`) vía `src/api/discovery/gating.js` (`visibleSets` + `pruneNested`). Entidad oculta ⇒ 404 en findOne y ausente en listas; relaciones anidadas podadas. **El front no filtra nada.**
+  - Seed: `Hidden:true` en **todo mundo ≠ Eryndor** (Koril/Egea/Deo) + región y tienda **Isla del Reposo de la Serpiente**. Cuenta nueva ve solo Eryndor sin la isla.
+  - **Decisiones tomadas:** (a) se ocultó todo menos Eryndor — Koril/Egea quedan **bloqueados sin ruta de desbloqueo aún** (TODO: definir su descubrimiento; Deo se desbloquea por su evento). (b) Gating por controller (no `/discovery/visible`, que se descartó). (c) Los **modales de descubrimiento** de world/region/place quedan **diferidos** hasta que el evento Deo los dispare (los campos `newWorlds/newRegions/newPlaces` ya viajan por el service/tipos).
+  - Verificado en Docker (DB real): listas y findOne gateados para anónimo y autenticado, pruning anidado OK, seed `completado ✓`, front `tsc`+`eslint` limpios.
+- **PR2 — Motor de Eventos (Fase 1): ✅ HECHO.**
+  - Content types `event` (Name/Description/active/startsAt/steps/rewards/Image) y `event-progress` (user/event/currentStep/completedSteps/state/status/startedAt/completedAt, 1 por user+event).
+  - Motor `event/engine.js`: pasos ordenados `{key,type,params,label}`; tipo `flag` (interactivo, vía `STEP_RESOLVERS`) + reuso de los `EVALUATORS` de descubrimiento para pasos pasivos (`visit_place`, `own_item`, …). `resolveEvent` (lazy) avanza `currentStep` y otorga `rewards` **una sola vez** (coins + items al inventario + `discoverWorld` vía `discoverWorldTree`). Contrato en `src/api/event/README.md`.
+  - Endpoints (auth): `GET /events/active`, `GET /events/:id`, `POST /events/:id/step/:key` (valida activo/orden/idempotencia). Permisos en el seed.
+  - Seed: **evento demo** `Evento demo (motor)` (`active:false`, seed-owned) para validar el motor.
+  - Front (data layer + tracker mínimo pre-diseño): `eventsService` (`getActive`/`getOne`/`resolveStep`), tipos `EventView`/`EventStepResponse`, hook `useActiveEvents`, y página `/events` funcional (checklist de pasos + resolver el paso flag actual + toast de recompensa).
+  - Verificado en Docker (DB real, usuario nuevo): lista/detalle, **orden** (paso fuera de turno → 400), paso `flag` avanza, paso pasivo (`visit_place`) auto-completa, y al completar se otorgan **coins + item + discoverWorld** (balance +N, item al inventario, Deo pasa de 404→200 con su región y lugares) **una sola vez** (idempotente). `tsc`+`eslint` limpios; `/events` compila 200.
+  - **Decisión:** el reward `discoverWorld` reusa el `discoverWorldTree` de PR1, cerrando el circuito Evento→descubrimiento. Los **resolvers de puzzle** (traducción/telescopio/coordenadas) y los tipos de paso `own_companion`/`companion_level_at_least`/`raise_stat_in_training` quedan para PR3/PR5.
+- **PR3 — Event/task types genéricos + integración training (Fase 2): ⏭️ SIGUIENTE.**
+
+---
+
 ## FASE 0 — Fundación: motor de descubrimiento de lugares
 
 **Schema**

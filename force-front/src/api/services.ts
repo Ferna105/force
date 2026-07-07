@@ -25,6 +25,8 @@ import {
   BuyResponse,
   DiscoveryEventRequest,
   DiscoveryResponse,
+  EventView,
+  EventStepResponse,
   ShopStock,
   DuelsLobby,
   DuelDetail,
@@ -602,6 +604,38 @@ export const discoveryService = {
       return toDiscovery(response.data);
     } catch (error) {
       throw new Error(`Error sincronizando descubrimientos: ${error}`);
+    }
+  },
+};
+
+// Motor de eventos: eventos activos + progreso del usuario y resolución de pasos.
+export const eventsService = {
+  // Eventos activos con el progreso del usuario. Sin sesión (o error) → [].
+  async getActive(): Promise<EventView[]> {
+    try {
+      const response = await apiClient.get('/events/active');
+      return response.data?.events ?? [];
+    } catch {
+      return [];
+    }
+  },
+
+  async getOne(id: number): Promise<EventView | null> {
+    try {
+      const response = await apiClient.get(`/events/${id}`);
+      return response.data?.event ?? null;
+    } catch (error) {
+      throw new Error(`Error obteniendo el evento ${id}: ${error}`);
+    }
+  },
+
+  // Resuelve un paso interactivo (flag). El payload es específico del paso.
+  async resolveStep(id: number, key: string, payload?: Record<string, unknown>): Promise<EventStepResponse> {
+    try {
+      const response = await apiClient.post(`/events/${id}/step/${key}`, payload ?? {});
+      return response.data;
+    } catch (error) {
+      throw new Error(`Error resolviendo el paso ${key}: ${error}`);
     }
   },
 };

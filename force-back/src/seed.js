@@ -370,6 +370,10 @@ const AUTH_ACTIONS = [
   // Motor de descubrimiento: registrar eventos + reevaluar estrategias.
   'api::discovery.discovery.event',
   'api::discovery.discovery.sync',
+  // Motor de eventos: listar activos, detalle y resolver un paso.
+  'api::event.event.active',
+  'api::event.event.detail',
+  'api::event.event.step',
   // Motor de juegos: estado (cooldown) + reclamo de recompensas.
   'api::game.game.status',
   'api::game.game.claim',
@@ -844,6 +848,36 @@ module.exports = async function seed({ strapi }) {
           data: { Name: d.name, Image: imageId, Interior: interiorId, place: hood.id, publishedAt: new Date() },
         });
         strapi.log.info(`[seed] Diseño de casa creado: ${d.name} (${np.name})`);
+      }
+    }
+
+    // 4e) Evento demo del motor de eventos (Fase 1). Dormido por defecto
+    //     (`active:false`) para no afectar el juego: valida el motor (pasos
+    //     interactivos `flag` + un paso pasivo `visit_place`, recompensa en
+    //     monedas). El evento real de Deo llega en una fase posterior. Es
+    //     seed-owned: se (re)escriben steps/rewards/active/startsAt en cada boot.
+    {
+      const demo = {
+        Name: 'Evento demo (motor)',
+        Description: 'Evento de prueba para validar el motor de eventos.',
+        active: false,
+        startsAt: new Date('2026-01-01T00:00:00.000Z'),
+        steps: [
+          { key: 'intro', type: 'flag', label: 'Leé la introducción del evento' },
+          { key: 'visita_dunas', type: 'visit_place', params: { placeName: 'Dunas de Ceniza' }, label: 'Visitá las Dunas de Ceniza' },
+          { key: 'confirmar', type: 'flag', label: 'Confirmá que completaste el recorrido' },
+        ],
+        rewards: { coins: 50 },
+      };
+      const existingEvent = await strapi.db.query('api::event.event').findOne({ where: { Name: demo.Name } });
+      if (!existingEvent) {
+        await strapi.entityService.create('api::event.event', { data: demo });
+        strapi.log.info(`[seed] Evento demo creado: ${demo.Name}`);
+      } else {
+        await strapi.db.query('api::event.event').update({
+          where: { id: existingEvent.id },
+          data: { steps: demo.steps, rewards: demo.rewards, active: demo.active, startsAt: demo.startsAt },
+        });
       }
     }
 

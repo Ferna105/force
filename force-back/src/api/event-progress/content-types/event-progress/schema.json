@@ -1,0 +1,50 @@
+{
+  "kind": "collectionType",
+  "collectionName": "event_progresses",
+  "info": {
+    "singularName": "event-progress",
+    "pluralName": "event-progresses",
+    "displayName": "Event Progress",
+    "description": "Progreso de un usuario en un evento: paso actual, pasos completados, estado de puzzle (state) y estado general. Una fila por (user, event)."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "event": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::event.event"
+    },
+    "currentStep": {
+      "type": "integer",
+      "default": 0
+    },
+    "completedSteps": {
+      "type": "json"
+    },
+    "state": {
+      "type": "json"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "not_started",
+        "in_progress",
+        "completed"
+      ],
+      "default": "not_started"
+    },
+    "startedAt": {
+      "type": "datetime"
+    },
+    "completedAt": {
+      "type": "datetime"
+    }
+  }
+}

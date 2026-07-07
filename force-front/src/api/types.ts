@@ -355,6 +355,47 @@ export interface DiscoveryResponse {
   newPlaces?: Place[];
 }
 
+// ============ Motor de eventos ============
+export type EventStatus = 'not_started' | 'in_progress' | 'completed';
+
+export interface EventStepView {
+  key: string;
+  label: string | null;
+  type: string;
+  done: boolean;
+  current: boolean;
+}
+
+// Vista de un evento + el progreso del usuario (GET /events/active, /events/:id).
+export interface EventView {
+  eventId: number;
+  name: string;
+  description: string | null;
+  active: boolean;
+  startsAt: string | null;
+  status: EventStatus;
+  currentStep: number;
+  total: number;
+  steps: EventStepView[];
+  state: Record<string, unknown>;
+}
+
+// Recompensa otorgada al completar un evento (POST /events/:id/step/:key).
+export interface EventRewardResult {
+  coins: number;
+  items: { itemId: number; quantity: number }[];
+  discovery: {
+    world: World | null;
+    regions: Region[];
+    places: Place[];
+  } | null;
+}
+
+export interface EventStepResponse {
+  view: EventView;
+  rewardsGranted: EventRewardResult | null;
+}
+
 // ============ Battledome (duelos por turnos en vivo) ============
 export type DuelStatus = 'open' | 'active' | 'finished' | 'cancelled';
 export type DuelSide = 'creator' | 'opponent';

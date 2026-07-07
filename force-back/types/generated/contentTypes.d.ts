@@ -567,6 +567,88 @@ export interface ApiDuelDuel extends Schema.CollectionType {
   };
 }
 
+export interface ApiEventProgressEventProgress extends Schema.CollectionType {
+  collectionName: 'event_progresses';
+  info: {
+    description: 'Progreso de un usuario en un evento: paso actual, pasos completados, estado de puzzle (state) y estado general. Una fila por (user, event).';
+    displayName: 'Event Progress';
+    pluralName: 'event-progresses';
+    singularName: 'event-progress';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    completedAt: Attribute.DateTime;
+    completedSteps: Attribute.JSON;
+    createdAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<
+      'api::event-progress.event-progress',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    currentStep: Attribute.Integer & Attribute.DefaultTo<0>;
+    event: Attribute.Relation<
+      'api::event-progress.event-progress',
+      'manyToOne',
+      'api::event.event'
+    >;
+    startedAt: Attribute.DateTime;
+    state: Attribute.JSON;
+    status: Attribute.Enumeration<['not_started', 'in_progress', 'completed']> &
+      Attribute.DefaultTo<'not_started'>;
+    updatedAt: Attribute.DateTime;
+    updatedBy: Attribute.Relation<
+      'api::event-progress.event-progress',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    user: Attribute.Relation<
+      'api::event-progress.event-progress',
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+  };
+}
+
+export interface ApiEventEvent extends Schema.CollectionType {
+  collectionName: 'events';
+  info: {
+    description: 'Evento multi-paso con recompensa. Encapsula un questline (p. ej. el descubrimiento de la luna Deo): sus pasos son la lista a resolver, sus recompensas se otorgan al completarlo, y el progreso se guarda por usuario en event-progress.';
+    displayName: 'Event';
+    pluralName: 'events';
+    singularName: 'event';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    active: Attribute.Boolean & Attribute.DefaultTo<false>;
+    createdAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<
+      'api::event.event',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    Description: Attribute.Text;
+    Image: Attribute.Media<'images'>;
+    Name: Attribute.String & Attribute.Required & Attribute.Unique;
+    rewards: Attribute.JSON;
+    startsAt: Attribute.DateTime;
+    steps: Attribute.JSON;
+    updatedAt: Attribute.DateTime;
+    updatedBy: Attribute.Relation<
+      'api::event.event',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+  };
+}
+
 export interface ApiHouseDesignHouseDesign extends Schema.CollectionType {
   collectionName: 'house_designs';
   info: {
@@ -1806,6 +1888,8 @@ declare module '@strapi/types' {
       'admin::user': AdminUser;
       'api::companion.companion': ApiCompanionCompanion;
       'api::duel.duel': ApiDuelDuel;
+      'api::event-progress.event-progress': ApiEventProgressEventProgress;
+      'api::event.event': ApiEventEvent;
       'api::house-design.house-design': ApiHouseDesignHouseDesign;
       'api::house-placement.house-placement': ApiHousePlacementHousePlacement;
       'api::house.house': ApiHouseHouse;

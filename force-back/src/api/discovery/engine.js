@@ -495,4 +495,12 @@ async function discoverWorldTree(strapi, userId, worldName) {
   };
 }
 
-module.exports = { evaluateUser, evaluateStrategy, visibleFor, discoverWorldTree };
+module.exports = {
+  evaluateUser,
+  evaluateStrategy,
+  visibleFor,
+  discoverWorldTree,
+  // Reutilizados por el motor de eventos (event/engine.js):
+  loadContext,
+  EVALUATORS,
+};

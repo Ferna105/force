@@ -1,0 +1,44 @@
+{
+  "kind": "collectionType",
+  "collectionName": "events",
+  "info": {
+    "singularName": "event",
+    "pluralName": "events",
+    "displayName": "Event",
+    "description": "Evento multi-paso con recompensa. Encapsula un questline (p. ej. el descubrimiento de la luna Deo): sus pasos son la lista a resolver, sus recompensas se otorgan al completarlo, y el progreso se guarda por usuario en event-progress."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "Name": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "Description": {
+      "type": "text"
+    },
+    "active": {
+      "type": "boolean",
+      "default": false
+    },
+    "startsAt": {
+      "type": "datetime"
+    },
+    "steps": {
+      "type": "json"
+    },
+    "rewards": {
+      "type": "json"
+    },
+    "Image": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "images"
+      ]
+    }
+  }
+}

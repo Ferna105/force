@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { dataService, monstersService, worldsService, placesService, regionsService, itemsService, authService, companionsService, inventoryService } from './services';
-import type { Monster, World, Place, Region, Item, Companion, InventoryEntry, QueryParams, LoginRequest, RegisterRequest, AuthUser } from './types';
+import { dataService, monstersService, worldsService, placesService, regionsService, itemsService, authService, companionsService, inventoryService, eventsService } from './services';
+import type { Monster, World, Place, Region, Item, Companion, InventoryEntry, QueryParams, LoginRequest, RegisterRequest, AuthUser, EventView } from './types';
 
 // Hook para manejar estados de carga y error
 interface UseApiState<T> {
@@ -454,6 +454,14 @@ export function useInventory(userId: number | null) {
   return useEntity<InventoryEntry[]>(
     async () => (userId ? (await inventoryService.getMine()).data : []),
     [userId]
+  );
+}
+
+// Eventos activos con el progreso del usuario (motor de eventos).
+export function useActiveEvents(enabled: boolean) {
+  return useEntity<EventView[]>(
+    async () => (enabled ? await eventsService.getActive() : []),
+    [enabled]
   );
 }
 
