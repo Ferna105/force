@@ -578,11 +578,18 @@ export const shopService = {
 // Servicio de descubrimiento de monstruos.
 // Registra eventos de actividad (visitar/jugar) y reevalúa las estrategias; la
 // respuesta trae los monstruos recién descubiertos para mostrar el modal.
+const toDiscovery = (d: Partial<DiscoveryResponse> | undefined): DiscoveryResponse => ({
+  newlyDiscovered: d?.newlyDiscovered ?? [],
+  newWorlds: d?.newWorlds ?? [],
+  newRegions: d?.newRegions ?? [],
+  newPlaces: d?.newPlaces ?? [],
+});
+
 export const discoveryService = {
   async recordEvent(event: DiscoveryEventRequest): Promise<DiscoveryResponse> {
     try {
       const response = await apiClient.post('/discovery/event', event);
-      return { newlyDiscovered: response.data?.newlyDiscovered ?? [] };
+      return toDiscovery(response.data);
     } catch (error) {
       throw new Error(`Error registrando evento de descubrimiento: ${error}`);
     }
@@ -592,7 +599,7 @@ export const discoveryService = {
   async sync(): Promise<DiscoveryResponse> {
     try {
       const response = await apiClient.post('/discovery/sync');
-      return { newlyDiscovered: response.data?.newlyDiscovered ?? [] };
+      return toDiscovery(response.data);
     } catch (error) {
       throw new Error(`Error sincronizando descubrimientos: ${error}`);
     }

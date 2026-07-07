@@ -89,6 +89,21 @@
       "relation": "manyToMany",
       "target": "api::monster.monster"
     },
+    "discoveredWorlds": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::world.world"
+    },
+    "discoveredRegions": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::region.region"
+    },
+    "discoveredPlaces": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::place.place"
+    },
     "inventoryEntries": {
       "type": "relation",
       "relation": "oneToMany",

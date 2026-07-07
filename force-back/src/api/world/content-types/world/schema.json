@@ -46,6 +46,13 @@
       "relation": "oneToMany",
       "target": "api::monster.monster",
       "mappedBy": "World"
+    },
+    "Hidden": {
+      "type": "boolean",
+      "default": false
+    },
+    "DiscoveryStrategy": {
+      "type": "json"
     }
   }
 }

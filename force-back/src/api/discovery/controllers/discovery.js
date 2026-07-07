@@ -8,8 +8,10 @@
  * - `sync`: reevalúa sin registrar evento (útil al cargar la app, para resolver
  *   tareas basadas en estado como tener cierto objeto en el inventario).
  *
- * Ambos devuelven { newlyDiscovered: [...] } con los monstruos recién
- * descubiertos en shape REST (con su Image) para el modal del front.
+ * `event`/`sync` devuelven { newlyDiscovered, newWorlds, newRegions, newPlaces }
+ * en shape REST (con su media) para los modales del front. El gating de
+ * visibilidad (qué mundos/regiones/lugares ve cada usuario) NO vive acá: se
+ * aplica a nivel de controller en world/region/place (ver discovery/gating.js).
  */
 
 const { evaluateUser } = require('../engine');
@@ -53,14 +55,14 @@ module.exports = {
       },
     });
 
-    const { newlyDiscovered } = await evaluateUser(strapi, user.id);
-    return ctx.send({ newlyDiscovered });
+    const result = await evaluateUser(strapi, user.id);
+    return ctx.send(result);
   },
 
   async sync(ctx) {
     const user = ctx.state.user;
     if (!user) return ctx.unauthorized('Debés iniciar sesión.');
-    const { newlyDiscovered } = await evaluateUser(strapi, user.id);
-    return ctx.send({ newlyDiscovered });
+    const result = await evaluateUser(strapi, user.id);
+    return ctx.send(result);
   },
 };

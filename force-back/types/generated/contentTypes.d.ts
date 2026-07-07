@@ -1026,7 +1026,9 @@ export interface ApiPlacePlace extends Schema.CollectionType {
       Attribute.Private;
     Description: Attribute.Text;
     Difficulty: Attribute.Enumeration<['easy', 'medium', 'hard']>;
+    DiscoveryStrategy: Attribute.JSON;
     GameKey: Attribute.String;
+    Hidden: Attribute.Boolean & Attribute.DefaultTo<false>;
     HotspotX: Attribute.Decimal &
       Attribute.SetMinMax<
         {
@@ -1097,6 +1099,8 @@ export interface ApiRegionRegion extends Schema.CollectionType {
     > &
       Attribute.Private;
     Description: Attribute.Text;
+    DiscoveryStrategy: Attribute.JSON;
+    Hidden: Attribute.Boolean & Attribute.DefaultTo<false>;
     HotspotX: Attribute.Decimal &
       Attribute.SetMinMax<
         {
@@ -1290,6 +1294,8 @@ export interface ApiWorldWorld extends Schema.CollectionType {
     > &
       Attribute.Private;
     Description: Attribute.Text;
+    DiscoveryStrategy: Attribute.JSON;
+    Hidden: Attribute.Boolean & Attribute.DefaultTo<false>;
     Image: Attribute.Media<'images'>;
     monsters: Attribute.Relation<
       'api::world.world',
@@ -1727,6 +1733,21 @@ export interface PluginUsersPermissionsUser extends Schema.CollectionType {
       'plugin::users-permissions.user',
       'manyToMany',
       'api::monster.monster'
+    >;
+    discoveredPlaces: Attribute.Relation<
+      'plugin::users-permissions.user',
+      'manyToMany',
+      'api::place.place'
+    >;
+    discoveredRegions: Attribute.Relation<
+      'plugin::users-permissions.user',
+      'manyToMany',
+      'api::region.region'
+    >;
+    discoveredWorlds: Attribute.Relation<
+      'plugin::users-permissions.user',
+      'manyToMany',
+      'api::world.world'
     >;
     email: Attribute.Email &
       Attribute.Required &

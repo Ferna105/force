@@ -21,6 +21,8 @@ export default function RegionPage() {
   const a = region.attributes;
   const world = a.World?.data;
   const wName = world?.attributes?.Name;
+  // El gating (lugares ocultos) se aplica server-side en el controller; acá los
+  // lugares ya vienen filtrados.
   const places = a.places?.data ?? [];
   // Sin banner propio caemos al banner (o fallback) del primer lugar de la región.
   const first = places[0]?.attributes;

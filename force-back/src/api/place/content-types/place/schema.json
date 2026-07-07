@@ -105,6 +105,13 @@
       "allowedTypes": [
         "images"
       ]
+    },
+    "Hidden": {
+      "type": "boolean",
+      "default": false
+    },
+    "DiscoveryStrategy": {
+      "type": "json"
     }
   }
 }

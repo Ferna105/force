@@ -26,9 +26,12 @@ export default function PlacePage() {
 
   // Registrar la visita al lugar (habilita tareas de descubrimiento de tipo
   // "visitar lugar" / "visitar todos los lugares del mundo"). Una vez por lugar.
+  // Se dispara solo cuando el lugar cargó OK: si es oculto/no descubierto el
+  // controller responde 404 (gating server-side) y `place` queda null, así que
+  // no registramos visitas a lugares que el usuario no puede ver.
   useEffect(() => {
-    if (user && placeId) recordEvent('visit_place', { placeId });
-  }, [user, placeId, recordEvent]);
+    if (user && place) recordEvent('visit_place', { placeId: place.id });
+  }, [user, place, recordEvent]);
 
   if (loading) return <><Topbar crumb="Lugar" /><div className="page"><Loading /></div></>;
   if (error || !place) return <><Topbar crumb="Lugar" /><div className="page"><ErrorState message={error ?? undefined} /></div></>;

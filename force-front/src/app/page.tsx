@@ -16,6 +16,9 @@ export default function HomePage() {
   // Solo las criaturas que el usuario ya descubrió (vacío sin sesión).
   const discovered = new Set(discoveredIds ?? []);
   const discoveredMonsters = (data?.monsters ?? []).filter((m) => discovered.has(m.id));
+  // Mundos/lugares ya vienen filtrados por el gating server-side (controllers).
+  const worlds = data?.worlds ?? [];
+  const places = data?.places ?? [];
 
   return (
     <>
@@ -32,12 +35,12 @@ export default function HomePage() {
 
             <SectionTitle title="Mundos para explorar" href="/explore" />
             <div className="grid" style={{ gridTemplateColumns: 'repeat(4,1fr)' }}>
-              {data.worlds.slice(0, 4).map((w) => <WorldCard key={w.id} world={w} short />)}
+              {worlds.slice(0, 4).map((w) => <WorldCard key={w.id} world={w} short />)}
             </div>
 
             <SectionTitle title="Lugares destacados" href="/explore" />
             <div className="grid" style={{ gridTemplateColumns: 'repeat(2,1fr)' }}>
-              {data.places.slice(0, 2).map((p) => <PlaceBanner key={p.id} place={p} />)}
+              {places.slice(0, 2).map((p) => <PlaceBanner key={p.id} place={p} />)}
             </div>
 
             {/* El bestiario reciente solo aparece con sesión y criaturas descubiertas. */}

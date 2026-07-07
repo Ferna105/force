@@ -1,0 +1,174 @@
+# Plan: Descubrimiento de mundos/regiones/lugares + Motor de Eventos (evento Deo)
+
+> Estado de arquitectura (contexto)
+> - Jerarquía real: `world → region → place` (content-type `region`, con `HotspotX/Y` para el mapa). Monster pertenece a world.
+> - Descubrimiento hoy: solo monstruos. `monster.DiscoveryStrategy` (JSON) evaluado por `discovery/engine.js` (EVALUATORS) contra `user-event` (`visit_place`/`play_place`/`buy_item`) + inventario + `discoveredMonsters`. Al completar, conecta el monstruo a `user.discoveredMonsters`.
+> - Flujo de compañeros: **ya existe** — `POST /companions/adopt { monsterId }` (`companionsService.adopt`, botón "convertir" en `/monsters/[id]`). El level-up sale del motor de training. Se reutiliza tal cual.
+> - Decisión de gating: **override de los controllers `find`/`findOne`** de world/region/place (server-side, robusto, sin filtrar en el front). Reusa `visibleFor` del motor y poda relaciones anidadas (ver `src/api/discovery/gating.js`).
+> - **Todo el descubrimiento de la luna Deo se encapsula en una entidad `Evento`** (ver Fase 1): el questline son los *pasos* del evento, la recompensa (monedas + arma) son las *recompensas del evento*, y el progreso se guarda **por usuario**.
+
+---
+
+## FASE 0 — Fundación: motor de descubrimiento de lugares
+
+**Schema**
+- `user`: `discoveredWorlds`, `discoveredRegions`, `discoveredPlaces` (M2N, espejo de `discoveredMonsters`).
+- `world` / `region` / `place`: `DiscoveryStrategy` (json) + `Hidden` (boolean, default `false`).
+  - `Hidden:false` ⇒ visible para todos. `Hidden:true` ⇒ visible solo si está descubierto **y su padre es visible** (jerarquía world→region→place).
+
+**Motor (`discovery/engine.js`)** — `evaluateStrategy` ya es genérico; agregar 3 pasadas nuevas (worlds/regions/places `Hidden` no descubiertos) que reusan los `EVALUATORS` y conectan a los sets del usuario. `evaluateUser` devuelve `{ newlyDiscovered, newWorlds, newRegions, newPlaces }`. Exponer un helper `discoverWorldTree(userId, worldName)` que conecta un mundo `Hidden` + su región + sus lugares de una (lo usa la recompensa del evento Deo, ver Fase 1/5).
+
+**Gating** — override de `find`/`findOne` en los controllers de world/region/place: filtran por el set visible del usuario (no-`Hidden` ∪ descubiertos, con jerarquía) y podan las relaciones anidadas pobladas. `visibleFor(strapi, userId)` computa el set; `src/api/discovery/gating.js` provee `visibleSets`/`pruneNested`. Server-side ⇒ el front no filtra nada (una entidad oculta responde 404 en `findOne` y no aparece en las listas).
+
+**Seed (estado por defecto)** — `Hidden:true` en todo mundo ≠ Eryndor; en Eryndor `Hidden:true` en la región "Isla del reposo de la serpiente" y su tienda. Cuenta nueva ⇒ Eryndor + regiones/lugares menos esa isla y su tienda.
+- Nota: Deo se desbloquea **al completar el evento** (Fase 1), no por una `DiscoveryStrategy` de mundo. Así conviven dos vías de desbloqueo: por estrategia (p. ej. la isla de la serpiente a futuro) y por evento (Deo).
+
+**Frontend** — nada de gating propio (lo hace el backend): explore/regiones/lugares ya reciben las listas filtradas y un mundo/región/lugar oculto da 404 → `ErrorState`. Pendiente (diferido): extender `DiscoveryProvider` para modales de world/region/place cuando el evento Deo los dispare.
+
+---
+
+## FASE 1 — Motor de Eventos (NUEVO, genérico)
+
+Un **Evento** encapsula una experiencia multi-paso con recompensa. Deo es la primera instancia; el motor queda reutilizable para eventos futuros.
+
+**Content type `event`**
+- `Name`, `Description`.
+- `active` (boolean, default `false`) — evento activo/inactivo. Solo los activos corren y se muestran.
+- `startsAt` (datetime) — fecha de inicio. El progreso solo cuenta desde esta fecha (eventos y pasos anteriores a `startsAt` se ignoran). *(Opcional a futuro: `endsAt`.)*
+- `steps` (json) — **lista ordenada de pasos a resolver**, cada uno `{ key, type, params, label }` (mismo patrón declarativo que `DiscoveryStrategy`, resuelto por un registro de código; ver Fase 3). `key` es estable (identifica el paso en el progreso). *(Alternativa: componente repetible `event.step` para editarlo cómodo en el admin; se decide en implementación.)*
+- `rewards` (json) — recompensas al completar: `{ coins, items:[{name, quantity}], discoverWorld }` (p. ej. `{ coins:1000, items:[{name:"Garras blancas de piedra espacial",quantity:1}], discoverWorld:"Deo" }`). `discoverWorld` dispara `discoverWorldTree` de Fase 0.
+- `banner`/`Image` (media, opcional) — arte del evento.
+
+**Content type `event-progress`** (progreso por usuario)
+- `user` (relation), `event` (relation).
+- `currentStep` (integer) — índice del paso en curso.
+- `completedSteps` (json) — array de `key` ya resueltos.
+- `state` (json) — estado de puzzle del usuario (flags/valores que los pasos custom van escribiendo: `bookRead`, `hasCrystal`, `shipUsed`, `coordinates`, etc. — reemplaza al `user.deoQuest` que se había propuesto).
+- `status` (`not_started` | `in_progress` | `completed`).
+- `startedAt`, `completedAt`.
+- Invariante: 1 progreso por (user, event).
+
+**Motor (`event/engine.js`)** — API code-only (patrón `discovery`/`training`):
+- `resolveEvent(userId, event)`: lazy (como `resolveTraining`). Evalúa los `steps` en orden desde `currentStep`; cada `type` se resuelve por un **registro de evaluadores** (`STEP_EVALUATORS`) que reusa los `EVALUATORS` de descubrimiento donde aplica (visit_place, own_item, own_companion, trained_stat…) y suma los pasos custom del evento (que leen `progress.state`). Avanza `currentStep`/`completedSteps`; al completar todos, **otorga `rewards` una sola vez** (idempotente por `completedAt`) → monedas a `balance`, items al inventario, `discoverWorld` conecta el árbol de Deo (Fase 0) y dispara los modales de descubrimiento.
+- Gatea por `active` y `startsAt`.
+
+**Endpoints** (auth):
+- `GET /events/active` — eventos activos + progreso del usuario (steps con estado hecho/pendiente/actual, `state`).
+- `GET /events/:id` — detalle del evento + progreso.
+- `POST /events/:id/step/:key` — **resolver/avanzar un paso**. El body varía por tipo de paso (texto de traducción, coordenadas, etc.); valida server-side, actualiza `state`, reevalúa y puede otorgar recompensas. Los pasos "de estado" (visitar, tener item, adoptar, entrenar) avanzan solos vía `resolveEvent` sin este POST.
+- Permisos al rol Authenticated en `src/seed.js`.
+
+**Frontend** — `eventsService` (`getActive`/`getOne`/`resolveStep`) en `services.ts`; hub/tracker de evento (ver sección de diseño). Los pasos de puzzle se resuelven desde las escenas (NPC, biblioteca, telescopio, nave) llamando a `resolveStep`.
+
+---
+
+## FASE 2 — Mecánicas genéricas para el evento
+- **Compañero:** ya existe (`adopt`); se referencia en un paso de estado `own_companion` / `companion_level_at_least`.
+- **Nuevos event/task types** (una función por evaluador; solo cambia el enum de `user-event`): `read_book`, `raise_stat_in_training(stat)`, `own_companion(monsterName)`, `companion_level_at_least(monsterName, level)`. Los usa tanto el motor de descubrimiento como el registro de pasos del evento.
+- **Integración training:** al completar un `+strength`, emitir `raise_stat_in_training:strength`.
+
+---
+
+## FASE 3 — Los pasos del evento Deo (mecánicas de puzzle)
+
+Los `steps` del evento Deo, cada uno con su handler en el registro del motor (`STEP_EVALUATORS`) y, cuando corresponde, su endpoint de resolución. Estado por usuario en `event-progress.state`.
+
+1. **`visit_npc`** — NPC **"Una criatura extraña"** (`information`, Dunas de Ceniza): máquina de estados de diálogo; botón "Deo" habilitado tras leer el libro; estados de nave (escombros → reconstruida → glow).
+2. **`read_book`** — **Biblioteca de los secretos** (`information`): estanterías A–Z, libros irrelevantes + "Deo, la luna del origen" en estante D → resuelve el paso.
+3. **`translate_ship`** — traducción de la nave: input validado server-side.
+4. **`get_crystal`** — **drop aleatorio** "Cristal blanco oxidado" al visitar Dunas de Ceniza (server-side, anti-duplicado); el paso se satisface con `own_item`.
+5. **`use_ship`** — reconstrucción/uso de nave (desaparece al usar).
+6. **`read_plateau`** — **Meseta de la guerra antigua** (place nuevo): dos mensajes bilingües.
+7. **`read_final_message`** — mensaje final traducible en el libro.
+8. **`adopt_and_level`** — adoptar a Deo (`own_companion`) + subirlo ≥ nivel 1 (`companion_level_at_least`).
+9. **`train_strength`** — +1 de fuerza en cualquier escuela (`raise_stat_in_training:strength`).
+10. **`telescope`** — **Telescopio ancestral** (place nuevo): minijuego de cielo, gating **21–23h**, punto blanco parpadeante → coordenadas.
+11. **`travel`** — viaje final: coordenadas correctas ⇒ **último paso** ⇒ completa el evento ⇒ recompensas + descubrimiento de Deo.
+
+*(El orden exacto y `ordered:true/false` se afina en implementación; varios de estos son secuenciales por narrativa.)*
+
+---
+
+## FASE 4 — Contenido (seed idempotente)
+- Places Eryndor nuevos: "Una criatura extraña" (Dunas de Ceniza), "Biblioteca de los secretos" (Ciudadela de la cumbre helada), place de la Meseta de la guerra antigua, "Telescopio ancestral" (cima de la cumbre helada) — todos `information`.
+- **Mundo Deo** (`Hidden`) + región **"Corteza de Deo"** (`Hidden`) + places (`Hidden`) + monstruo **Deo**.
+- Items: **"Cristal blanco oxidado"**, arma exclusiva **"Garras blancas de piedra espacial"** (uncommon/weapon; íconos con skill `item-generator`).
+- **Idioma de Deo:** cifrado determinista ES→glyphs reusable en biblioteca/NPC/nave/meseta.
+- **Evento "Descubrí la luna Deo"**: fila `event` con `active`, `startsAt`, sus `steps` (Fase 3) y `rewards` (Fase 5). Seed idempotente con marcador `seeded:true` (re-aplica en boot, no pisa ediciones manuales del admin).
+
+---
+
+## FASE 5 — Recompensas del evento
+Definidas como `event.rewards` (data, no hardcode). Al completar el evento Deo: **+1000 monedas** + 1× "Garras blancas de piedra espacial" (una sola vez, idempotente por `completedAt`) + `discoverWorld:"Deo"` (conecta mundo/región/lugares) + modales de descubrimiento en cascada.
+
+---
+
+## Orden de PRs
+1. **PR1** Fundación descubrimiento (Fase 0) — entregable independiente.
+2. **PR2** Motor de Eventos (Fase 1): content types `event`/`event-progress`, engine genérico, endpoints, tracker básico en el front.
+3. **PR3** Event/task types genéricos + integración training (Fase 2).
+4. **PR4** Contenido + idioma Deo (Fase 4, sin puzzles).
+5. **PR5** Pasos del evento Deo (Fase 3): handlers + escenas (NPC, biblioteca, traducción, telescopio, nave).
+6. **PR6** Recompensas + pulido (Fase 5): reward del evento, modales en cascada, balanceo del drop/telescopio.
+
+---
+
+# 🎨 SECCIÓN DE DISEÑO (para Claude Design)
+
+Todo lo visual nuevo que hay que diseñar. Convenciones del proyecto: UI y textos en **español**, Tailwind v4, estilos globales en `globals.css` con clases scopeadas (patrón `.disc-*`, `.game-*`, `.nbh-*`, `.house-*`), fuentes ya usadas (`cinzel` para títulos). Reutilizar lo existente siempre que se pueda.
+
+### 0. Hub / tracker de Evento (NUEVO por la entidad Evento)
+- **Panel del evento activo:** banner del evento, título/descripción, fecha de inicio, y una **checklist de pasos** con estado (hecho / en curso / pendiente) sin spoilear de más los pasos futuros.
+- **Indicador de progreso** (p. ej. "Paso 4 de 11") y CTA al lugar del paso actual.
+- Punto de entrada: dónde vive (¿home? ¿un ítem en la topbar? ¿sección en `/explore`?). Diseñar el acceso.
+- Estado **evento completado** (con la recompensa reclamada).
+
+### 1. Modales de descubrimiento (world / region / place)
+Extender el modal de monstruo actual (`.disc-*` en `globals.css`, `DiscoveryModal`) a 3 variantes nuevas.
+- **Estados/variantes:** mundo descubierto (arte grande, épico), región descubierta (banner + bioma), lugar descubierto (banner + tipo).
+- **Cascada:** al completar el evento se disparan varios a la vez (mundo → región → N lugares). Diseñar la **secuencia encadenada** (una tras otra con "Siguiente", o un resumen "Descubriste 1 mundo, 1 región y N lugares").
+- **Reutiliza:** layout, overlay y animación del modal de monstruo. Solo cambia jerarquía visual e íconos por tipo.
+
+### 2. Identidad visual del mundo Deo (bioma `space`)
+- Arte del **mundo Deo** (luna del origen; encaja como "luna orbitando" en el sistema solar de `/explore`).
+- Banner de la **región "Corteza de Deo"** y banners de sus **places**.
+- Paleta/mood espacial coherente con el bioma `space` ya existente.
+
+### 3. El idioma de Deo (sistema tipográfico) — pieza central
+- Diseñar un **alfabeto de glyphs** (cifrado 1:1 desde el español) legible como "idioma alienígena", que aparece en: diálogo del NPC, libro de la biblioteca, mensaje de la nave y tablillas de la meseta.
+- Entregable ideal: **fuente/webfont o set de glyphs SVG** + regla de mapeo. Debe verse misterioso pero renderizable inline (CSP de artifacts / assets locales).
+- Diseñar el **estado "traducción parcial → total"** (glyphs que se van revelando a español a medida que avanza la quest).
+
+### 4. Escena "Una criatura extraña" (place `information` interactivo)
+Es una **escena con estados**, no un place estándar. Diseñar el layout base + estos estados:
+- **A. Encuentro:** el monstruo Deo (arte) hablando en glyphs; caja de diálogo.
+- **B. Reacción "Deo":** botón "Deo" (aparece tras leer el libro) → animación de reacción del monstruo.
+- **C. Nave en escombros:** con un mensaje en glyphs + **input de traducción** (campo de texto + validación, estados error/ok).
+- **D. Nave reconstruida:** cuando el usuario trae el cristal (transición escombros→nave entera).
+- **E. Panza brillando + terminal de coordenadas:** input de coordenadas + botón "Viajar" + transición de viaje a Deo.
+- Diseñar la **caja de diálogo/tono NPC** reutilizable para futuros `information` interactivos.
+
+### 5. Biblioteca de los secretos (place `information`)
+- **Vista de estanterías A–Z:** navegación entre estantes (letras), lomos de libros (varios irrelevantes de relleno + el libro clave en estante **D**).
+- **Lector de libro (modal):** libro abierto, el de Deo en glyphs, con estado de **traducción progresiva** (mensaje final legible recién al final de la quest).
+- Diseñar cómo se ven "libros irrelevantes" (títulos de relleno) vs el libro importante.
+
+### 6. Meseta de la guerra antigua (place `information`)
+- Dos **tablillas/inscripciones bilingües** (español + glyphs Deo) con los mensajes. Estética de piedra/ruina antigua. Layout simple de lectura.
+
+### 7. Telescopio ancestral (place `information`, minijuego)
+- **Viewport de cielo nocturno** navegable (pan/scan), sensación "muy difícil" de encontrar el punto.
+- **Punto blanco parpadeante** (el objetivo) + lectura de **coordenadas** al ubicarlo.
+- **Estado fuera de horario:** mensaje "no es un buen momento para mirar al cielo" (solo 21–23h). Diseñar ambos estados (día bloqueado / noche activa con resplandor).
+- Reutiliza patrón de los minijuegos (`.game-*`, `GameHeader`, overlays) donde aplique.
+
+### 8. Íconos de items nuevos
+- **"Cristal blanco oxidado"** (consumible/quest, blanco oxidado, misterioso).
+- **"Garras blancas de piedra espacial"** (arma uncommon exclusiva, piedra espacial blanca). Se generan con la skill `item-generator` pero conviene dirección de arte de Claude Design.
+
+### 9. Momento de recompensa final del evento
+- Celebración de cierre del evento: **+1000 monedas** + reveal del **arma exclusiva**. Puede ser un modal más grandioso que el de descubrimiento normal (es el climax de todo el evento).
+
+### Notas de reutilización para el diseñador
+- Modales → base en `.disc-*`; minijuego/telescopio → base en `.game-*` + `GameHeader`/overlays; el NPC/biblioteca son patrones **nuevos** de `information` interactivo (hoy los `information` son estáticos), así que ahí hay más libertad.
+- Todo lo `Hidden` simplemente **no aparece** hasta descubrirse (no hay placeholders "???"). Si el diseñador quiere sugerir "hay más por descubrir", proponerlo como opción, no requisito.

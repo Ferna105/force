@@ -1,9 +1,11 @@
 'use strict';
 
 /**
- * Motor de descubrimiento de monstruos.
+ * Motor de descubrimiento.
  *
- * Cada monstruo puede tener una `DiscoveryStrategy` (campo json):
+ * Descubre **monstruos** y, desde la Fase 0 del plan Deo, también **mundos,
+ * regiones y lugares** ocultos (`Hidden: true`). Cada entidad descubrible puede
+ * tener una `DiscoveryStrategy` (campo json):
  *   { ordered: boolean, tasks: [{ type, params, label }] }
  *
  * Una estrategia se cumple cuando todas sus tareas están completas. Las tareas
@@ -11,6 +13,11 @@
  * inventario y los monstruos que ya descubrió. Si `ordered` es true, las tareas
  * deben completarse en secuencia temporal (cada una sobre eventos posteriores a
  * la anterior); si es false, cada tarea se evalúa sobre todo el historial.
+ *
+ * Visibilidad (gating): una entidad es visible para un usuario si NO es `Hidden`
+ * o si está en su set descubierto, respetando la jerarquía world → region →
+ * place (una región solo es visible si su mundo lo es; un lugar solo si su
+ * región —de tenerla— y su mundo lo son). Lo resuelve `visibleFor`.
  *
  * Tipos de tarea soportados (params resueltos por nombre o id):
  *   - visit_place                { placeName | placeId }
@@ -29,6 +36,7 @@
 const USER_UID = 'plugin::users-permissions.user';
 const MONSTER_UID = 'api::monster.monster';
 const WORLD_UID = 'api::world.world';
+const REGION_UID = 'api::region.region';
 const PLACE_UID = 'api::place.place';
 const EVENT_UID = 'api::user-event.user-event';
 const ENTRY_UID = 'api::inventory-entry.inventory-entry';
@@ -36,24 +44,25 @@ const ITEM_UID = 'api::item.item';
 
 const EPOCH = new Date(0);
 
-/* ============ Shape REST (para que el front consuma como un Monster) ============ */
+/* ============ Shape REST (para que el front consuma como una entidad Strapi) ============ */
 const mediaToRest = (m) => (m ? { data: { id: m.id, attributes: m } } : null);
 
-const monsterToRest = (m) => {
-  const { Image, ...rest } = m;
-  return { id: m.id, attributes: { ...rest, Image: mediaToRest(Image) } };
-};
+// Aplana una entidad y envuelve su campo de media (Image/Banner) en shape REST.
+function entityToRest(entity, mediaField) {
+  const { [mediaField]: media, ...rest } = entity;
+  return { id: entity.id, attributes: { ...rest, [mediaField]: mediaToRest(media) } };
+}
+const monsterToRest = (m) => entityToRest(m, 'Image');
+const worldToRest = (w) => entityToRest(w, 'Image');
+const regionToRest = (r) => entityToRest(r, 'Banner');
+const placeToRest = (p) => entityToRest(p, 'Banner');
 
 /* ============ Helpers de matching ============ */
-// ¿La entidad referenciada por el task matchea esta entidad (por id o por nombre)?
-function matchesById(entity, idParam) {
-  return idParam != null && entity && entity.id === Number(idParam);
-}
 function nameEq(a, b) {
   return a != null && b != null && String(a).toLowerCase() === String(b).toLowerCase();
 }
 
-// Resuelve el mundo objetivo de un task a partir de sus params (id o nombre).
+// Resuelve el mundo/lugar objetivo de un task a partir de sus params (id o nombre).
 function resolveWorldId(params, worldsByName) {
   if (params.worldId != null) return Number(params.worldId);
   if (params.worldName) return worldsByName.get(String(params.worldName).toLowerCase())?.id ?? null;
@@ -210,11 +219,20 @@ function evaluateStrategy(strategy, ctx) {
 
 /* ============ Carga de contexto del usuario ============ */
 async function loadContext(strapi, userId) {
-  const [worlds, places, monsters, items, events, inventory] = await Promise.all([
-    strapi.entityService.findMany(WORLD_UID, { fields: ['id', 'Name'], publicationState: 'live' }),
+  const [worlds, regions, places, monsters, items, events, inventory] = await Promise.all([
+    strapi.entityService.findMany(WORLD_UID, {
+      fields: ['id', 'Name', 'Description', 'Hidden', 'DiscoveryStrategy'],
+      populate: { Image: true },
+      publicationState: 'live',
+    }),
+    strapi.entityService.findMany(REGION_UID, {
+      fields: ['id', 'Name', 'Description', 'Biome', 'Hidden', 'DiscoveryStrategy'],
+      populate: { World: { fields: ['id', 'Name'] }, Banner: true },
+      publicationState: 'live',
+    }),
     strapi.entityService.findMany(PLACE_UID, {
-      fields: ['id', 'Name'],
-      populate: { World: { fields: ['id', 'Name'] } },
+      fields: ['id', 'Name', 'Description', 'Type', 'Biome', 'Hidden', 'DiscoveryStrategy'],
+      populate: { World: { fields: ['id', 'Name'] }, region: { fields: ['id'] }, Banner: true },
       publicationState: 'live',
     }),
     // Sin restringir `fields`: el motor necesita DiscoveryStrategy y el modal del
@@ -239,9 +257,17 @@ async function loadContext(strapi, userId) {
   ]);
 
   const userWithDiscovered = await strapi.entityService.findOne(USER_UID, userId, {
-    populate: { discoveredMonsters: { fields: ['id'] } },
+    populate: {
+      discoveredMonsters: { fields: ['id'] },
+      discoveredWorlds: { fields: ['id'] },
+      discoveredRegions: { fields: ['id'] },
+      discoveredPlaces: { fields: ['id'] },
+    },
   });
   const discoveredIds = new Set((userWithDiscovered?.discoveredMonsters || []).map((m) => m.id));
+  const discoveredWorldIds = new Set((userWithDiscovered?.discoveredWorlds || []).map((w) => w.id));
+  const discoveredRegionIds = new Set((userWithDiscovered?.discoveredRegions || []).map((r) => r.id));
+  const discoveredPlaceIds = new Set((userWithDiscovered?.discoveredPlaces || []).map((p) => p.id));
 
   const worldsByName = new Map(worlds.map((w) => [String(w.Name).toLowerCase(), w]));
   const placesByName = new Map(places.map((p) => [String(p.Name).toLowerCase(), p]));
@@ -275,8 +301,14 @@ async function loadContext(strapi, userId) {
   }));
 
   return {
+    worlds,
+    regions,
+    places,
     monsters,
     discoveredIds,
+    discoveredWorldIds,
+    discoveredRegionIds,
+    discoveredPlaceIds,
     worldsByName,
     placesByName,
     monstersByName,
@@ -290,39 +322,177 @@ async function loadContext(strapi, userId) {
 
 /* ============ API pública del motor ============ */
 
+// Evalúa las entidades Hidden aún no descubiertas de una lista y devuelve las que
+// completaron su estrategia (para conectarlas al set del usuario).
+function newlyCompleted(entities, discoveredSet, ctx) {
+  const out = [];
+  for (const e of entities) {
+    if (!e.Hidden) continue;
+    if (discoveredSet.has(e.id)) continue;
+    const strategy = e.DiscoveryStrategy;
+    if (!strategy || !Array.isArray(strategy.tasks) || !strategy.tasks.length) continue;
+    if (evaluateStrategy(strategy, ctx).done) {
+      out.push(e);
+      discoveredSet.add(e.id);
+    }
+  }
+  return out;
+}
+
 /**
  * Evalúa todas las estrategias para el usuario dado. Descubre (conecta) los
- * monstruos cuyas estrategias se completaron y devuelve los recién descubiertos
- * en shape REST listo para el modal del front.
+ * monstruos / mundos / regiones / lugares cuyas estrategias se completaron y
+ * devuelve los recién descubiertos en shape REST listo para los modales.
  *
- * @returns {Promise<{ newlyDiscovered: Array }>}
+ * @returns {Promise<{ newlyDiscovered, newWorlds, newRegions, newPlaces }>}
  */
 async function evaluateUser(strapi, userId) {
-  if (!userId) return { newlyDiscovered: [] };
+  const empty = { newlyDiscovered: [], newWorlds: [], newRegions: [], newPlaces: [] };
+  if (!userId) return empty;
 
   const ctx = await loadContext(strapi, userId);
-  const newly = [];
 
+  // Monstruos (comportamiento original)
+  const newMonsters = [];
   for (const monster of ctx.monsters) {
     if (ctx.discoveredIds.has(monster.id)) continue;
     const strategy = monster.DiscoveryStrategy;
     if (!strategy || !Array.isArray(strategy.tasks) || !strategy.tasks.length) continue;
-
-    const { done } = evaluateStrategy(strategy, ctx);
-    if (done) {
-      newly.push(monster);
+    if (evaluateStrategy(strategy, ctx).done) {
+      newMonsters.push(monster);
       ctx.discoveredIds.add(monster.id); // por si un prerequisito depende de él en la misma corrida
     }
   }
 
-  if (newly.length) {
-    // Conectar los nuevos monstruos a la relación discoveredMonsters del usuario
-    await strapi.entityService.update(USER_UID, userId, {
-      data: { discoveredMonsters: { connect: newly.map((m) => ({ id: m.id })) } },
-    });
+  // Mundos / regiones / lugares ocultos con estrategia
+  const newWorlds = newlyCompleted(ctx.worlds, ctx.discoveredWorldIds, ctx);
+  const newRegions = newlyCompleted(ctx.regions, ctx.discoveredRegionIds, ctx);
+  const newPlaces = newlyCompleted(ctx.places, ctx.discoveredPlaceIds, ctx);
+
+  const data = {};
+  if (newMonsters.length) data.discoveredMonsters = { connect: newMonsters.map((m) => ({ id: m.id })) };
+  if (newWorlds.length) data.discoveredWorlds = { connect: newWorlds.map((w) => ({ id: w.id })) };
+  if (newRegions.length) data.discoveredRegions = { connect: newRegions.map((r) => ({ id: r.id })) };
+  if (newPlaces.length) data.discoveredPlaces = { connect: newPlaces.map((p) => ({ id: p.id })) };
+  if (Object.keys(data).length) {
+    await strapi.entityService.update(USER_UID, userId, { data });
   }
 
-  return { newlyDiscovered: newly.map(monsterToRest) };
+  return {
+    newlyDiscovered: newMonsters.map(monsterToRest),
+    newWorlds: newWorlds.map(worldToRest),
+    newRegions: newRegions.map(regionToRest),
+    newPlaces: newPlaces.map(placeToRest),
+  };
 }
 
-module.exports = { evaluateUser, evaluateStrategy };
+/**
+ * Conjunto visible para el usuario (o anónimo si userId es null): ids de
+ * mundos/regiones/lugares que NO son Hidden o que el usuario ya descubrió,
+ * respetando la jerarquía world → region → place.
+ *
+ * @returns {Promise<{ worlds:number[], regions:number[], places:number[] }>}
+ */
+async function visibleFor(strapi, userId) {
+  const [worlds, regions, places] = await Promise.all([
+    strapi.entityService.findMany(WORLD_UID, { fields: ['id', 'Hidden'], publicationState: 'live' }),
+    strapi.entityService.findMany(REGION_UID, {
+      fields: ['id', 'Hidden'],
+      populate: { World: { fields: ['id'] } },
+      publicationState: 'live',
+    }),
+    strapi.entityService.findMany(PLACE_UID, {
+      fields: ['id', 'Hidden'],
+      populate: { World: { fields: ['id'] }, region: { fields: ['id'] } },
+      publicationState: 'live',
+    }),
+  ]);
+
+  let dW = new Set(), dR = new Set(), dP = new Set();
+  if (userId) {
+    const u = await strapi.entityService.findOne(USER_UID, userId, {
+      populate: {
+        discoveredWorlds: { fields: ['id'] },
+        discoveredRegions: { fields: ['id'] },
+        discoveredPlaces: { fields: ['id'] },
+      },
+    });
+    dW = new Set((u?.discoveredWorlds || []).map((w) => w.id));
+    dR = new Set((u?.discoveredRegions || []).map((r) => r.id));
+    dP = new Set((u?.discoveredPlaces || []).map((p) => p.id));
+  }
+
+  const visibleWorlds = new Set(worlds.filter((w) => !w.Hidden || dW.has(w.id)).map((w) => w.id));
+  const visibleRegions = new Set(
+    regions
+      .filter((r) => visibleWorlds.has(r.World?.id) && (!r.Hidden || dR.has(r.id)))
+      .map((r) => r.id)
+  );
+  const visiblePlaces = places
+    .filter((p) => {
+      if (!visibleWorlds.has(p.World?.id)) return false;
+      if (p.region?.id != null && !visibleRegions.has(p.region.id)) return false;
+      return !p.Hidden || dP.has(p.id);
+    })
+    .map((p) => p.id);
+
+  return {
+    worlds: [...visibleWorlds],
+    regions: [...visibleRegions],
+    places: visiblePlaces,
+  };
+}
+
+/**
+ * Conecta un mundo Hidden + su región + sus lugares al set descubierto del
+ * usuario, de una sola vez (recompensa de evento / desbloqueo directo). Devuelve
+ * lo recién conectado en shape REST para los modales en cascada.
+ *
+ * @returns {Promise<{ world, regions, places } | null>}
+ */
+async function discoverWorldTree(strapi, userId, worldName) {
+  if (!userId || !worldName) return null;
+  const [world] = await strapi.entityService.findMany(WORLD_UID, {
+    filters: { Name: worldName },
+    fields: ['id', 'Name', 'Description', 'Hidden', 'DiscoveryStrategy'],
+    populate: {
+      Image: true,
+      regions: { fields: ['id', 'Name', 'Description', 'Biome', 'Hidden'], populate: { Banner: true } },
+      places: { fields: ['id', 'Name', 'Description', 'Type', 'Biome', 'Hidden'], populate: { Banner: true } },
+    },
+    publicationState: 'live',
+    limit: 1,
+  });
+  if (!world) return null;
+
+  const u = await strapi.entityService.findOne(USER_UID, userId, {
+    populate: {
+      discoveredWorlds: { fields: ['id'] },
+      discoveredRegions: { fields: ['id'] },
+      discoveredPlaces: { fields: ['id'] },
+    },
+  });
+  const dW = new Set((u?.discoveredWorlds || []).map((w) => w.id));
+  const dR = new Set((u?.discoveredRegions || []).map((r) => r.id));
+  const dP = new Set((u?.discoveredPlaces || []).map((p) => p.id));
+
+  const newRegions = (world.regions || []).filter((r) => !dR.has(r.id));
+  const newPlaces = (world.places || []).filter((p) => !dP.has(p.id));
+  const worldIsNew = !dW.has(world.id);
+
+  const data = {};
+  if (worldIsNew) data.discoveredWorlds = { connect: [{ id: world.id }] };
+  if (newRegions.length) data.discoveredRegions = { connect: newRegions.map((r) => ({ id: r.id })) };
+  if (newPlaces.length) data.discoveredPlaces = { connect: newPlaces.map((p) => ({ id: p.id })) };
+  if (Object.keys(data).length) {
+    await strapi.entityService.update(USER_UID, userId, { data });
+  }
+
+  return {
+    world: worldIsNew ? worldToRest(world) : null,
+    regions: newRegions.map(regionToRest),
+    places: newPlaces.map(placeToRest),
+  };
+}
+
+module.exports = { evaluateUser, evaluateStrategy, visibleFor, discoverWorldTree };

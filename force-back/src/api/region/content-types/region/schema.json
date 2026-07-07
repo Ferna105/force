@@ -63,6 +63,13 @@
       "relation": "oneToMany",
       "target": "api::place.place",
       "mappedBy": "region"
+    },
+    "Hidden": {
+      "type": "boolean",
+      "default": false
+    },
+    "DiscoveryStrategy": {
+      "type": "json"
     }
   }
 }

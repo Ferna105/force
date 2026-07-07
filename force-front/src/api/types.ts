@@ -118,6 +118,7 @@ export interface Place extends StrapiEntity {
     Biome: BiomeName | null;
     HotspotX: number | null;
     HotspotY: number | null;
+    Hidden?: boolean;
     World?: { data: World | null };
     region?: { data: Region | null };
     createdAt: string;
@@ -136,6 +137,7 @@ export interface Region extends StrapiEntity {
     Biome: BiomeName | null;
     HotspotX: number | null;
     HotspotY: number | null;
+    Hidden?: boolean;
     World?: { data: World | null };
     places?: {
       data: Place[];
@@ -151,6 +153,7 @@ export interface World extends StrapiEntity {
     Name: string;
     Description: string | null;
     Image: StrapiImage | null;
+    Hidden?: boolean;
     places: {
       data: Place[];
     };
@@ -347,6 +350,9 @@ export interface DiscoveryEventRequest {
 // Respuesta de /discovery/event y /discovery/sync
 export interface DiscoveryResponse {
   newlyDiscovered: Monster[];
+  newWorlds?: World[];
+  newRegions?: Region[];
+  newPlaces?: Place[];
 }
 
 // ============ Battledome (duelos por turnos en vivo) ============

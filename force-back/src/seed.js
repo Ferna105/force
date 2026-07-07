@@ -762,6 +762,32 @@ module.exports = async function seed({ strapi }) {
       }
     }
 
+    // 4c-bis) Gating de descubrimiento (Fase 0). Una cuenta nueva ve SOLO Eryndor
+    //     y sus regiones/lugares MENOS la Isla del Reposo de la Serpiente. Todo lo
+    //     demás nace Hidden; su desbloqueo es POR USUARIO (discoveredWorlds/Regions/
+    //     Places), no des-ocultando la entidad globalmente. Deo se desbloquea con su
+    //     evento (fase posterior); Koril/Egea quedan Hidden hasta definir su descubrimiento.
+    //     Se fuerza Hidden=true en el set declarado (idempotente por-boot).
+    const HIDDEN_REGIONS = new Set(['Isla del Reposo de la Serpiente']);
+    const HIDDEN_PLACES = new Set(['Isla del Reposo de la Serpiente']);
+    for (const w of worlds) {
+      if (w.Name !== 'Eryndor' && !w.Hidden) {
+        await strapi.db.query('api::world.world').update({ where: { id: w.id }, data: { Hidden: true } });
+      }
+    }
+    const regionsToGate = await strapi.db.query('api::region.region').findMany({});
+    for (const r of regionsToGate) {
+      if (HIDDEN_REGIONS.has(r.Name) && !r.Hidden) {
+        await strapi.db.query('api::region.region').update({ where: { id: r.id }, data: { Hidden: true } });
+      }
+    }
+    const placesToGate = await strapi.db.query('api::place.place').findMany({});
+    for (const p of placesToGate) {
+      if (HIDDEN_PLACES.has(p.Name) && !p.Hidden) {
+        await strapi.db.query('api::place.place').update({ where: { id: p.id }, data: { Hidden: true } });
+      }
+    }
+
     // 4d) Vecindario demo (place Type 'neighborhood') + sus diseños de casa.
     //     Idempotente: crea el place si falta (ligado a su mundo/región), (re)siembra
     //     su NeighborhoodConfig salvo edición manual, y crea cada diseño si falta

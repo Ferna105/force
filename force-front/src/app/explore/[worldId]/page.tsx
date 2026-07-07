@@ -17,6 +17,8 @@ export default function WorldPage() {
   if (error || !world) return <><Topbar crumb="Explorar" /><div className="page"><ErrorState message={error ?? undefined} /></div></>;
 
   const a = world.attributes;
+  // El gating (regiones ocultas) se aplica server-side en el controller; acá
+  // las regiones ya vienen filtradas.
   const regions = a.regions?.data ?? [];
   const art = mediaUrl(a.Image, worldArtFallback(a.Name));
   // Regiones ubicables sobre la imagen del mundo (las que tienen posición x/y).
