@@ -29,7 +29,7 @@ const HINTS: Record<string, string> = {
   read_estelas: 'Deo mira hacia el horizonte reseco, donde la piedra vieja todavía recuerda su guerra.',
   get_crystal: 'Señala su nave rota: le falta algo de corazón blanco. Las arenas lo entregan solo a quien insiste.',
   read_final: 'Aquella lengua que descifraste todavía guardaba una última línea sin leer.',
-  train_strength: 'Solo un emergente fuerte recuperará un reino perdido. Deo te mira, esperando que lo seas.',
+  train_strength: 'Solo un emergente fuerte recuperará un reino perdido. Deo te mira, con ojos que buscan fortaleza.',
   telescope: 'La nave necesita un rumbo, y solo el cielo lo conoce. Pero el sol borra las estrellas.',
 };
 
