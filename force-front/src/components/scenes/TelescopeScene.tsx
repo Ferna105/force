@@ -12,10 +12,9 @@ import { useEffect, useRef, useState } from 'react';
 import { useQuestEvent } from './useQuestEvent';
 import type { PlaceSceneProps } from './types';
 
-// ⚠️ TEMPORAL (pruebas): fuerza la hora del telescopio para poder usarlo fuera del
-// horario real. La escena manda esta hora al backend, así que pasa el gate en ambos
-// lados. Volver a `null` para restaurar el horario real (21–23 h).
-const TEST_HOUR: number | null = 22;
+// Override de la hora del telescopio para desarrollo/pruebas (fuerza el gate de
+// noche fuera del horario real). En `null` usa la hora local real (21–23 h).
+const TEST_HOUR: number | null = null;
 
 // Área navegable enorme: el cielo se panea hasta ±PAN_* px. El objetivo aparece
 // en una posición aleatoria dentro de un rango amplio (hay que buscarlo de verdad).
