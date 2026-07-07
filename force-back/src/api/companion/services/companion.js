@@ -83,14 +83,18 @@ module.exports = createCoreService(UID, ({ strapi }) => ({
   async createForUser(userId, monsterId, extra = {}) {
     const monster = await strapi.db.query('api::monster.monster').findOne({ where: { id: monsterId } });
     const base = baseStatsFor(monster);
+    // Por defecto la salud actual arranca llena (= salud máxima de la especie).
+    // Excepción del questline: Deo, la criatura perdida, se adopta con la salud
+    // desgastada — hay que alimentarla para que recupere su salud completa (paso
+    // `feed_deo` del evento "La luna del origen").
+    const startHealth = monster?.Name === 'Deo' ? Math.max(1, Math.floor(base.health * 0.3)) : base.health;
     return strapi.entityService.create(UID, {
       data: {
         user: userId,
         monster: monsterId,
         lastInteraction: new Date().toISOString(),
         ...base,
-        // La salud actual arranca llena (= salud máxima de la especie).
-        currentHealth: base.health,
+        currentHealth: startHealth,
         ...extra,
       },
     });

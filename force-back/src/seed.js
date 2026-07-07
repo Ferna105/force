@@ -278,7 +278,7 @@ const DEO_EVENT = {
     { key: 'read_book', type: 'read_book', params: { bookId: 'deo-luna-origen' }, label: 'Habla una lengua muerta. En algún sitio, alguien supo escribirla.' },
     { key: 'react_deo', type: 'flag', label: 'Ya sabés leerla. Devolvele lo que más ansía: su nombre.' },
     { key: 'adopt_deo', type: 'own_companion', params: { monsterName: 'Deo' }, label: 'Ya no quiere estar sola. Llevala con vos.' },
-    { key: 'level_deo', type: 'companion_level_at_least', params: { monsterName: 'Deo', level: 2 }, label: 'Está débil. El vínculo crece con el esfuerzo compartido.' },
+    { key: 'feed_deo', type: 'companion_full_health', params: { monsterName: 'Deo' }, label: 'Deo desfallece. Quizás solo tenga hambre.' },
     { key: 'read_estelas', type: 'flag', label: 'Las alturas resecas guardan piedra que aún recuerda su guerra.' },
     { key: 'translate_ship', type: 'answer', params: { answer: 'fuente de energia insuficiente' }, label: 'Su nave dejó un mensaje grabado. Descifralo.' },
     { key: 'get_crystal', type: 'own_item', params: { itemName: 'Cristal blanco oxidado' }, label: 'Le falta un corazón blanco. Las arenas lo esconden de los impacientes.' },

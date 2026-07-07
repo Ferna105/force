@@ -25,7 +25,7 @@ const SHIP_MSG = 'Fuente de energía insuficiente'; // mensaje en glyphs que hay
 const HINTS: Record<string, string> = {
   read_book: 'No entendés su lengua… todavía. Sus símbolos parecen aguardar a que alguien aprenda a leerlos.',
   adopt_deo: 'La criatura confía en vos, parece que quiere convertirse en tu compañero.',
-  level_deo: 'Deo se ve débil y cansado. Quizás lo mejor sea entrenarlo un poco.',
+  feed_deo: 'Deo se ve débil y cansado, ¿tendrá hambre?',
   read_estelas: 'Deo mira hacia el horizonte reseco, donde la piedra vieja todavía recuerda su guerra.',
   get_crystal: 'Señala su nave rota: le falta algo de corazón blanco. Las arenas lo entregan solo a quien insiste.',
   read_final: 'Aquella lengua que descifraste todavía guardaba una última línea sin leer.',
@@ -129,9 +129,18 @@ export default function CreatureScene({ place }: PlaceSceneProps) {
                   <div className="deo-input">
                     <input
                       className={err ? 'err' : ''}
-                      placeholder="Escribí la traducción…"
+                      placeholder="ESCRIBÍ LA TRADUCCIÓN…"
+                      style={{ textTransform: 'uppercase' }}
                       value={translation}
-                      onChange={(e) => { setTranslation(e.target.value); setErr(null); }}
+                      onChange={(e) => {
+                        // Solo A–Z, 0–9 y espacio: quita tildes (É→E) y descarta el resto.
+                        const v = e.target.value
+                          .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                          .toUpperCase()
+                          .replace(/[^A-Z0-9 ]/g, '');
+                        setTranslation(v);
+                        setErr(null);
+                      }}
                     />
                     <button className="btn btn-primary" disabled={busy || !translation.trim()} onClick={() => run('translate_ship', { value: translation }, 'Traducción correcta.')}>
                       Traducir

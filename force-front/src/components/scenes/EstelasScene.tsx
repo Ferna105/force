@@ -45,8 +45,9 @@ export default function EstelasScene({ place }: PlaceSceneProps) {
             <div className="npc-name" style={{ justifyContent: 'center' }}>
               <span className="badge" /> Inscripción {i === 0 ? 'I' : 'II'}
             </div>
-            <DeoText text={msg} size="md" reveal={canRead ? 0.35 : 0} />
-            {canRead && (
+            {/* La transcripción al español se revela recién al pulsar «Transcribir». */}
+            <DeoText text={msg} size="md" reveal={done ? 1 : 0} />
+            {done && (
               <p className="npc-line" style={{ marginTop: 14, color: 'var(--deo-ice)', fontStyle: 'italic' }}>
                 «{msg}»
               </p>
@@ -57,10 +58,10 @@ export default function EstelasScene({ place }: PlaceSceneProps) {
 
       <div style={{ marginTop: 20, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
         {!canRead && <span className="npc-hint">No entendés estos símbolos… todavía.</span>}
-        {done && <span className="deo-chip">✓ Inscripciones leídas</span>}
+        {done && <span className="deo-chip">✓ Inscripciones transcritas</span>}
         {isActiveStep && (
           <button className="btn btn-primary" disabled={busy} onClick={confirmar}>
-            {busy ? 'Grabando…' : 'Ya leí las inscripciones'}
+            {busy ? 'Transcribiendo…' : 'Transcribir'}
           </button>
         )}
         {!event && canRead && <span className="npc-hint">El eco de la guerra resuena en la piedra.</span>}

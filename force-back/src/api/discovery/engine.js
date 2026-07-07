@@ -33,6 +33,7 @@
  *   - discover_monster           { monsterName | monsterId }
  *   - own_companion              { monsterName | monsterId }
  *   - companion_level_at_least   { monsterName | monsterId, level }
+ *   - companion_full_health      { monsterName | monsterId }  (currentHealth ≥ health)
  *   - read_book                  { bookId }        (evento read_book con ese bookId)
  *   - raise_stat_in_training     { stat }          (entrenó +1 esa stat en una escuela)
  */
@@ -210,6 +211,15 @@ const EVALUATORS = {
     return { done, completedAt: null };
   },
 
+  companion_full_health(params, ctx) {
+    const monsterId = params.monsterId != null
+      ? Number(params.monsterId)
+      : ctx.monstersByName.get(String(params.monsterName || '').toLowerCase())?.id ?? null;
+    const done = monsterId != null
+      && ctx.companions.some((c) => c.monsterId === monsterId && c.health > 0 && c.currentHealth >= c.health);
+    return { done, completedAt: null };
+  },
+
   read_book(params, ctx, events) {
     const bookId = params.bookId != null ? String(params.bookId) : null;
     const at = firstEventTime(
@@ -297,7 +307,7 @@ async function loadContext(strapi, userId) {
     }),
     strapi.entityService.findMany(COMPANION_UID, {
       filters: { user: userId },
-      fields: ['id', 'level'],
+      fields: ['id', 'level', 'health', 'currentHealth'],
       populate: { monster: { fields: ['id', 'Name'] } },
     }),
   ]);
@@ -339,10 +349,13 @@ async function loadContext(strapi, userId) {
     _date: new Date(e.createdAt),
   }));
 
-  // Compañeros del usuario (para tareas own_companion / companion_level_at_least)
+  // Compañeros del usuario (para tareas own_companion / companion_level_at_least /
+  // companion_full_health)
   const normCompanions = companions.map((c) => ({
     monsterId: c.monster?.id ?? null,
     level: c.level ?? 0,
+    health: c.health ?? 0,
+    currentHealth: c.currentHealth ?? 0,
   }));
 
   // Inventario normalizado
