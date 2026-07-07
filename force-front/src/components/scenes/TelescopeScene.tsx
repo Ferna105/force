@@ -76,14 +76,15 @@ export default function TelescopeScene({ place }: PlaceSceneProps) {
         <>
           <div
             className={`scope${grab ? ' grab' : ''}`}
+            data-mode={isNight ? 'night' : 'day'}
             onPointerDown={onDown}
             onPointerMove={onMove}
             onPointerUp={onUp}
             onPointerLeave={onUp}
           >
-            {isNight && (
+            <div className="sky-layer" style={isNight ? { transform: `translate(${ox}px, ${oy}px)` } : undefined} />
+            {isNight ? (
               <>
-                <div className="sky-layer" style={{ transform: `translate(${ox}px, ${oy}px)` }} />
                 <div className="target" style={{ left: `calc(50% + ${TX + ox}px)`, top: `calc(50% + ${TY + oy}px)` }} />
                 <div className={`reticle${aligned ? ' locked' : ''}`}>
                   <div className="ring" /><div className="ring in" />
@@ -93,11 +94,14 @@ export default function TelescopeScene({ place }: PlaceSceneProps) {
                   {aligned ? 'Punto centrado — fijá las coordenadas' : 'Arrastrá para escanear el cielo · centrá el punto que titila'}
                 </div>
               </>
-            )}
-            {!isNight && (
-              <div className="scope-blocked">
-                <div className="big">No es un buen momento para mirar al cielo</div>
-                <div className="sm">El sol borra las estrellas. El punto que buscás solo aparece de noche. Volvé entre las 21:00 y las 23:00.</div>
+            ) : (
+              <div className="lock-ov">
+                <div className="lock-card">
+                  <div className="sun" />
+                  <h2>No es un buen momento para mirar al cielo</h2>
+                  <p>El sol borra las estrellas. El punto que buscás solo aparece cuando cae la noche.</p>
+                  <div className="win">Volvé entre las 21:00 y las 23:00</div>
+                </div>
               </div>
             )}
           </div>

@@ -1063,7 +1063,13 @@ h1,h2,h3,h4{margin:0;}
 .reticle.locked .cross{background:rgba(120,220,120,.85);}
 .coords-read{display:inline-flex;align-items:center;gap:10px;background:rgba(12,13,20,.6);border:1px solid rgba(150,160,190,.2);border-radius:var(--r-pill);padding:8px 16px;font-family:var(--font-fredoka);font-size:13px;color:var(--mist);}
 .coords-read b{color:var(--deo-soft);font-family:var(--font-cinzel);font-weight:800;letter-spacing:.03em;}
-.scope-blocked{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:8px;padding:24px;background:linear-gradient(180deg,rgba(159,182,216,.28),rgba(201,211,224,.22));backdrop-filter:blur(2px);}
-.scope-blocked .big{font-family:var(--font-cinzel);font-weight:800;font-size:22px;color:#25324a;}
-.scope-blocked .sm{font-family:var(--font-mulish);font-size:14px;color:#3a4658;max-width:340px;}
+/* modo día (bloqueado): el cielo se vuelve un degradé diurno opaco y brillante
+   (como el handoff), y encima va la lock-card con texto oscuro → buen contraste. */
+.scope[data-mode="day"] .sky-layer{background:linear-gradient(180deg,#9fb6d8,#c9d3e0 70%,#e6d9bf);}
+.lock-ov{position:absolute;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;padding:26px;text-align:center;background:radial-gradient(120% 100% at 50% 30%,rgba(255,255,255,.28),rgba(160,180,210,.08));}
+.lock-card{max-width:420px;}
+.lock-card .sun{width:66px;height:66px;margin:0 auto 16px;border-radius:50%;background:radial-gradient(circle at 40% 36%,#ffe9a8,#f6c96a 60%,#e08a2a);box-shadow:0 0 40px -4px rgba(240,180,60,.7);}
+.lock-card h2{font-family:var(--font-cinzel);font-weight:800;font-size:24px;color:#1a2436;margin:0 0 8px;letter-spacing:.02em;}
+.lock-card p{font-family:var(--font-mulish);font-size:15px;color:#31405a;line-height:1.55;margin:0 auto 6px;max-width:340px;}
+.lock-card .win{margin-top:14px;font-family:var(--font-fredoka);font-weight:600;font-size:13px;color:#2a3a56;background:rgba(255,255,255,.55);border:1px solid rgba(40,60,90,.2);border-radius:var(--r-pill);padding:8px 16px;display:inline-block;}
 .scope-hint{position:absolute;left:0;right:0;bottom:10px;text-align:center;font-family:var(--font-mulish);font-style:italic;font-size:12.5px;color:var(--mist-2);pointer-events:none;z-index:6;}
