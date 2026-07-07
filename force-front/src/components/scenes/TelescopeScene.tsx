@@ -75,6 +75,8 @@ export default function TelescopeScene({ place }: PlaceSceneProps) {
     setOy(clamp(drag.current.oy + (e.clientY - drag.current.sy), PAN_Y));
   };
   const onUp = () => { drag.current = null; setGrab(false); };
+  // Centra el cielo en el punto marcado (llevar el objetivo al centro del scope).
+  const focusTarget = () => { setOx(clamp(-target.tx, PAN_X)); setOy(clamp(-target.ty, PAN_Y)); };
 
   const fijar = async () => {
     if (hour == null) return;
@@ -98,8 +100,18 @@ export default function TelescopeScene({ place }: PlaceSceneProps) {
           {done && (
             <div className="npc-dialog no-tip" style={{ marginBottom: 14 }}>
               <div className="npc-name"><span className="badge" /> Coordenadas fijadas</div>
-              <p className="npc-line">Este es el rumbo. Ingresalo en la nave para partir. Podés seguir explorando el cielo: el punto marcado señala a Deo.</p>
-              {coords && <div className="coords-read" style={{ marginTop: 12 }}>Coordenadas: <b>{coords}</b></div>}
+              {coords && (
+                <div style={{ marginTop: 12 }}>
+                  <div
+                    className="coords-read"
+                    style={{ cursor: 'pointer' }}
+                    onClick={focusTarget}
+                    title="Tocar para enfocar el punto en el telescopio"
+                  >
+                    Coordenadas: <b>{coords}</b> <span style={{ opacity: 0.55, fontWeight: 400 }}>· ◎ enfocar</span>
+                  </div>
+                </div>
+              )}
             </div>
           )}
           <div
@@ -122,16 +134,15 @@ export default function TelescopeScene({ place }: PlaceSceneProps) {
                     ✧ {coords}
                   </div>
                 )}
+                {/* La mira del telescopio se ve siempre en el cielo interactivo. */}
+                <div className={`reticle${aligned ? ' locked' : ''}`}>
+                  <div className="ring" /><div className="ring in" />
+                  <div className="cross h" /><div className="cross v" />
+                </div>
                 {!done && (
-                  <>
-                    <div className={`reticle${aligned ? ' locked' : ''}`}>
-                      <div className="ring" /><div className="ring in" />
-                      <div className="cross h" /><div className="cross v" />
-                    </div>
-                    <div className="scope-hint">
-                      {aligned ? 'Punto centrado — fijá las coordenadas' : 'Arrastrá o usá las flechas para escanear el cielo'}
-                    </div>
-                  </>
+                  <div className="scope-hint">
+                    {aligned ? 'Punto centrado — fijá las coordenadas' : 'Arrastrá o usá las flechas para escanear el cielo'}
+                  </div>
                 )}
               </>
             ) : (
