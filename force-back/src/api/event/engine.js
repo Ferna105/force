@@ -28,16 +28,35 @@ const USER_UID = 'plugin::users-permissions.user';
 const PROGRESS_UID = 'api::event-progress.event-progress';
 const ITEM_UID = 'api::item.item';
 const ENTRY_UID = 'api::inventory-entry.inventory-entry';
+const EVENT_UID = 'api::event.event';
+const PLACE_UID = 'api::place.place';
+
+// Drop aleatorio del questline de Deo: al visitar el lugar del drop, si el
+// usuario llegó al paso `stepKey` del evento y no tiene el item, hay `chance` de
+// que aparezca. Config declarativa (el evento se referencia por Name).
+const CRYSTAL_DROP = {
+  eventName: 'La luna del origen',
+  stepKey: 'get_crystal',
+  placeName: 'Dunas de Ceniza',
+  itemName: 'Cristal blanco oxidado',
+  chance: 0.4,
+};
 
 /* ============ Evaluación de pasos (pura) ============ */
 
+// Nombre de la flag de estado que marca un paso interactivo como cumplido.
+function flagKey(step) {
+  return (step.params && step.params.flag) || step.key;
+}
+
 // ¿El paso está cumplido, dado el contexto de descubrimiento (ctx) y el estado
-// de puzzle del progreso (state)?
+// de puzzle del progreso (state)? Los pasos interactivos (los que tienen un
+// resolver: flag/answer/telescope) se cumplen por su flag en `state`; el resto
+// son pasivos y se resuelven contra el historial/inventario (EVALUATORS).
 function isStepDone(step, ctx, state) {
   if (!step || !step.type) return false;
-  if (step.type === 'flag') {
-    const flag = (step.params && step.params.flag) || step.key;
-    return !!(state && state[flag]);
+  if (STEP_RESOLVERS[step.type]) {
+    return !!(state && state[flagKey(step)]);
   }
   const evaluator = EVALUATORS[step.type];
   if (!evaluator) return false; // tipo desconocido ⇒ nunca se cumple
@@ -59,14 +78,43 @@ function evaluateSteps(steps, ctx, state) {
 }
 
 /* ============ Resolvers de pasos interactivos (POST step) ============
-   Un resolver valida el payload de un paso y devuelve el parche a aplicar sobre
-   `state`. Los puzzles de Deo (traducción, coordenadas, telescopio) agregarán
-   sus resolvers acá en una fase posterior. Por defecto, un paso `flag` se marca
-   como cumplido. */
+   Un resolver valida el payload de un paso y devuelve `{ ok, patch, error }`:
+   `patch` se aplica sobre `state` cuando ok. Tipos:
+   - `flag`      — marca el paso (interacción simple: botón/lectura).
+   - `answer`    — valida `body.value` contra `params.answer` (normalizado:
+                   sin acentos/mayúsculas/símbolos). Traducción de la nave y
+                   coordenadas de viaje de Deo.
+   - `telescope` — gate horario: `body.hour` (hora local del cliente) debe caer
+                   en [params.fromHour, params.toHour). Telescopio ancestral. */
+
+// Normaliza para comparar respuestas: sin acentos, minúsculas, solo alfanumérico.
+function normAnswer(s) {
+  return String(s == null ? '' : s)
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
 const STEP_RESOLVERS = {
   flag(step /* , body, ctx */) {
-    const flag = (step.params && step.params.flag) || step.key;
-    return { ok: true, patch: { [flag]: true } };
+    return { ok: true, patch: { [flagKey(step)]: true } };
+  },
+
+  answer(step, body) {
+    const expected = normAnswer(step.params && step.params.answer);
+    const given = normAnswer(body && (body.value ?? body.answer));
+    if (!expected || given !== expected) return { ok: false, error: 'La respuesta no es correcta.' };
+    return { ok: true, patch: { [flagKey(step)]: true } };
+  },
+
+  telescope(step, body) {
+    const from = Number(step.params?.fromHour ?? 21);
+    const to = Number(step.params?.toHour ?? 23);
+    const h = Number(body && body.hour);
+    const inRange = Number.isFinite(h) && (from <= to ? h >= from && h < to : h >= from || h < to);
+    if (!inRange) {
+      return { ok: false, error: 'No es un buen momento para mirar al cielo. Volvé de noche (21–23 h).' };
+    }
+    return { ok: true, patch: { [flagKey(step)]: true } };
   },
 };
 
@@ -178,6 +226,50 @@ async function resolveEvent(strapi, userId, event, ctx) {
   return { view: toView(event, updated, completedKeys, currentStep), rewardsGranted };
 }
 
+/**
+ * Drop del "Cristal blanco oxidado" del questline de Deo. Se llama al registrar
+ * una visita (discovery controller). Otorga el cristal (prob. `chance`) solo si:
+ * el lugar visitado es el del drop, el evento está activo, el usuario está
+ * parado justo en el paso `get_crystal`, y todavía no tiene el cristal. Devuelve
+ * `{ itemName }` si dropeó, o null.
+ */
+async function maybeDropCrystal(strapi, userId, placeId) {
+  if (!userId || !placeId) return null;
+  const place = await strapi.entityService.findOne(PLACE_UID, placeId, { fields: ['Name'] });
+  if (!place || place.Name !== CRYSTAL_DROP.placeName) return null;
+
+  const [event] = await strapi.entityService.findMany(EVENT_UID, {
+    filters: { Name: CRYSTAL_DROP.eventName }, limit: 1,
+  });
+  if (!event || !event.active) return null;
+  const steps = Array.isArray(event.steps) ? event.steps : [];
+  const dropIdx = steps.findIndex((s) => s.key === CRYSTAL_DROP.stepKey);
+  if (dropIdx < 0) return null;
+
+  const ctx = await loadContext(strapi, userId);
+  const progress = await getOrCreateProgress(strapi, userId, event.id);
+  const { currentStep } = evaluateSteps(steps, ctx, progress.state || {});
+  if (currentStep !== dropIdx) return null; // solo cuando get_crystal es el paso actual
+
+  const [item] = await strapi.entityService.findMany(ITEM_UID, {
+    filters: { name: CRYSTAL_DROP.itemName }, fields: ['id'], limit: 1,
+  });
+  if (!item) return null;
+  const [entry] = await strapi.entityService.findMany(ENTRY_UID, {
+    filters: { user: userId, item: item.id }, limit: 1,
+  });
+  if (entry && (entry.quantity || 0) > 0) return null; // ya lo tiene
+
+  if (Math.random() > CRYSTAL_DROP.chance) return null; // no dropeó esta vez
+
+  if (entry) {
+    await strapi.entityService.update(ENTRY_UID, entry.id, { data: { quantity: (entry.quantity || 0) + 1 } });
+  } else {
+    await strapi.entityService.create(ENTRY_UID, { data: { user: userId, item: item.id, quantity: 1 } });
+  }
+  return { itemName: CRYSTAL_DROP.itemName };
+}
+
 module.exports = {
   resolveEvent,
   getOrCreateProgress,
@@ -185,5 +277,6 @@ module.exports = {
   isStepDone,
   grantRewards,
   toView,
+  maybeDropCrystal,
   STEP_RESOLVERS,
 };

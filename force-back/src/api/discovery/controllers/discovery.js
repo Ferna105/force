@@ -15,6 +15,7 @@
  */
 
 const { evaluateUser } = require('../engine');
+const { maybeDropCrystal } = require('../../event/engine');
 
 const PLACE_UID = 'api::place.place';
 const EVENT_UID = 'api::user-event.user-event';
@@ -67,6 +68,16 @@ module.exports = {
     });
 
     const result = await evaluateUser(strapi, user.id);
+
+    // Drop del questline de Deo: al visitar el lugar del drop puede aparecer el
+    // Cristal blanco oxidado (server-side, según la etapa del evento).
+    if (type === 'visit_place' && placeId) {
+      try {
+        const drop = await maybeDropCrystal(strapi, user.id, placeId);
+        if (drop) result.drop = drop;
+      } catch { /* el drop es accesorio: no rompe el registro de la visita */ }
+    }
+
     return ctx.send(result);
   },
 

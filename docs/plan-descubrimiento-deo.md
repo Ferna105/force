@@ -38,7 +38,19 @@
   - **Idioma de Deo**: `deo-glyph.js` del handoff **portado** a `force-front/src/lib/deoGlyph.ts` (módulo TS puro, SSR-safe, cifrado 1:1 ES→glyphs SVG inline apto CSP) + componente `DeoText` (`components/ui/DeoText.tsx`, con reveal a español) + estilos `.deo-*` en `globals.css`.
   - **Fuente del arte**: handoff de diseño (`Force-handoff.zip`) — trae specs de todas las escenas, el idioma, y arte de Deo. Para los 2 items solo hay dirección de arte (no PNG final) ⇒ decisión: fallback ahora, `item-generator` después.
   - Verificado (DB real): 4 places visibles con región/bioma correctos; items con stats backfilled; **port del idioma idéntico al original (27/27 glyphs + render)**; `tsc`+`eslint` limpios.
-- **PR5 — Pasos del evento Deo + escenas (Fase 2): ⏭️ SIGUIENTE.**
+- **PROD — Propagar el contenido a producción: 🔁 PASO RECURRENTE (tras cada PR de contenido/backend).**
+  - **Mecanismo:** el seed (`src/seed.js`) es **idempotente** y corre en cada **deploy de Railway** (bootstrap). Al pushear a `main`, Railway redeploya y el seed **puebla prod** con lo creado localmente: places/items del questline, gating `Hidden` (mundos + isla serpiente), permisos, evento demo y —cuando esté— el evento Deo. Referencia todo **por nombre** (los ids difieren entre entornos), así que no hace falta migrar ids.
+  - **⚠️ Impacto en prod:** el gating oculta **Koril/Egea también en prod** (usuarios existentes dejan de verlos hasta definir su desbloqueo). Confirmar que es lo deseado antes de deployar.
+  - **Assets** (íconos de items, banners nuevos): NO viajan por el seed. Se cargan con las skills `item-generator` / `upload-image`, que apuntan a **local y prod**. Todos los assets son opcionales (fallback), así que el deploy no se bloquea por faltar arte.
+  - **NO usar `db-sync` local→prod** para esto: sobrescribe la base de prod (borra datos de usuarios reales). El `db-sync` sirve para pull prod→local o para un reset total, no para propagar contenido incremental.
+  - **Verificación post-deploy:** chequear en prod que los places/items nuevos aparecen y que el gating es correcto (endpoints REST o admin).
+- **PR5a — Backend del evento Deo (motor + puzzles + drop + recompensa): ✅ HECHO.**
+  - **Resolvers de puzzle** en `event/engine.js`: `answer` (valida `body.value` vs `params.answer`, normalizado sin acentos/símbolos — traducción de la nave y coordenadas) y `telescope` (gate horario `body.hour` ∈ [fromHour,toHour)). `isStepDone` generalizado: los pasos con resolver se cumplen por flag; el resto son pasivos (EVALUATORS).
+  - **Evento "La luna del origen"** (seed, `active:false`, seed-owned): 13 pasos ordenados (visit_npc → read_book → react_deo → adopt_deo → level_deo → read_estelas → translate_ship → get_crystal → use_ship → read_final → train_strength → telescope → travel). Recompensa: **1000 monedas + Garras blancas de piedra espacial + `discoverWorld: Deo`**. Strings de puzzle (bookId `deo-luna-origen`, traducción, coords `21h +48 7`) centralizados en el evento.
+  - **Monstruo Deo**: `DiscoveryStrategy` = `read_book(deo-luna-origen)` (se descubre al descifrar el libro).
+  - **Drop del cristal**: `maybeDropCrystal` (enganchado en `/discovery/event` al visitar) otorga "Cristal blanco oxidado" (chance 0.4) solo si el usuario está parado en el paso `get_crystal` y no lo tiene.
+  - Verificado (DB real, questline completo con usuario nuevo): los 13 pasos en orden, validación de traducción/coords (rechaza incorrectas), gate del telescopio (rechaza hora 14, acepta 22), drop del cristal, y **recompensa final una sola vez** (balance +1000, Garras al inventario, mundo Deo 404→200 con su región y lugares). `event-progress` = `completed` (13/13).
+- **PR5b — Escenas interactivas del front (Fase 2): ⏭️ SIGUIENTE.** NPC "Una criatura extraña", Biblioteca de los Secretos, Estelas de la Guerra Antigua, Telescopio Ancestral y terminal de la nave — usando `DeoText`/`.deo-*` + los endpoints del evento + los specs del handoff. Al terminar, **activar el evento** (`active:true`).
 
 ---
 
@@ -143,6 +155,7 @@ Definidas como `event.rewards` (data, no hardcode). Al completar el evento Deo: 
 4. **PR4** Contenido + idioma Deo (Fase 4, sin puzzles).
 5. **PR5** Pasos del evento Deo (Fase 3): handlers + escenas (NPC, biblioteca, traducción, telescopio, nave).
 6. **PR6** Recompensas + pulido (Fase 5): reward del evento, modales en cascada, balanceo del drop/telescopio.
+7. **PROD** (recurrente, tras cada PR): propagar a producción vía deploy (el seed idempotente puebla prod); assets con `item-generator`/`upload-image`. Nunca `db-sync` local→prod (destructivo). Ver "Estado de ejecución".
 
 ---
 

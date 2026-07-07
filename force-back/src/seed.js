@@ -262,6 +262,35 @@ const QUEST_ITEMS = [
   },
 ];
 
+// Evento del questline de Deo ("La luna del origen"). Pasos ordenados: pasivos
+// (visitar/tener/entrenar) + interactivos (flag/answer/telescope, resueltos en
+// las escenas). Recompensa: 1000 monedas + arma exclusiva + descubrir el mundo
+// Deo (mundo/región/lugares). Los strings de puzzle (bookId, traducción,
+// coordenadas) viven acá y los comparten backend y escenas. Nace `active:false`;
+// se activa cuando las escenas del front estén listas.
+const DEO_COORDS = '21h +48 7';
+const DEO_EVENT = {
+  Name: 'La luna del origen',
+  Description: 'Una criatura perdida en las Dunas de Ceniza habla un idioma olvidado. Ayudala a descifrar su lengua, reconstruí su nave y descubrí de dónde vino: la luna Deo.',
+  startsAt: new Date('2026-01-01T00:00:00.000Z'),
+  steps: [
+    { key: 'visit_npc', type: 'visit_place', params: { placeName: 'Una criatura extraña' }, label: 'Encontrá a la criatura extraña en las Dunas de Ceniza' },
+    { key: 'read_book', type: 'read_book', params: { bookId: 'deo-luna-origen' }, label: 'Descifrá «Deo, la luna del origen» en la Biblioteca de los Secretos (estante D)' },
+    { key: 'react_deo', type: 'flag', label: 'Volvé con la criatura y pronunciá «Deo»' },
+    { key: 'adopt_deo', type: 'own_companion', params: { monsterName: 'Deo' }, label: 'Sumá a Deo como tu compañero' },
+    { key: 'level_deo', type: 'companion_level_at_least', params: { monsterName: 'Deo', level: 2 }, label: 'Subí a Deo al menos 1 nivel' },
+    { key: 'read_estelas', type: 'flag', label: 'Leé las inscripciones de la Meseta de la Guerra Antigua' },
+    { key: 'translate_ship', type: 'answer', params: { answer: 'fuente de energia insuficiente' }, label: 'Traducí el mensaje de la nave' },
+    { key: 'get_crystal', type: 'own_item', params: { itemName: 'Cristal blanco oxidado' }, label: 'Encontrá un Cristal blanco oxidado en las Dunas de Ceniza' },
+    { key: 'use_ship', type: 'flag', label: 'Llevá el cristal a la nave y encendela' },
+    { key: 'read_final', type: 'flag', label: 'Volvé a la biblioteca: el mensaje final ya se puede leer' },
+    { key: 'train_strength', type: 'raise_stat_in_training', params: { stat: 'strength' }, label: 'Subí al menos 1 de fuerza en una escuela de entrenamiento' },
+    { key: 'telescope', type: 'telescope', params: { fromHour: 21, toHour: 23, coordinates: DEO_COORDS }, label: 'Conseguí las coordenadas en el Telescopio Ancestral (de noche, 21–23 h)' },
+    { key: 'travel', type: 'answer', params: { answer: DEO_COORDS }, label: 'Ingresá las coordenadas en la nave y viajá a Deo' },
+  ],
+  rewards: { coins: 1000, items: [{ name: 'Garras blancas de piedra espacial', quantity: 1 }], discoverWorld: 'Deo' },
+};
+
 // Datos plausibles para items (solo se aplican si faltan). El `value` sigue la
 // escala canónica de precios (ver PRICE_SCALE / priceFor) por rareza×rol.
 const ITEM_DATA = {
@@ -554,13 +583,13 @@ const MONSTER_STRATEGIES = {
   },
 
   // — Espaciales (Egea) —
-  // Deo: fuego interno. Ordenada: seguir su rastro, sentir su fuego y canalizarlo en un tótem.
+  // Deo: la criatura perdida del questline. Se descubre al leer el libro «Deo, la
+  // luna del origen» en la Biblioteca de los Secretos (estante D) — ver el evento
+  // "La luna del origen". Luego el jugador puede sumarla como compañera.
   Deo: {
     ordered: true,
     tasks: [
-      { type: 'visit_place', params: { placeName: 'Templos de Obsidiana' }, label: 'Seguí su rastro por los Templos de Obsidiana' },
-      { type: 'play_place', params: { placeName: 'El Corazon Ardiente' }, label: 'Sentí su fuego interno en El Corazón Ardiente' },
-      { type: 'buy_item', params: { itemName: 'Tótem Alfa' }, label: 'Y reclamá un Tótem Alfa para canalizar su llama' },
+      { type: 'read_book', params: { bookId: 'deo-luna-origen' }, label: 'Descifrá «Deo, la luna del origen» en la Biblioteca de los Secretos' },
     ],
   },
   // Eli: viajera estelar. Sin orden: surcar todo Egea + un objeto poco común.
@@ -921,6 +950,31 @@ module.exports = async function seed({ strapi }) {
         await strapi.db.query('api::event.event').update({
           where: { id: existingEvent.id },
           data: { steps: demo.steps, rewards: demo.rewards, active: demo.active, startsAt: demo.startsAt },
+        });
+      }
+    }
+
+    // 4e-bis) Evento del questline de Deo ("La luna del origen"). Seed-owned:
+    //     (re)aplica steps/rewards/startsAt/description en cada boot (así los
+    //     ajustes de contenido viajan por redeploy), pero NO toca `active` una vez
+    //     creado — se activa a mano (admin) o cuando las escenas del front estén
+    //     listas. Nace inactivo. Puebla local y prod.
+    {
+      const existingDeo = await strapi.db.query('api::event.event').findOne({ where: { Name: DEO_EVENT.Name } });
+      if (!existingDeo) {
+        await strapi.entityService.create('api::event.event', {
+          data: { ...DEO_EVENT, active: false },
+        });
+        strapi.log.info(`[seed] Evento de Deo creado: ${DEO_EVENT.Name}`);
+      } else {
+        await strapi.db.query('api::event.event').update({
+          where: { id: existingDeo.id },
+          data: {
+            Description: DEO_EVENT.Description,
+            steps: DEO_EVENT.steps,
+            rewards: DEO_EVENT.rewards,
+            startsAt: DEO_EVENT.startsAt,
+          },
         });
       }
     }
