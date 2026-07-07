@@ -997,3 +997,41 @@ h1,h2,h3,h4{margin:0;}
 .deo-md{font-size:27px;}
 .deo-lg{font-size:38px;}
 .deo-xl{font-size:52px;}
+
+/* ============================================================
+   ESCENAS DEL QUESTLINE DE DEO (portado de deo/deo.css del handoff)
+   Caja de diálogo NPC, inputs de puzzle, biblioteca y overlays.
+   ============================================================ */
+/* caja de diálogo NPC reutilizable */
+.npc-dialog{position:relative;background:linear-gradient(180deg,rgba(22,19,14,.94),rgba(14,12,9,.97));border:1px solid var(--ink-line);border-radius:var(--r-lg);padding:20px 24px 22px;box-shadow:var(--shadow-card),0 0 0 1px rgba(138,127,232,.1);}
+.npc-name{display:inline-flex;align-items:center;gap:9px;font-family:var(--font-cinzel);font-weight:700;font-size:14px;letter-spacing:.08em;color:var(--deo-soft);margin-bottom:10px;}
+.npc-name .badge{width:22px;height:22px;border-radius:50%;background:radial-gradient(circle at 40% 32%,#a99cff,#6a63b8);box-shadow:0 0 12px var(--deo-glow);flex:none;}
+.npc-line{font-family:var(--font-mulish);font-size:16px;color:var(--text);line-height:1.65;}
+.npc-line.deo{font-size:24px;line-height:1.55;}
+.npc-foot{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:16px;flex-wrap:wrap;}
+.npc-hint{font-family:var(--font-mulish);font-style:italic;font-size:12.5px;color:var(--mist-2);}
+/* input de traducción/coordenadas */
+.deo-input{display:flex;gap:10px;align-items:stretch;flex-wrap:wrap;margin-top:14px;}
+.deo-input input{flex:1;min-width:200px;background:var(--ink-2);border:1px solid var(--ink-line);border-radius:var(--r-md);color:var(--text);font-family:var(--font-mulish);font-size:15px;padding:12px 16px;outline:none;transition:border-color .15s,box-shadow .15s;}
+.deo-input input:focus{border-color:var(--deo);box-shadow:0 0 0 3px rgba(138,127,232,.18);}
+.deo-input input.err{border-color:var(--danger,#d24b3e);box-shadow:0 0 0 3px rgba(210,75,62,.18);animation:deoShake .35s;}
+@keyframes deoShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.deo-feedback{font-family:var(--font-fredoka);font-weight:500;font-size:13px;margin-top:9px;min-height:18px;}
+.deo-feedback.ok{color:#8ed085;}
+.deo-feedback.err{color:#f0a08a;}
+.deo-chip{display:inline-flex;align-items:center;gap:8px;font-family:var(--font-fredoka);font-weight:600;font-size:12px;letter-spacing:.05em;color:var(--deo-soft);background:rgba(138,127,232,.12);border:1px solid rgba(138,127,232,.4);border-radius:var(--r-pill);padding:6px 14px;}
+/* biblioteca */
+.shelf-wrap{background:linear-gradient(180deg,#2a2013,#1c150c);border:1px solid var(--ink-line);border-radius:var(--r-lg);padding:26px 30px 0;box-shadow:var(--shadow-card);position:relative;overflow:hidden;margin-bottom:18px;}
+.shelf-label{font-family:var(--font-cinzel);font-weight:800;font-size:60px;color:rgba(230,166,48,.1);position:absolute;top:8px;right:26px;line-height:1;pointer-events:none;}
+.shelf{display:flex;align-items:flex-end;gap:7px;min-height:210px;flex-wrap:wrap;}
+.book{position:relative;border-radius:4px 4px 2px 2px;cursor:pointer;transition:transform .16s,box-shadow .2s,filter .2s;display:flex;align-items:flex-start;justify-content:center;padding-top:16px;box-shadow:2px 0 5px rgba(0,0,0,.4) inset,-2px 0 6px rgba(0,0,0,.35);}
+.book:hover{transform:translateY(-14px);box-shadow:0 16px 26px -10px rgba(0,0,0,.7);}
+.book .t{writing-mode:vertical-rl;transform:rotate(180deg);font-family:var(--font-fredoka);font-weight:600;font-size:12.5px;letter-spacing:.02em;color:rgba(255,255,255,.82);white-space:nowrap;max-height:90%;overflow:hidden;text-overflow:ellipsis;}
+.book.key{box-shadow:0 0 16px -2px var(--deo-glow),2px 0 5px rgba(0,0,0,.4) inset;}
+.book.key .t{color:#e8e4ff;}
+.shelf-plank{height:16px;margin:0 -30px 0;background:linear-gradient(180deg,#3a2c19,#251a0e);border-top:2px solid #4a3722;box-shadow:0 10px 20px -6px rgba(0,0,0,.6);}
+/* overlay genérico de escena (lector de libro / paneles modales) */
+.deo-ov{position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;padding:26px;background:radial-gradient(120% 100% at 50% 35%,rgba(12,10,20,.7),rgba(5,5,9,.94));backdrop-filter:blur(5px);animation:discFade .35s ease;}
+@keyframes discFade{from{opacity:0}to{opacity:1}}
+.deo-card{position:relative;width:min(620px,100%);background:linear-gradient(180deg,rgba(20,18,26,.98),rgba(12,11,17,.99));border:1px solid rgba(138,127,232,.28);border-radius:var(--r-xl);box-shadow:var(--shadow-pop);padding:30px 34px;max-height:86vh;overflow:auto;}
+.deo-card h3{font-family:var(--font-cinzel);font-weight:800;color:#F6ECD7;font-size:24px;margin:0 0 6px;}

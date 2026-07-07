@@ -339,12 +339,13 @@ export interface BuyResponse {
 }
 
 // ============ Descubrimiento de monstruos ============
-export type DiscoveryEventType = 'visit_place' | 'play_place' | 'buy_item';
+export type DiscoveryEventType = 'visit_place' | 'play_place' | 'buy_item' | 'read_book';
 
 export interface DiscoveryEventRequest {
   type: DiscoveryEventType;
   placeId?: number;
   itemId?: number;
+  bookId?: string;
 }
 
 // Respuesta de /discovery/event y /discovery/sync

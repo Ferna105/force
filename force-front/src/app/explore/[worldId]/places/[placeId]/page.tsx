@@ -16,6 +16,7 @@ import Topbar from '@/components/shell/Topbar';
 import { Loading, ErrorState } from '@/components/ui/states';
 import { BiomeTag, TypePill, SectionTitle } from '@/components/ui/tags';
 import { ItemSlot, MonsterCard } from '@/components/ui/cards';
+import { getInfoScene } from '@/components/scenes/registry';
 
 export default function PlacePage() {
   const params = useParams();
@@ -62,7 +63,7 @@ export default function PlacePage() {
 
         {a.Type === 'shop' && <ShopBody placeId={placeId} />}
         {a.Type === 'game' && <GameBody place={place} />}
-        {a.Type === 'information' && <InfoBody place={place} />}
+        {a.Type === 'information' && <InformationBody place={place} />}
         {a.Type === 'battledome' && <BattledomeBody placeId={placeId} />}
         {a.Type === 'training' && <TrainingBody placeId={placeId} />}
         {a.Type === 'neighborhood' && <NeighborhoodBody place={place} />}
@@ -267,6 +268,15 @@ function GameBody({ place }: { place: Place }) {
 }
 
 /* ============ INFORMACIÓN ============ */
+// Lugar `information`: si el lugar tiene una escena interactiva registrada
+// (biblioteca, telescopio, …) la renderiza; si no, la crónica genérica (InfoBody).
+// El registro (components/scenes/registry) es el único punto de extensión y es
+// agnóstico al evento: una misma escena de lugar sirve a cualquier questline.
+function InformationBody({ place }: { place: Place }) {
+  const Scene = getInfoScene(place.attributes.Name);
+  return Scene ? <Scene place={place} /> : <InfoBody place={place} />;
+}
+
 function InfoBody({ place }: { place: Place }) {
   const a = place.attributes;
   const world = a.World?.data;
