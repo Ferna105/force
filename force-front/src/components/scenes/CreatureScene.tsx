@@ -46,10 +46,10 @@ export default function CreatureScene({ place }: PlaceSceneProps) {
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  // "Sabés leer Deo" SOLO tras descifrar el libro (paso read_book cumplido). Ojo:
-  // no usar reachedIndex('read_book'), porque el paso previo (visit_npc) se cumple
-  // con solo visitar este lugar, y eso haría true a reachedIndex('read_book') antes
-  // de leer el libro → el diálogo se mostraría traducido de antemano.
+  // "Sabés leer Deo" (descifraste el libro, paso read_book cumplido): solo habilita
+  // mostrar su NOMBRE ("Deo" en vez de "¿…?"). Los glyphs de su diálogo NO se
+  // traducen nunca (reveal fijo en 0, ver abajo). Se usa stepDone y no reachedIndex
+  // porque el paso previo (visit_npc) se cumple con solo visitar este lugar.
   const canRead = stepDone('read_book');
   const cur = event?.steps.find((s) => s.current)?.key ?? null;
   const completed = event?.status === 'completed';
@@ -106,7 +106,9 @@ export default function CreatureScene({ place }: PlaceSceneProps) {
             <div className="npc-dialog">
               <div className="npc-name"><span className="badge" /> {canRead ? 'Deo' : '¿…?'}</div>
 
-              {/* Habla en glyphs; se entiende una vez que sabés leer */}
+              {/* Deo habla en glyphs y NUNCA se traducen en su lugar (reveal fijo en 0):
+                  el jugador aprende a "leer" su lengua, el juego no la reemplaza por
+                  español. Las pistas de cada paso guían qué hacer. */}
               <div className="npc-line deo" style={{ marginBottom: 4 }}>
                 <DeoText
                   text={
@@ -115,7 +117,7 @@ export default function CreatureScene({ place }: PlaceSceneProps) {
                         : 'no eres de aqui. vienes por ella, verdad'
                   }
                   size="md"
-                  reveal={canRead ? 1 : 0}
+                  reveal={0}
                 />
               </div>
 
