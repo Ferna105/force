@@ -80,6 +80,9 @@ export default function LibraryScene({ place }: PlaceSceneProps) {
   const [letter, setLetter] = useState('A');
   const [open, setOpen] = useState<Book | null>(null);
   const [busy, setBusy] = useState(false);
+  // Una vez descifrado el libro, se puede alternar entre traducción y glyphs.
+  // Arranca en traducción (el "premio" de descifrar); el botón lo alterna.
+  const [translated, setTranslated] = useState(true);
 
   const books = useMemo(() => shelfBooks(letter), [letter]);
 
@@ -159,10 +162,18 @@ export default function LibraryScene({ place }: PlaceSceneProps) {
                 <div className="deo-chip" style={{ marginBottom: 12 }}>Idioma desconocido</div>
                 <h3>{DEO_BOOK_TITLE}</h3>
                 <div style={{ margin: '18px 0' }}>
-                  {/* Al descifrar el libro (read_book) se lee completo, igual que la
-                      criatura pasa a entenderse del todo. El mensaje FINAL es aparte
-                      (finalStage). */}
-                  <DeoText text={LORE} size="md" reveal={readDone ? 'all' : 0} />
+                  {/* Sin descifrar: siempre glyphs. Descifrado: el botón alterna entre
+                      traducción ('all') y glyphs (0). El mensaje FINAL es aparte (finalStage). */}
+                  <DeoText text={LORE} size="md" reveal={readDone && translated ? 'all' : 0} />
+                  {readDone && (
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      style={{ marginTop: 14 }}
+                      onClick={() => setTranslated((v) => !v)}
+                    >
+                      {translated ? '⟐ Ver en glyphs de Deo' : '✦ Ver traducción'}
+                    </button>
+                  )}
                 </div>
                 {finalStage && (
                   <div className="npc-dialog no-tip" style={{ marginTop: 10 }}>
