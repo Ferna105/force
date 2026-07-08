@@ -46,7 +46,11 @@ export default function CreatureScene({ place }: PlaceSceneProps) {
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const canRead = reachedIndex('read_book');
+  // "Sabés leer Deo" SOLO tras descifrar el libro (paso read_book cumplido). Ojo:
+  // no usar reachedIndex('read_book'), porque el paso previo (visit_npc) se cumple
+  // con solo visitar este lugar, y eso haría true a reachedIndex('read_book') antes
+  // de leer el libro → el diálogo se mostraría traducido de antemano.
+  const canRead = stepDone('read_book');
   const cur = event?.steps.find((s) => s.current)?.key ?? null;
   const completed = event?.status === 'completed';
 

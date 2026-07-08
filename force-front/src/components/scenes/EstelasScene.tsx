@@ -23,8 +23,10 @@ export default function EstelasScene({ place }: PlaceSceneProps) {
   const [busy, setBusy] = useState(false);
 
   const done = stepDone('read_estelas');
-  // El jugador "sabe leer" una vez que descifró el libro (read_book).
-  const canRead = reachedIndex('read_book');
+  // El jugador "sabe leer" una vez que DESCIFRÓ el libro (read_book cumplido), no
+  // apenas lo alcanza: reachedIndex('read_book') es true con solo haber visitado al
+  // NPC (paso previo visit_npc), lo que ocultaría de más la pista de "no entendés".
+  const canRead = stepDone('read_book');
   const isActiveStep = reachedIndex('read_estelas') && !done;
 
   const confirmar = async () => {
@@ -45,8 +47,10 @@ export default function EstelasScene({ place }: PlaceSceneProps) {
             <div className="npc-name" style={{ justifyContent: 'center' }}>
               <span className="badge" /> Inscripción {i === 0 ? 'I' : 'II'}
             </div>
-            {/* La transcripción al español se revela recién al pulsar «Transcribir». */}
-            <DeoText text={msg} size="md" reveal={done ? 1 : 0} />
+            {/* Inscripción bilingüe: el glyph NUNCA se traduce en su lugar (reveal
+                fijo en 0, siempre glyphs). La transcripción al español aparece solo
+                como la línea de abajo, recién al pulsar «Transcribir» (done). */}
+            <DeoText text={msg} size="md" reveal={0} />
             {done && (
               <p className="npc-line" style={{ marginTop: 14, color: 'var(--deo-ice)', fontStyle: 'italic' }}>
                 «{msg}»

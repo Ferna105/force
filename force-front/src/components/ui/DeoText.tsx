@@ -7,7 +7,7 @@
  */
 
 import { useEffect, useRef } from 'react';
-import { renderDeo, letterCount, applyReveal } from '@/lib/deoGlyph';
+import { renderDeo, deoLetters, applyReveal } from '@/lib/deoGlyph';
 
 type DeoSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 
@@ -26,8 +26,9 @@ export default function DeoText({
   const html = renderDeo(text);
 
   useEffect(() => {
-    const n = reveal === 'all' ? letterCount(text) : Math.floor((Number(reveal) || 0) * letterCount(text));
-    applyReveal(ref.current, n);
+    const letters = deoLetters(text);
+    const n = reveal === 'all' ? letters.length : Math.floor((Number(reveal) || 0) * letters.length);
+    applyReveal(ref.current, n, letters);
   }, [text, reveal]);
 
   return (

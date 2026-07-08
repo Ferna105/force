@@ -93,7 +93,6 @@ export default function LibraryScene({ place }: PlaceSceneProps) {
   const readDone = stepDone('read_book');
   const finalStage = reachedIndex('read_final') && !stepDone('read_final');
   const canDecipher = !!event && reachedIndex('read_book') && !readDone;
-  const revealFrac = event && event.total ? Math.min(1, event.currentStep / event.total) : 0;
 
   const descifrar = async () => {
     setBusy(true);
@@ -160,7 +159,10 @@ export default function LibraryScene({ place }: PlaceSceneProps) {
                 <div className="deo-chip" style={{ marginBottom: 12 }}>Idioma desconocido</div>
                 <h3>{DEO_BOOK_TITLE}</h3>
                 <div style={{ margin: '18px 0' }}>
-                  <DeoText text={LORE} size="md" reveal={readDone ? revealFrac : 0} />
+                  {/* Al descifrar el libro (read_book) se lee completo, igual que la
+                      criatura pasa a entenderse del todo. El mensaje FINAL es aparte
+                      (finalStage). */}
+                  <DeoText text={LORE} size="md" reveal={readDone ? 'all' : 0} />
                 </div>
                 {finalStage && (
                   <div className="npc-dialog no-tip" style={{ marginTop: 10 }}>

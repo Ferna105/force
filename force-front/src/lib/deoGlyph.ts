@@ -89,20 +89,25 @@ export function glyphSVG(letter: string): string {
 const esc = (s: string) =>
   String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c] as string));
 
-export function letterCount(text: string): number {
-  let n = 0;
+// Letras (en orden) que reciben glyph — las revelables, en mayúscula (como se
+// muestran al revelarse). Espacios y puntuación no cuentan. `applyReveal` toma de
+// este arreglo la letra a mostrar en cada posición.
+export function deoLetters(text: string): string[] {
+  const out: string[] = [];
   const t = String(text || '');
-  for (let i = 0; i < t.length; i++) if (isDeoLetter(t[i])) n++;
-  return n;
+  for (let i = 0; i < t.length; i++) if (isDeoLetter(t[i])) out.push(t[i].toUpperCase());
+  return out;
 }
 
 /**
  * Renderiza un texto al idioma de Deo como HTML (para dangerouslySetInnerHTML
- * dentro de un contenedor `.deo`). Cada letra lleva su glyph + gemelo latino
- * oculto; los espacios/puntuación quedan neutros. `opts.reveal` (0..1 | 'all')
- * envuelve en `.deo-pre[data-reveal=n]` para revelar las primeras n letras.
+ * dentro de un contenedor `.deo`). Cada letra lleva su glyph + un gemelo latino
+ * **vacío**; los espacios/puntuación quedan neutros. El texto plano de las letras
+ * NO se emite acá: lo escribe `applyReveal` recién al revelar cada letra, así el
+ * mensaje cifrado no vive en el DOM antes de tiempo (no se puede copiar/inspeccionar
+ * ni lo lee un lector de pantalla mientras siga en glyphs).
  */
-export function renderDeo(text: string, opts: { reveal?: number | 'all' | boolean } = {}): string {
+export function renderDeo(text: string): string {
   const src = String(text == null ? '' : text);
   const out: string[] = [];
   let li = 0;
@@ -115,8 +120,9 @@ export function renderDeo(text: string, opts: { reveal?: number | 'all' | boolea
     if (ch === ' ' || ch === '\t') { flushWord(); out.push('<span class="deo-sp"> </span>'); continue; }
     if (ch === '\n') { flushWord(); out.push('<br>'); continue; }
     if (isDeoLetter(ch)) {
+      // Gemelo latino vacío a propósito: applyReveal lo rellena al revelar.
       buf += `<span class="deo-ch" data-i="${li}"><span class="deo-g">${glyphSVG(ch)}</span>` +
-        `<span class="deo-l">${esc(ch.toUpperCase())}</span></span>`;
+        `<span class="deo-l"></span></span>`;
       li++;
     } else {
       buf += `<span class="deo-ch punct"><span class="deo-g">${esc(ch)}</span>` +
@@ -124,25 +130,24 @@ export function renderDeo(text: string, opts: { reveal?: number | 'all' | boolea
     }
   }
   flushWord();
-  let html = out.join('');
-  if (opts.reveal != null) {
-    const total = li;
-    const n = opts.reveal === 'all' || opts.reveal === true
-      ? total
-      : Math.floor((Number(opts.reveal) || 0) * total);
-    html = `<span class="deo-pre" data-reveal="${n}">${html}</span>`;
-  }
-  return html;
+  return out.join('');
 }
 
 // Revela a español las primeras `n` letras dentro de un contenedor ya renderizado
-// (client-side; se llama desde un efecto de React). La puntuación no cambia.
-export function applyReveal(container: HTMLElement | null, n: number): void {
+// (client-side; se llama desde un efecto de React). Escribe la letra en el gemelo
+// latino SOLO al revelarla —tomándola de `letters` (deoLetters(text))— y la borra
+// si vuelve a ocultarse, para no dejar el texto plano en el DOM. La puntuación no
+// cambia.
+export function applyReveal(container: HTMLElement | null, n: number, letters: string[]): void {
   if (!container) return;
   container.querySelectorAll<HTMLElement>('.deo-ch').forEach((el) => {
     const idx = el.dataset.i;
     if (idx == null) return; // puntuación: sin cambio
-    el.classList.toggle('is-latin', Number(idx) < n);
+    const i = Number(idx);
+    const show = i < n;
+    const lat = el.querySelector<HTMLElement>('.deo-l');
+    if (lat) lat.textContent = show ? (letters[i] ?? '') : '';
+    el.classList.toggle('is-latin', show);
   });
 }
 
