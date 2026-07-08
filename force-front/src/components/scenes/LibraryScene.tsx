@@ -19,14 +19,38 @@ const DEO_BOOK_TITLE = 'Deo, la luna del origen';
 const LORE = 'Deo no es una luna. Es un reino perdido en el espacio, dormido tras una guerra olvidada. Quien lea esta lengua carga con su memoria.';
 const FINAL = 'Solo un emergente fuerte logrará recuperar un reino perdido en el espacio.';
 
-// Libros de relleno: títulos mundanos + un párrafo inventado de tema diverso.
-// Nada relacionado con lunas ni guerras: el jugador debe descubrir el libro
-// especial por su cuenta (no se distingue de los demás).
-const FILLER_TITLES = [
-  'Herbología del valle', 'Bestiario menor', 'Diario de cosecha', 'Tratado de fraguas',
-  'Cantares del deshielo', 'Rutas de comercio', 'Manual del relojero', 'Recetas de brasa',
-  'El arte del pastoreo', 'Cartas de un cartógrafo', 'Tintes y tejidos', 'Aves de la ciudadela',
-];
+// Libros de relleno POR LETRA: cada estante muestra solo libros cuya inicial es la
+// del estante. Títulos mundanos (nada de lunas, guerras ni «origen»: así el libro
+// de Deo se camufla en el estante D y no se distingue del resto). Las letras raras
+// en español (K/W/X) usan voces arcaicas/fantásticas o reales poco comunes.
+const TITLES_BY_LETTER: Record<string, string[]> = {
+  A: ['Aves de la ciudadela', 'Atlas de las tierras yermas', 'Almanaque de cosechas', 'Anales del deshielo'],
+  B: ['Bestiario menor', 'Baladas de la brasa', 'Botánica de la meseta', 'Brújulas y derroteros'],
+  C: ['Cantares del deshielo', 'Cartas de un cartógrafo', 'Crónica de las fraguas', 'Compendio de hierbas'],
+  D: ['Diario de cosecha', 'Dracología menor', 'Devocionario del pastor', 'De tintes y tejidos'],
+  E: ['El arte del pastoreo', 'Epístolas del relojero', 'Esbozos de la meseta', 'Enología de montaña'],
+  F: ['Fábulas del bosque', 'Fraguas y temples', 'Flora de la cumbre', 'Fastos del reino'],
+  G: ['Geografía de los ecos', 'Glosario de biomas', 'Guía del herborista', 'Granos y molienda'],
+  H: ['Herbología del valle', 'Historias de la cumbre', 'Herrería y aleaciones', 'Horas y calendarios'],
+  I: ['Itinerarios del sur', 'Inventario de criaturas', 'Iluminaciones del scriptorium', 'Insignias y heráldica'],
+  J: ['Jardines colgantes', 'Juglares del camino', 'Justas y torneos', 'Jornadas de cosecha'],
+  K: ['Kalendario de cosechas', 'Krónicas de Koril', 'Kobolds y otras plagas'],
+  L: ['Lapidario de gemas', 'Libro de las mareas', 'Luthería y cuerdas', 'Labranza y barbecho'],
+  M: ['Manual del relojero', 'Micología de cuevas', 'Mareas y corrientes', 'Memorias del cartógrafo'],
+  N: ['Náutica menor', 'Notas del herborista', 'Nomenclátor de aves', 'Nervaduras y hojas'],
+  O: ['Ornitología de la ciudadela', 'Oficios del deshielo', 'Odas a la brasa', 'Orfebrería y esmaltes'],
+  P: ['Pergaminos del scriptorium', 'Pastoreo y trashumancia', 'Peces de agua dulce', 'Podas y almácigos'],
+  Q: ['Quesos de cueva', 'Química de tintes', 'Querellas de los gremios', 'Quintales y balanzas'],
+  R: ['Rutas de comercio', 'Recetas de brasa', 'Relojes y péndulos', 'Rebaños y esquileo'],
+  S: ['Saga del deshielo', 'Setas y hongos', 'Sales y conservas', 'Semblanzas de domadores'],
+  T: ['Tratado de fraguas', 'Tintes y tejidos', 'Tratado de quesos', 'Trashumancia de invierno'],
+  U: ['Usos y costumbres', 'Ungüentos y bálsamos', 'Utensilios de fragua', 'Uvas y mostos'],
+  V: ['Vides y vendimias', 'Viajes al sur', 'Veterinaria menor', 'Vitrales y esmaltes'],
+  W: ['Wyverns de la cumbre', 'Wargos del yermo', 'Wivern, sierpe alada'],
+  X: ['Xilografías del reino', 'Xerófitas de la duna', 'Xilófonos y campanas'],
+  Y: ['Yermos y páramos', 'Yerbas medicinales', 'Yeguas y su doma', 'Yunques y martillos'],
+  Z: ['Zarzas y espinos', 'Zafiros y berilos', 'Zoología de la meseta', 'Zorros y alimañas'],
+};
 const FILLER_TEXTS = [
   'El cultivo de la menta plateada prefiere la sombra parcial y el riego al alba; sus hojas perfuman el pan y ahuyentan a las polillas.',
   'Anotaciones sobre el canto de los mirlos: repiten su melodía al amanecer y la abandonan apenas sube el calor del día.',
@@ -48,11 +72,12 @@ function h(s: string) { let n = 0; for (let i = 0; i < s.length; i++) n = (n * 3
 
 interface Book { id: string; title: string; color: string; w: number; hgt: number; key?: boolean; content?: string; }
 
-// Un libro con aspecto normal (color/tamaño deterministas por su semilla).
+// Un libro con aspecto normal (color/tamaño deterministas por su semilla). El
+// título lo aporta `over` (el pool por estante, o el libro de Deo).
 function makeBook(id: string, seed: number, over: Partial<Book> = {}): Book {
   return {
     id,
-    title: FILLER_TITLES[seed % FILLER_TITLES.length],
+    title: '',
     color: SPINE_COLORS[seed % SPINE_COLORS.length],
     w: 28 + (seed % 5) * 3,
     hgt: 150 + (seed % 5) * 12,
@@ -62,12 +87,13 @@ function makeBook(id: string, seed: number, over: Partial<Book> = {}): Book {
 }
 
 function shelfBooks(letter: string): Book[] {
-  const count = 5 + (h(letter) % 4);
-  const books: Book[] = [];
-  for (let i = 0; i < count; i++) books.push(makeBook(`${letter}-${i}`, h(letter + i)));
+  // Cada estante muestra SOLO los libros cuya inicial es la del estante. El
+  // color/tamaño de cada lomo salen del hash del título (deterministas y estables).
+  const titles = TITLES_BY_LETTER[letter] ?? [];
+  const books: Book[] = titles.map((title, i) => makeBook(`${letter}-${i}`, h(title), { title }));
   if (letter === 'D') {
-    // El libro clave, sin ninguna marca visual: mismo aspecto que el resto (su
-    // color/tamaño salen del hash como cualquier otro). `key` es solo lógico.
+    // El libro clave «Deo, la luna del origen» va en el estante D (su inicial) y,
+    // sin ninguna marca visual, se camufla entre los demás. `key` es solo lógico.
     const book = makeBook('deo', h('deo'), { title: DEO_BOOK_TITLE, key: true, content: undefined });
     books.splice(Math.floor(books.length / 2), 0, book);
   }
