@@ -30,7 +30,7 @@ const SHOP_CONFIGS = {
   // Mercado de fruta del valle fértil: solo fruta.
   'Cañada Verdante': { categories: ['fruit'] },
   // Mercado isleño: pescados/mariscos, fruta y verdura, baratijas (tótems) y pociones.
-  'Isla del Reposo de la Serpiente': { categories: ['seafood', 'fruit', 'vegetable', 'totem', 'potion'] },
+  'Tienda de la isla': { categories: ['seafood', 'fruit', 'vegetable', 'totem', 'potion'] },
 };
 // Config genérica para cualquier otra tienda sin entrada explícita (vende de todo).
 const GENERIC_SHOP_CONFIG = {};
@@ -165,7 +165,7 @@ const BIOME_BASE_STATS = {
 const GENERIC_BASE_STATS = { BaseHealth: 8, BaseStrength: 6, BaseDefense: 6, BaseSpeed: 6, BaseLuck: 5, BaseLevel: 1 };
 const PLACE_BIOME = {
   'Cañada Verdante': 'forest',
-  'Isla del Reposo de la Serpiente': 'aqua',
+  'Tienda de la isla': 'aqua',
   'Ciudadela de la Cumbre Helada': 'snow',
   'Atalaya de Obsidiana': 'volcanic',
   // Places del questline de Deo (bioma según su región).
@@ -176,7 +176,7 @@ const PLACE_BIOME = {
 };
 const PLACE_HOTSPOT = {
   'Cañada Verdante': { x: 38, y: 42 },
-  'Isla del Reposo de la Serpiente': { x: 60, y: 55 },
+  'Tienda de la isla': { x: 60, y: 55 },
   'Ciudadela de la Cumbre Helada': { x: 64, y: 30 },
   'Atalaya de Obsidiana': { x: 36, y: 62 },
 };
@@ -202,7 +202,7 @@ const WORLD_REGIONS = {
       places: ['La Meseta de los Estandartes Rotos', 'Foso de Escamas'] },
     { name: 'Isla del Reposo de la Serpiente', biome: 'aqua', hotspot: { x: 72, y: 60 },
       description: 'Una isla rodeada de aguas tibias donde la serpiente ancestral descansa.',
-      places: ['Isla del Reposo de la Serpiente'] },
+      places: ['Tienda de la isla'] },
     { name: 'Dunas de Ceniza', biome: 'arid', hotspot: { x: 50, y: 74 },
       description: 'Mares de arena gris y limo ardiente bajo un sol implacable.',
       places: ['Dunas de Ceniza', 'Santuario del Limo'] },
@@ -553,7 +553,7 @@ const MONSTER_STRATEGIES = {
   Co: {
     ordered: true,
     tasks: [
-      { type: 'visit_place', params: { placeName: 'Isla del Reposo de la Serpiente' }, label: 'Sumergite en la Isla del Reposo de la Serpiente' },
+      { type: 'visit_place', params: { placeName: 'Tienda de la isla' }, label: 'Sumergite en la Isla del Reposo de la Serpiente' },
       { type: 'own_item', params: { itemName: 'Pescado' }, label: 'Y atrapá un Pescado fresco' },
     ],
   },
@@ -569,7 +569,7 @@ const MONSTER_STRATEGIES = {
   Muro: {
     ordered: false,
     tasks: [
-      { type: 'visit_place', params: { placeName: 'Isla del Reposo de la Serpiente' }, label: 'Plantate firme en la Isla del Reposo de la Serpiente' },
+      { type: 'visit_place', params: { placeName: 'Tienda de la isla' }, label: 'Plantate firme en la Isla del Reposo de la Serpiente' },
       { type: 'own_item', params: { itemName: 'Coraza de Hierro' }, label: 'Y vestí una Coraza de Hierro, sólida como un muro' },
     ],
   },
@@ -577,7 +577,7 @@ const MONSTER_STRATEGIES = {
   Serpi: {
     ordered: false,
     tasks: [
-      { type: 'enter_place_in_time_range', params: { placeName: 'Isla del Reposo de la Serpiente', fromHour: 6, toHour: 12 }, label: 'Sorprendela al amanecer en su Isla (06:00–12:00)' },
+      { type: 'enter_place_in_time_range', params: { placeName: 'Tienda de la isla', fromHour: 6, toHour: 12 }, label: 'Sorprendela al amanecer en su Isla (06:00–12:00)' },
       { type: 'own_item', params: { itemName: 'Camarón' }, label: 'Y tené un Camarón en tu inventario' },
     ],
   },
@@ -845,8 +845,13 @@ module.exports = async function seed({ strapi }) {
     //     Places), no des-ocultando la entidad globalmente. Deo se desbloquea con su
     //     evento (fase posterior); Koril/Egea quedan Hidden hasta definir su descubrimiento.
     //     Se fuerza Hidden=true en el set declarado (idempotente por-boot).
-    const HIDDEN_REGIONS = new Set(['Isla del Reposo de la Serpiente']);
-    const HIDDEN_PLACES = new Set(['Isla del Reposo de la Serpiente']);
+    //     La Isla del Reposo de la Serpiente (región y lugar/tienda) es visible por
+    //     defecto: se fuerza Hidden=false en cada boot, des-ocultando cualquier
+    //     registro que hubiera nacido oculto por el gating anterior.
+    const HIDDEN_REGIONS = new Set([]);
+    const HIDDEN_PLACES = new Set([]);
+    const VISIBLE_REGIONS = new Set(['Isla del Reposo de la Serpiente']);
+    const VISIBLE_PLACES = new Set(['Tienda de la isla']);
     for (const w of worlds) {
       if (w.Name !== 'Eryndor' && !w.Hidden) {
         await strapi.db.query('api::world.world').update({ where: { id: w.id }, data: { Hidden: true } });
@@ -856,12 +861,16 @@ module.exports = async function seed({ strapi }) {
     for (const r of regionsToGate) {
       if (HIDDEN_REGIONS.has(r.Name) && !r.Hidden) {
         await strapi.db.query('api::region.region').update({ where: { id: r.id }, data: { Hidden: true } });
+      } else if (VISIBLE_REGIONS.has(r.Name) && r.Hidden) {
+        await strapi.db.query('api::region.region').update({ where: { id: r.id }, data: { Hidden: false } });
       }
     }
     const placesToGate = await strapi.db.query('api::place.place').findMany({});
     for (const p of placesToGate) {
       if (HIDDEN_PLACES.has(p.Name) && !p.Hidden) {
         await strapi.db.query('api::place.place').update({ where: { id: p.id }, data: { Hidden: true } });
+      } else if (VISIBLE_PLACES.has(p.Name) && p.Hidden) {
+        await strapi.db.query('api::place.place').update({ where: { id: p.id }, data: { Hidden: false } });
       }
     }
 

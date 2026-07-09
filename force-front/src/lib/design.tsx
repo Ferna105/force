@@ -127,7 +127,7 @@ export function mediaUrl(media: StrapiImage | null | undefined, fallback = ''): 
    copiados en /public/design (coinciden por nombre con los datos sembrados).
 */
 const PLACE_FALLBACK: Record<string, string> = {
-  'Isla del Reposo de la Serpiente': '/design/places/Serpent_s_Rest_Island_6fb4156c8e.png',
+  'Tienda de la isla': '/design/places/Serpent_s_Rest_Island_6fb4156c8e.png',
   'Atalaya de Obsidiana': '/design/places/Obsidian_Watchtower_98a7d946da.png',
   'Ciudadela de la Cumbre Helada': '/design/places/Frostpeak_Citadel_72eea5554f.png',
   'Cañada Verdante': '/design/places/Verdant_Hollow_98629f3361.png',
