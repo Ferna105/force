@@ -230,18 +230,20 @@ function GameBody({ place }: { place: Place }) {
         <BiomeTag biome={place.attributes.Biome} />
         <h3 className="cinzel" style={{ fontSize: 'clamp(22px,5vw,30px)', color: '#F6ECD7', margin: '14px 0 6px' }}>El desafío de {name}</h3>
         <p className="sub">{place.attributes.Description || 'Superá el desafío antes de que se agote el tiempo. Cada victoria fortalece el vínculo con tu criatura.'}</p>
+        {/* Reusa .col-stat (mismas tarjetas que el lobby del battledome) en vez
+            de estilos inline, para que puedan responder al breakpoint. */}
         <div className="grid g-stats" style={{ gap: 14, margin: '24px 0' }}>
           {[[difficulty, 'Dificultad'], [reward, 'Recompensa'], [record, 'Tu récord']].map(([b, s]) => (
-            <div key={s} style={{ background: 'rgba(255,255,255,.04)', border: '1px solid var(--ink-line)', borderRadius: 'var(--r-md)', padding: 14 }}>
-              <div style={{ fontFamily: 'var(--font-cinzel)', fontWeight: 700, fontSize: 20, color: 'var(--gold-soft)' }}>{b}</div>
-              <div style={{ fontFamily: 'var(--font-fredoka)', fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--mist-2)' }}>{s}</div>
+            <div key={s} className="col-stat">
+              <div className="n">{b}</div>
+              <div className="l">{s}</div>
             </div>
           ))}
         </div>
         {!user && <p className="sub" style={{ marginBottom: 12 }}>Iniciá sesión para ver tu récord y reclamar la recompensa.</p>}
         <Link className="btn btn-primary btn-lg" style={{ marginTop: 12 }} href={playHref}>▶ Jugar ahora</Link>
       </div>
-      <div className="panel" style={{ padding: '24px 26px' }}>
+      <div className="panel" style={{ padding: 'clamp(18px,4vw,26px)' }}>
         <div className="kicker" style={{ marginBottom: 6 }}>Tabla de clasificación</div>
         {board && board.top.length === 0 && (
           <p className="sub" style={{ margin: '10px 0' }}>Todavía nadie marcó un récord. ¡Sé el primero!</p>
