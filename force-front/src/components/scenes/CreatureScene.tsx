@@ -74,7 +74,7 @@ export default function CreatureScene({ place }: PlaceSceneProps) {
 
   return (
     <div style={{ marginTop: 26 }}>
-      <div className="grid" style={{ gridTemplateColumns: 'minmax(0,220px) 1fr', gap: 22, alignItems: 'start' }}>
+      <div className="grid g-aside" style={{ gap: 22, alignItems: 'start' }}>
         {/* La criatura */}
         <div className="panel" style={{ padding: 18, textAlign: 'center' }}>
           {creatureArt && (

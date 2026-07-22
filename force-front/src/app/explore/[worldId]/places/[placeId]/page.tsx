@@ -225,12 +225,12 @@ function GameBody({ place }: { place: Place }) {
   const record = status ? (status.bestScore > 0 ? `${fmt(status.bestScore)} ${unit}` : '—') : '—';
 
   return (
-    <div className="grid" style={{ gridTemplateColumns: '1.4fr 1fr', marginTop: 26 }}>
-      <div className="panel" style={{ padding: '34px 36px' }}>
+    <div className="grid g-split" style={{ marginTop: 26 }}>
+      <div className="panel" style={{ padding: 'clamp(22px,5vw,36px)' }}>
         <BiomeTag biome={place.attributes.Biome} />
-        <h3 className="cinzel" style={{ fontSize: 30, color: '#F6ECD7', margin: '14px 0 6px' }}>El desafío de {name}</h3>
+        <h3 className="cinzel" style={{ fontSize: 'clamp(22px,5vw,30px)', color: '#F6ECD7', margin: '14px 0 6px' }}>El desafío de {name}</h3>
         <p className="sub">{place.attributes.Description || 'Superá el desafío antes de que se agote el tiempo. Cada victoria fortalece el vínculo con tu criatura.'}</p>
-        <div className="grid" style={{ gridTemplateColumns: 'repeat(3,1fr)', gap: 14, margin: '24px 0' }}>
+        <div className="grid g-stats" style={{ gap: 14, margin: '24px 0' }}>
           {[[difficulty, 'Dificultad'], [reward, 'Recompensa'], [record, 'Tu récord']].map(([b, s]) => (
             <div key={s} style={{ background: 'rgba(255,255,255,.04)', border: '1px solid var(--ink-line)', borderRadius: 'var(--r-md)', padding: 14 }}>
               <div style={{ fontFamily: 'var(--font-cinzel)', fontWeight: 700, fontSize: 20, color: 'var(--gold-soft)' }}>{b}</div>
@@ -289,9 +289,9 @@ function InfoBody({ place }: { place: Place }) {
 
   return (
     <>
-      <div className="grid" style={{ gridTemplateColumns: '1.5fr 1fr', marginTop: 26 }}>
+      <div className="grid g-split" style={{ marginTop: 26 }}>
         <div>
-          <div className="panel" style={{ padding: '30px 34px' }}>
+          <div className="panel" style={{ padding: 'clamp(22px,5vw,34px)' }}>
             <div className="kicker">Crónica del lugar</div>
             <p style={{ color: '#EFE3CE', fontSize: 17, margin: '12px 0 0' }}>
               {a.Description || 'Un rincón con historia propia dentro del universo Force.'}
@@ -321,7 +321,7 @@ function InfoBody({ place }: { place: Place }) {
       {user && inhabitants.length > 0 && (
         <>
           <SectionTitle title="Quién habita aquí" />
-          <div className="grid" style={{ gridTemplateColumns: 'repeat(4,1fr)' }}>
+          <div className="grid g-4">
             {inhabitants.map((m) => <MonsterCard key={m.id} monster={m} />)}
           </div>
         </>
@@ -827,7 +827,10 @@ function NeighborhoodBody({ place }: { place: Place }) {
       </p>
       {hasHouse && <p className="sub" style={{ marginBottom: 14, color: 'var(--gold-soft)' }}>Ya tenés una casa. Tocá tu parcela resaltada para entrar.</p>}
 
-      <div className="nbh-map" style={{ gridTemplateColumns: `repeat(${data.cols}, 1fr)` }}>
+      {/* Igual que la grilla de la casa: en mobile el mapa se desplaza en vez de
+          encoger las parcelas hasta volverlas intocables. */}
+      <div className="nbh-map-scroll">
+      <div className="nbh-map" style={{ gridTemplateColumns: `repeat(${data.cols}, 1fr)`, ['--cols' as string]: data.cols }}>
         {data.parcels.map((p) => {
           const bg = p.occupied
             ? (p.designImageUrl ? strapiMedia(p.designImageUrl) : '')
@@ -851,6 +854,7 @@ function NeighborhoodBody({ place }: { place: Place }) {
             </button>
           );
         })}
+      </div>
       </div>
 
       {selected != null && !hasHouse && (

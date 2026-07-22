@@ -86,7 +86,7 @@ function MonsterView() {
         {(a.Nature || a.Origin) && (
           <>
             <SectionTitle title="Naturaleza & origen" />
-            <div className="grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
+            <div className="grid g-2">
               {a.Nature && (
                 <div className="panel" style={{ padding: '26px 30px' }}>
                   <div className="kicker">Naturaleza</div>
@@ -116,7 +116,7 @@ function MonsterView() {
         {kin.length > 0 && (
           <>
             <SectionTitle title="Criaturas afines" href="/monsters" action="Bestiario →" />
-            <div className="grid" style={{ gridTemplateColumns: 'repeat(4,1fr)' }}>
+            <div className="grid g-4">
               {kin.map((m: Monster) => <MonsterCard key={m.id} monster={m} />)}
             </div>
           </>

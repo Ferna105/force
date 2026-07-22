@@ -30,11 +30,6 @@ const ITEMS: NavItem[] = [
     icon: <><circle cx="11" cy="11" r="7" /><path d="M21 21l-4-4" /></>,
   },
   {
-    // El bestiario solo se muestra a usuarios con sesión iniciada.
-    key: 'bestiario', label: 'Bestiario', href: '/monsters', match: (p) => p.startsWith('/monsters'), auth: true,
-    icon: <><path d="M4 13c0-4 3-7 8-7s8 3 8 7c0 3-2 5-4 5-1 0-2-1-4-1s-3 1-4 1c-2 0-4-2-4-5z" /><circle cx="9" cy="11" r="1.2" fill="currentColor" stroke="none" /><circle cx="15" cy="11" r="1.2" fill="currentColor" stroke="none" /></>,
-  },
-  {
     // La ficha del compañero solo se muestra a usuarios con sesión iniciada.
     key: 'companero', label: 'Mi compañero', href: '/companion', match: (p) => p.startsWith('/companion'), auth: true,
     icon: <><path d="M12 21s-7-4.3-9.3-8.5C1 9 2.6 5.5 6 5.5c2 0 3.2 1.2 4 2.5.8-1.3 2-2.5 4-2.5 3.4 0 5 3.5 3.3 7C19 16.7 12 21 12 21z" /></>,

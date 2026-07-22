@@ -147,14 +147,18 @@ export default function HousePage() {
         )}
 
         <div className="house-layout">
-          {/* Grilla interior */}
-          <div
-            className="house-grid"
-            style={{
-              gridTemplateColumns: `repeat(${w}, 1fr)`,
-              ...(interiorUrl ? { backgroundImage: `url(${strapiMedia(interiorUrl)})` } : {}),
-            }}
-          >
+          {/* Grilla interior. El wrapper permite desplazarla horizontalmente en
+              mobile: con 15 columnas a pantalla completa cada cubo quedaría de
+              ~20px, imposible de tocar con precisión (ver --cols en globals.css). */}
+          <div className="house-grid-scroll">
+            <div
+              className="house-grid"
+              style={{
+                gridTemplateColumns: `repeat(${w}, 1fr)`,
+                ['--cols' as string]: w,
+                ...(interiorUrl ? { backgroundImage: `url(${strapiMedia(interiorUrl)})` } : {}),
+              }}
+            >
             {Array.from({ length: w * h }).map((_, i) => {
               const x = i % w;
               const y = Math.floor(i / w);
@@ -171,7 +175,8 @@ export default function HousePage() {
                   {item && <img src={mediaUrl(item.attributes.icon, thumbFallback(item.attributes.name))} alt={item.attributes.name} />}
                 </button>
               );
-            })}
+              })}
+            </div>
           </div>
 
           {/* Paleta de muebles (solo dueño) */}

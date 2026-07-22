@@ -59,8 +59,10 @@ img{display:block;}
 h1,h2,h3,h4{margin:0;}
 
 /* ============ APP SHELL ============ */
-.app{display:grid;grid-template-columns:var(--side) 1fr;min-height:100vh;position:relative;z-index:1;}
-.sidebar{position:sticky;top:0;height:100vh;background:linear-gradient(180deg,#1c170f,#13100b);border-right:1px solid var(--ink-line);display:flex;flex-direction:column;padding:22px 16px;gap:6px;}
+/* 100dvh (no 100vh): en mobile la barra de URL de Safari/Chrome hace que
+   100vh sea más alto que el viewport visible. */
+.app{display:grid;grid-template-columns:var(--side) 1fr;min-height:100dvh;position:relative;z-index:1;}
+.sidebar{position:sticky;top:0;height:100dvh;background:linear-gradient(180deg,#1c170f,#13100b);border-right:1px solid var(--ink-line);display:flex;flex-direction:column;padding:22px 16px;gap:6px;}
 .logo{display:flex;align-items:center;gap:11px;padding:6px 10px 18px;text-decoration:none;}
 .logo .emblem{width:38px;height:38px;flex:none;filter:drop-shadow(0 2px 7px rgba(230,166,48,.45));}
 .logo .wm{display:flex;flex-direction:column;line-height:1;}
@@ -82,7 +84,7 @@ h1,h2,h3,h4{margin:0;}
 
 .main{min-width:0;}
 .topbar{position:sticky;top:0;z-index:30;height:72px;display:flex;align-items:center;gap:18px;padding:0 38px;background:rgba(16,13,9,.78);backdrop-filter:blur(14px);border-bottom:1px solid var(--ink-line);}
-.topbar .crumb{font-family:var(--font-fredoka);font-weight:500;color:var(--mist-2);font-size:14px;}
+.topbar .crumb{font-family:var(--font-fredoka);font-weight:500;color:var(--mist-2);font-size:14px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .topbar .crumb b{color:var(--text);font-weight:600;}
 .topbar .sp{flex:1;}
 .page{padding:38px;max-width:1280px;}
@@ -96,6 +98,12 @@ h1,h2,h3,h4{margin:0;}
 /* coin */
 .coin{font-family:var(--font-fredoka);font-weight:600;display:inline-flex;align-items:center;gap:8px;background:rgba(236,164,42,.1);border:1px solid rgba(236,164,42,.35);color:var(--gold-soft);padding:7px 15px 7px 9px;border-radius:var(--r-pill);font-size:15px;}
 .coin .c{width:23px;height:23px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#FBE49C,#E6A630 60%,#A86C10);display:grid;place-items:center;color:#7a4f08;font-family:var(--font-cinzel);font-weight:900;font-size:12px;box-shadow:0 1px 0 rgba(255,255,255,.5) inset;}
+
+/* sesión en el topbar (solo mobile — en escritorio vive en .side-foot) */
+.topbar-session{flex:none;}
+.topbar-avatar{display:flex;align-items:center;gap:7px;height:38px;padding:0 12px 0 4px;border-radius:var(--r-pill);background:var(--ink-2);border:1px solid var(--ink-line);color:var(--mist-2);cursor:pointer;}
+.topbar-avatar .av{width:30px;height:30px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#f0c878,#bf8420);display:grid;place-items:center;font-family:var(--font-cinzel);font-weight:900;font-size:14px;color:#3a2606;}
+.topbar-avatar svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
 
 /* ============ TIPOGRAFÍA HELPERS ============ */
 .h-page{font-family:var(--font-cinzel);font-weight:800;font-size:clamp(28px,4vw,42px);letter-spacing:.02em;color:#F6ECD7;line-height:1;}
@@ -161,6 +169,27 @@ h1,h2,h3,h4{margin:0;}
 
 /* ============ CARDS: WORLD ============ */
 .grid{display:grid;gap:18px;}
+
+/* ---- Utilidades de grilla responsive ----
+   Vocabulario compartido por todas las pantallas. Reemplazan a los
+   `style={{gridTemplateColumns}}` inline, que las media queries no podían
+   sobreescribir (por eso el front seguía en 3–4 columnas en un teléfono). */
+.g-4{grid-template-columns:repeat(4,1fr);}
+.g-3{grid-template-columns:repeat(3,1fr);}
+.g-2{grid-template-columns:repeat(2,1fr);}
+.g-split{grid-template-columns:1.4fr 1fr;}   /* paneles asimétricos */
+.g-media{grid-template-columns:360px 1fr;}   /* arte + texto */
+.g-aside{grid-template-columns:minmax(0,220px) 1fr;}  /* arte chico + texto */
+/* Tira de 3 stats compactas: se mantiene en 3 columnas (partirla en 2 dejaría
+   una huérfana); en mobile solo achica el gap. */
+.g-stats{grid-template-columns:repeat(3,1fr);}
+@media(max-width:560px){.g-stats{gap:8px;}}
+@media(max-width:1100px){.g-4{grid-template-columns:repeat(3,1fr);}}
+@media(max-width:880px){
+  .g-split,.g-media,.g-aside{grid-template-columns:1fr;}
+  .g-3{grid-template-columns:repeat(2,1fr);}
+}
+@media(max-width:560px){.g-4,.g-3,.g-2{grid-template-columns:repeat(2,1fr);}}
 .world{position:relative;border-radius:var(--r-lg);overflow:hidden;background:#0a0a0f;border:1px solid var(--ink-line);transition:transform .18s,box-shadow .25s;cursor:pointer;display:block;}
 .world:hover{transform:translateY(-4px);box-shadow:var(--shadow-pop);}
 .world .orb{position:relative;aspect-ratio:1;overflow:hidden;}
@@ -230,7 +259,15 @@ h1,h2,h3,h4{margin:0;}
 
 @keyframes spin-rev{to{transform:rotate(-360deg);}}
 
-@media (max-width:600px){.solar-card{padding:30px;}.solar .sun .nm{font-size:16px;}}
+/* En touch no hay :hover, así que los nombres de los mundos nunca aparecían:
+   el sistema solar quedaba como orbes anónimos. Se muestran siempre. */
+@media (max-width:880px){
+  .solar{width:min(440px,78vw);}
+  .solar .nm{opacity:1;transform:translate(-50%,0);}
+  .orbit .moon .nm{font-size:9.5px;padding:4px 9px;}
+  .solar .sun .nm{font-size:11px;}
+}
+@media (max-width:600px){.solar-card{padding:22px;}}
 
 /* ============ CARDS: PLACE BANNER ============ */
 .place{position:relative;border-radius:var(--r-lg);overflow:hidden;border:1px solid var(--ink-line);box-shadow:var(--shadow-card);aspect-ratio:3/2;cursor:pointer;transition:transform .18s,box-shadow .25s;display:block;}
@@ -302,6 +339,8 @@ h1,h2,h3,h4{margin:0;}
 .hotspot .lbl b{color:var(--gold-soft);font-weight:600;}
 .hotspot:hover .lbl{opacity:1;transform:translate(0,-50%);}
 .hotspot:hover .dot{background:var(--gold-soft);box-shadow:0 0 0 5px rgba(244,201,105,.35),0 0 16px rgba(244,201,105,1);}
+/* Área táctil de 44px alrededor del punto (que mide 15px), sin tocar el arte. */
+.hotspot .dot::before,.region-hotspot .dot::before{content:"";position:absolute;top:50%;left:50%;width:44px;height:44px;transform:translate(-50%,-50%);border-radius:50%;}
 .world-hero .stars{position:absolute;inset:0;background-image:radial-gradient(1px 1px at 20% 30%,#fff,transparent),radial-gradient(1px 1px at 70% 60%,#fff8,transparent),radial-gradient(1px 1px at 40% 80%,#fff6,transparent),radial-gradient(1px 1px at 85% 20%,#fff,transparent),radial-gradient(1px 1px at 55% 15%,#fff7,transparent);opacity:.7;}
 
 /* Mapa de mundo: el planeta en grande (cuadrado) sobre tarjeta negra estrellada,
@@ -323,6 +362,14 @@ h1,h2,h3,h4{margin:0;}
 .region-hotspot .lbl b{display:block;color:var(--gold-soft);font-weight:600;font-size:10px;letter-spacing:.1em;text-transform:uppercase;opacity:.85;}
 .region-hotspot:hover .dot{transform:scale(1.28);box-shadow:0 0 0 6px rgba(244,201,105,.4),0 0 18px rgba(244,201,105,1);}
 .region-hotspot:hover .lbl{transform:translateY(2px);border-color:var(--gold-soft);}
+/* En mobile: el mapa 16/9 quedaba de ~220px de alto con las etiquetas
+   pisándose, y las del mapa de mundo (solo :hover) no se veían nunca. */
+@media(max-width:640px){
+  .region-map{aspect-ratio:4/3;}
+  .region-hotspot .lbl{font-size:10.5px;padding:4px 9px;}
+  .region-hotspot .lbl b{font-size:9px;}
+  .hotspot .lbl{opacity:1;transform:translate(0,-50%);font-size:10.5px;padding:4px 9px;}
+}
 .stat-strip{display:flex;gap:14px;flex-wrap:wrap;margin-top:26px;}
 .stat-strip .s{background:rgba(255,255,255,.04);border:1px solid var(--ink-line);border-radius:var(--r-md);padding:12px 18px;}
 .stat-strip .s b{font-family:var(--font-cinzel);font-weight:700;font-size:22px;color:var(--gold-soft);display:block;}
@@ -337,6 +384,12 @@ h1,h2,h3,h4{margin:0;}
 .place-hero .pb h1{font-family:var(--font-cinzel);font-weight:800;font-size:clamp(34px,5vw,58px);color:#fff;text-shadow:0 2px 24px rgba(0,0,0,.85);line-height:.96;letter-spacing:.03em;}
 .place-hero .pb .meta{font-family:var(--font-fredoka);font-weight:500;color:var(--mist);letter-spacing:.06em;text-transform:uppercase;font-size:13px;margin-top:10px;}
 .place-hero .pb .meta b{color:var(--gold-soft);}
+@media(max-width:640px){
+  .place-hero{height:240px;}
+  .place-hero .pb{left:16px;right:16px;bottom:16px;}
+  .place-hero .top{top:14px;left:14px;right:14px;gap:8px;flex-wrap:wrap;}
+  .place-hero .pb .meta{font-size:11px;margin-top:6px;}
+}
 .shop-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;}
 .shop-grid .slot .rar{padding-bottom:8px;}
 .shop-grid .buy{margin:0 12px 14px;width:calc(100% - 24px);justify-content:center;}
@@ -378,6 +431,13 @@ h1,h2,h3,h4{margin:0;}
 .mon-stage-big .quick .q{flex:1;background:rgba(20,14,8,.55);backdrop-filter:blur(6px);border-radius:var(--r-md);padding:10px 14px;text-align:center;}
 .mon-stage-big .quick .q b{font-family:var(--font-cinzel);font-weight:700;font-size:20px;color:#fff;display:block;}
 .mon-stage-big .quick .q span{font-family:var(--font-fredoka);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#e8dcc6;}
+/* Los 3 chips van dentro del cuadrado del arte: en mobile se pisaban. */
+@media(max-width:560px){
+  .mon-stage-big .quick{gap:6px;bottom:12px;left:12px;right:12px;}
+  .mon-stage-big .quick .q{padding:7px 6px;}
+  .mon-stage-big .quick .q b{font-size:15px;}
+  .mon-stage-big .quick .q span{font-size:8.5px;letter-spacing:.06em;}
+}
 
 /* ---- Escenario temático por bioma (arte recortado/transparente del monstruo) ----
    Las imágenes de monstruo ya no traen fondo, así que el stage le pone uno:
@@ -432,6 +492,11 @@ h1,h2,h3,h4{margin:0;}
 
 /* Cabecera de combate: rueda de nivel + medallón de suerte, lado a lado. */
 .cmp-hero{display:flex;align-items:center;gap:26px;margin:20px 0 26px;}
+/* En mobile el hero del compañero colapsa a una columna (.g-media): el lienzo
+   deja de necesitar los 340px de alto, y la rueda de nivel + el medallón de
+   suerte pasan a envolverse. */
+@media(max-width:880px){.cmp-stage{min-height:240px;}.cmp-stage img{max-height:220px;}}
+@media(max-width:480px){.cmp-hero{flex-wrap:wrap;justify-content:center;gap:18px;}.cmp-bars{grid-template-columns:1fr;}}
 
 /* Rueda de nivel */
 .cmp-ring{position:relative;width:140px;height:140px;flex:none;}
@@ -473,7 +538,7 @@ h1,h2,h3,h4{margin:0;}
 .cmp-fill-spd{background:linear-gradient(90deg,#1f8a7a,#54d6c0);}
 
 /* ============ AUTH (login / register) ============ */
-.auth-wrap{min-height:calc(100vh - 72px);display:grid;place-items:center;padding:40px 20px;}
+.auth-wrap{min-height:calc(100dvh - 72px);display:grid;place-items:center;padding:40px 20px;}
 .auth-card{width:100%;max-width:420px;}
 .auth-card .panel{padding:34px 36px;}
 .field{margin-bottom:16px;}
@@ -523,6 +588,13 @@ h1,h2,h3,h4{margin:0;}
 .disc-close{width:100%;justify-content:center;}
 @keyframes disc-fade{from{opacity:0;}to{opacity:1;}}
 @keyframes disc-pop{from{opacity:0;transform:translateY(14px) scale(.96);}to{opacity:1;transform:none;}}
+@media(max-width:480px){
+  .disc-overlay{padding:16px;}
+  .disc-modal{padding:24px 20px 22px;max-height:calc(100dvh - 32px);overflow-y:auto;}
+  .disc-art{width:130px;height:130px;margin-bottom:14px;}
+  .disc-name{font-size:26px;margin-bottom:14px;}
+  .disc-kicker{margin-bottom:12px;}
+}
 
 .mobile-only{display:none;}
 @media(max-width:1100px){.inv-grid{grid-template-columns:repeat(3,1fr);}.beast-grid{grid-template-columns:repeat(3,1fr);}}
@@ -530,12 +602,24 @@ h1,h2,h3,h4{margin:0;}
 @media(max-width:900px){.shop-grid{grid-template-columns:repeat(3,1fr);}}
 @media(max-width:880px){
   .app{grid-template-columns:1fr;}
-  .sidebar{position:fixed;bottom:0;left:0;right:0;top:auto;height:auto;width:100%;flex-direction:row;border-right:none;border-top:1px solid var(--ink-line);padding:8px;gap:2px;z-index:60;justify-content:space-around;}
+  /* El sidebar se convierte en tab bar inferior. `env(safe-area-inset-bottom)`
+     la levanta por encima del home indicator del iPhone. */
+  .sidebar{position:fixed;bottom:0;left:0;right:0;top:auto;height:auto;width:100%;flex-direction:row;border-right:none;border-top:1px solid var(--ink-line);padding:8px 8px calc(8px + env(safe-area-inset-bottom));gap:2px;z-index:60;justify-content:space-around;}
   .sidebar .logo,.side-foot{display:none;}
   .nav-i{flex-direction:column;gap:4px;font-size:10px;padding:6px 8px;flex:1;justify-content:center;}
   .nav-i.active{box-shadow:none;background:rgba(230,166,48,.14);}
-  .topbar{padding:0 18px;}
-  .page{padding:20px 18px 96px;}
+  .topbar{padding:0 14px;gap:10px;}
+  /* El buscador tiene min-width:240px y no se comprime: desbordaba el topbar. */
+  .topbar .search{display:none;}
+  .mobile-only{display:inline-flex;}
+  .page{padding:20px 18px calc(96px + env(safe-area-inset-bottom));}
+  /* Los toasts se anclan al borde inferior: hay que despejarlos de la tab bar. */
+  .toast-host{padding-bottom:calc(84px + env(safe-area-inset-bottom));}
+  /* La pantalla de auth no vive dentro de .page, así que no hereda su padding. */
+  .auth-wrap{min-height:calc(100dvh - 72px);padding:28px 18px calc(96px + env(safe-area-inset-bottom));}
+  .auth-card .panel{padding:24px 20px;}
+  /* iOS Safari hace zoom al enfocar un input de menos de 16px. */
+  .field input,.search input,.deo-input input{font-size:16px;}
   .world-hero{grid-template-columns:1fr;}.world-hero .orbwrap{order:-1;}.planet{width:240px;height:240px;}
   .mon-top{grid-template-columns:1fr;}.habitat{grid-template-columns:1fr;}
 }
@@ -737,7 +821,23 @@ h1,h2,h3,h4{margin:0;}
 .arena--acuatico .bg-rays{background:linear-gradient(110deg,transparent 30%,rgba(180,240,255,.35) 42%,transparent 48%,transparent 60%,rgba(180,240,255,.28) 70%,transparent 76%);}
 
 @media(max-width:1040px){.bd-lower{grid-template-columns:1fr;}}
-@media(max-width:600px){.equip{gap:7px;}.eq .en{font-size:10px;}.plate{width:46%;}.arena{height:46vh;}}
+@media(max-width:600px){
+  .equip{gap:7px;}.eq .en{font-size:10px;}
+  /* La arena tenía min-height:440px, que ganaba sobre el height:46vh y dejaba
+     la regla sin efecto: hay que bajar los dos. */
+  .arena{height:46vh;min-height:300px;}
+  /* Plates arriba, para que no se monten sobre las criaturas (42% cada una).
+     44% + 44% + los 10px de offset a cada lado entran en 360px sin tocarse. */
+  .plate{width:44%;top:8px;padding:8px 10px;}
+  .plate.left{left:10px;} .plate.right{right:10px;}
+  .plate .pn{font-size:15px;}
+  .plate .lvl{width:26px;height:26px;font-size:11px;}
+  .floater{font-size:26px;}
+  .floater.crit{font-size:34px;}
+  .floater.miss{font-size:20px;}
+}
+@media(max-width:480px){.equip{grid-template-columns:repeat(3,1fr);}}
+@media(max-width:560px){.col-stats{grid-template-columns:1fr;}}
 
 /* ============================================================
    BATTLEDOME — lobby de duelos (cuerpo del place type battledome)
@@ -868,6 +968,18 @@ h1,h2,h3,h4{margin:0;}
 
 @media(max-width:720px){.torres-game .hud-top{padding:12px;}.torres-game .ctrl-hint{display:none;}}
 
+/* ---- Escenario de juego en mobile (aplica a todos los juegos) ----
+   El canvas tiene una resolución interna fija de 1280×720, así que cambiarle
+   el aspect-ratio al `.stage` lo deformaría. En vez de eso lo sacamos a lo
+   ancho completo del viewport (gana los 18px de padding de .page a cada lado)
+   y `object-fit:contain` garantiza que nunca se distorsione. */
+@media(max-width:880px){
+  .deo-game .stage,.torres-game .stage{
+    margin-left:-18px;margin-right:-18px;width:calc(100% + 36px);border-radius:0;border-left:none;border-right:none;
+  }
+  .deo-game .deo-canvas,.torres-game .torres-canvas{object-fit:contain;}
+}
+
 /* ============================================================
    Overlays / modales de juego — GENÉRICOS (compartidos por todos
    los juegos). Se montan dentro de un contenedor `position:relative`
@@ -877,7 +989,7 @@ h1,h2,h3,h4{margin:0;}
 .overlay{position:absolute;inset:0;z-index:8;display:none;align-items:center;justify-content:center;padding:24px;background:radial-gradient(120% 100% at 50% 40%,rgba(10,11,16,.55),rgba(6,7,10,.9));backdrop-filter:blur(3px);}
 .overlay.show{display:flex;animation:ovIn .35s ease;}
 @keyframes ovIn{from{opacity:0}to{opacity:1}}
-.ov-card{width:min(560px,100%);text-align:center;background:linear-gradient(180deg,rgba(33,27,18,.96),rgba(18,15,11,.98));border:1px solid var(--ink-line);border-radius:var(--r-xl);padding:40px 44px;box-shadow:var(--shadow-pop);}
+.ov-card{width:min(560px,100%);text-align:center;background:linear-gradient(180deg,rgba(33,27,18,.96),rgba(18,15,11,.98));border:1px solid var(--ink-line);border-radius:var(--r-xl);padding:clamp(20px,5vw,44px);box-shadow:var(--shadow-pop);max-height:100%;overflow-y:auto;}
 .ov-card .eyebrow{font-family:var(--font-fredoka);font-weight:600;letter-spacing:.22em;text-transform:uppercase;font-size:12px;color:var(--gold);}
 .ov-card h2{font-family:var(--font-cinzel);font-weight:800;font-size:clamp(28px,4vw,40px);color:#F6ECD7;letter-spacing:.03em;margin:12px 0 10px;line-height:1.02;}
 .ov-card p{font-family:var(--font-mulish);color:var(--mist);font-size:15.5px;max-width:420px;margin:0 auto;line-height:1.55;}
@@ -898,13 +1010,38 @@ h1,h2,h3,h4{margin:0;}
 .ov-meta .l{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--mist-2);margin-top:3px;}
 .ov-emblem{width:62px;height:62px;margin:0 auto 6px;}
 
+/* ---- Pad táctil GENÉRICO (GameTouchPad) ----
+   Se monta sobre el `.stage` del juego. Oculto por defecto: sólo aparece en
+   dispositivos de puntero grueso sin hover (touch), para no invadir el
+   escritorio cuando la ventana es angosta. Es el criterio inverso al de
+   `.ctrl-hint`, que se oculta en pantallas chicas. */
+.game-pad{display:none;position:absolute;inset:auto 0 0 0;z-index:6;
+  align-items:flex-end;justify-content:space-between;gap:12px;padding:14px 16px 18px;pointer-events:none;}
+.game-pad-side{display:flex;gap:12px;}
+.pad-btn{pointer-events:auto;width:60px;height:60px;flex:none;border-radius:50%;display:grid;place-items:center;
+  background:rgba(12,13,18,.55);border:1px solid rgba(255,255,255,.22);backdrop-filter:blur(6px);
+  color:#EAF0FF;cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none;
+  -webkit-tap-highlight-color:transparent;transition:background .12s,transform .12s;}
+.pad-btn:active{background:rgba(230,166,48,.32);border-color:var(--gold);transform:scale(.94);}
+.pad-btn svg{width:28px;height:28px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;}
+.pad-jump{width:72px;height:72px;background:rgba(230,166,48,.22);border-color:rgba(236,164,42,.5);}
+.pad-jump svg{width:32px;height:32px;}
+@media(hover:none) and (pointer:coarse){.game-pad{display:flex;}}
+
 /* ===== Escuela de entrenamiento ===== */
 .train-wrap{margin-top:26px;display:flex;flex-direction:column;gap:18px;}
-.train-trainer{padding:24px 28px;display:flex;gap:24px;align-items:center;}
+.train-trainer{padding:clamp(18px,4vw,28px);display:flex;gap:clamp(14px,3vw,24px);align-items:center;flex-wrap:wrap;}
 .train-trainer-img{width:128px;height:128px;border-radius:var(--r-md);object-fit:cover;background:rgba(255,255,255,.04);border:1px solid var(--ink-line);flex:0 0 auto;}
+@media(max-width:640px){
+  .train-trainer-img{width:88px;height:88px;}
+  .train-meta{flex-wrap:wrap;gap:16px;}
+  .train-totem img{width:60px;height:60px;}
+  .train-demand{padding:18px 20px;gap:16px;}
+  .train-grid{grid-template-columns:1fr;}
+}
 .train-spec-row{display:flex;flex-wrap:wrap;gap:8px;}
 .train-spec{font-family:var(--font-fredoka);font-weight:600;font-size:12px;padding:5px 11px;border-radius:var(--r-pill);background:rgba(230,166,48,.14);border:1px solid rgba(230,166,48,.45);color:var(--gold-soft);}
-.train-clock{font-size:40px;font-weight:800;color:#F6ECD7;letter-spacing:.04em;}
+.train-clock{font-size:clamp(26px,8vw,40px);font-weight:800;color:#F6ECD7;letter-spacing:.04em;}
 .train-demand{padding:22px 26px;display:flex;justify-content:space-between;align-items:center;gap:24px;flex-wrap:wrap;}
 .train-totem{display:flex;align-items:center;gap:18px;}
 .train-totem img{width:78px;height:78px;border-radius:var(--r-md);object-fit:contain;background:rgba(255,255,255,.04);border:1px solid var(--ink-line);padding:6px;}
@@ -921,6 +1058,13 @@ h1,h2,h3,h4{margin:0;}
 
 /* ============ VECINDARIO (mapa de parcelas) ============ */
 .nbh-map{display:grid;gap:12px;margin-bottom:8px;}
+.nbh-map-scroll{min-width:0;}
+@media(max-width:640px){
+  .nbh-map-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:6px;}
+  .nbh-map{min-width:calc(var(--cols,4) * 72px);gap:8px;}
+  .nbh-designs{gap:10px;}
+  .nbh-design{width:96px;}
+}
 .nbh-parcel{position:relative;aspect-ratio:1/1;border-radius:var(--r-md);border:1px solid var(--ink-line);background-color:var(--ink-2);background-size:cover;background-position:center;cursor:pointer;overflow:hidden;display:flex;align-items:flex-end;justify-content:center;padding:8px;transition:transform .15s,box-shadow .2s,border-color .2s;}
 .nbh-parcel:hover{transform:translateY(-2px);border-color:var(--gold-deep);box-shadow:var(--shadow-card);}
 .nbh-parcel.free{border-style:dashed;}
@@ -949,6 +1093,15 @@ h1,h2,h3,h4{margin:0;}
 .house-cube.filled{background:rgba(255,255,255,.06);}
 .house-cube img{width:100%;height:100%;object-fit:contain;}
 .house-palette{padding:18px 20px;position:sticky;top:90px;}
+/* En mobile la grilla se desplaza en vez de encogerse: con 15 columnas a
+   pantalla completa cada cubo caía a ~20px. --cols lo setea la página. */
+.house-grid-scroll{min-width:0;}
+@media(max-width:880px){
+  .house-grid-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:6px;}
+  .house-grid{min-width:calc(var(--cols,15) * 34px);}
+  /* El layout ya colapsó a una columna: el sticky dejaba la paleta pegada. */
+  .house-palette{position:static;}
+}
 .house-pal-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
 .house-pal-item{position:relative;aspect-ratio:1/1;border-radius:var(--r-md);border:1px solid var(--ink-line);background:var(--ink-2);cursor:pointer;padding:6px;display:flex;align-items:center;justify-content:center;transition:border-color .2s,box-shadow .2s;}
 .house-pal-item img{width:100%;height:100%;object-fit:contain;}
@@ -1031,10 +1184,21 @@ h1,h2,h3,h4{margin:0;}
 .book.key{box-shadow:0 0 16px -2px var(--deo-glow),2px 0 5px rgba(0,0,0,.4) inset;}
 .book.key .t{color:#e8e4ff;}
 .shelf-plank{height:16px;margin:0 -30px 0;background:linear-gradient(180deg,#3a2c19,#251a0e);border-top:2px solid #4a3722;box-shadow:0 10px 20px -6px rgba(0,0,0,.6);}
+@media(max-width:640px){
+  .shelf-wrap{padding:20px 18px 0;}
+  .shelf-plank{margin:0 -18px;}
+  .shelf{min-height:160px;gap:5px;}
+  .shelf-label{font-size:38px;right:16px;}
+  .book .t{font-size:11px;}
+  .npc-dialog{padding:16px 18px 18px;}
+  .npc-line{font-size:15px;}
+  .npc-line.deo{font-size:20px;}
+  .scope{aspect-ratio:4/3;}
+}
 /* overlay genérico de escena (lector de libro / paneles modales) */
-.deo-ov{position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;padding:26px;background:radial-gradient(120% 100% at 50% 35%,rgba(12,10,20,.7),rgba(5,5,9,.94));backdrop-filter:blur(5px);animation:discFade .35s ease;}
+.deo-ov{position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;padding:clamp(14px,4vw,26px);background:radial-gradient(120% 100% at 50% 35%,rgba(12,10,20,.7),rgba(5,5,9,.94));backdrop-filter:blur(5px);animation:discFade .35s ease;}
 @keyframes discFade{from{opacity:0}to{opacity:1}}
-.deo-card{position:relative;width:min(620px,100%);background:linear-gradient(180deg,rgba(20,18,26,.98),rgba(12,11,17,.99));border:1px solid rgba(138,127,232,.28);border-radius:var(--r-xl);box-shadow:var(--shadow-pop);padding:30px 34px;max-height:86vh;overflow:auto;}
+.deo-card{position:relative;width:min(620px,100%);background:linear-gradient(180deg,rgba(20,18,26,.98),rgba(12,11,17,.99));border:1px solid rgba(138,127,232,.28);border-radius:var(--r-xl);box-shadow:var(--shadow-pop);padding:clamp(18px,5vw,34px);max-height:86dvh;overflow:auto;}
 .deo-card h3{font-family:var(--font-cinzel);font-weight:800;color:#F6ECD7;font-size:24px;margin:0 0 6px;}
 
 /* ============================================================

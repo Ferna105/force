@@ -106,14 +106,14 @@ function CompanionView() {
     <>
       <Topbar crumb="Mi compañero" />
       <div className="page">
-        <section className="panel" style={{ display: 'grid', gridTemplateColumns: '360px 1fr', overflow: 'hidden', borderRadius: 'var(--r-xl)' }}>
+        <section className="panel grid g-media" style={{ gap: 0, overflow: 'hidden', borderRadius: 'var(--r-xl)' }}>
           <div className="cmp-stage" data-biome={m.Biome ?? ''}>
             <span style={{ position: 'absolute', top: 16, left: 16, zIndex: 2 }}><BiomeTag biome={m.Biome} /></span>
             {art && <img src={art} alt={m.Name} />}
           </div>
-          <div style={{ padding: '34px 38px' }}>
+          <div style={{ padding: 'clamp(22px,5vw,38px)' }}>
             <div className="kicker">Tu compañero</div>
-            <h1 className="cinzel" style={{ fontSize: 46, color: '#F6ECD7', margin: '8px 0 2px', letterSpacing: '.03em' }}>{m.Name}</h1>
+            <h1 className="cinzel" style={{ fontSize: 'clamp(30px,7vw,46px)', color: '#F6ECD7', margin: '8px 0 2px', letterSpacing: '.03em' }}>{m.Name}</h1>
             {m.Origin && <p className="sub" style={{ fontStyle: 'italic', margin: '0 0 4px' }}>{m.Origin}</p>}
 
             <div className="cmp-hero">

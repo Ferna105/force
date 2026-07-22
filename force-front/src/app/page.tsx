@@ -34,12 +34,12 @@ export default function HomePage() {
             />
 
             <SectionTitle title="Mundos para explorar" href="/explore" />
-            <div className="grid" style={{ gridTemplateColumns: 'repeat(4,1fr)' }}>
+            <div className="grid g-4">
               {worlds.slice(0, 4).map((w) => <WorldCard key={w.id} world={w} short />)}
             </div>
 
             <SectionTitle title="Lugares destacados" href="/explore" />
-            <div className="grid" style={{ gridTemplateColumns: 'repeat(2,1fr)' }}>
+            <div className="grid g-2">
               {places.slice(0, 2).map((p) => <PlaceBanner key={p.id} place={p} />)}
             </div>
 
@@ -47,7 +47,7 @@ export default function HomePage() {
             {user && discoveredMonsters.length > 0 && (
               <>
                 <SectionTitle title="Bestiario reciente" href="/monsters" action="Abrir bestiario →" />
-                <div className="grid" style={{ gridTemplateColumns: 'repeat(4,1fr)' }}>
+                <div className="grid g-4">
                   {discoveredMonsters.slice(0, 4).map((m) => <MonsterCard key={m.id} monster={m} />)}
                 </div>
               </>
@@ -67,9 +67,9 @@ function WelcomeHero({
   showBestiary?: boolean;
 }) {
   return (
-    <section className="panel" style={{ padding: '40px 44px', borderRadius: 'var(--r-xl)' }}>
+    <section className="panel" style={{ padding: 'clamp(22px,5vw,44px)', borderRadius: 'var(--r-xl)' }}>
       <div className="kicker">Bienvenido a Force</div>
-      <h1 className="cinzel" style={{ fontSize: 44, color: '#F6ECD7', margin: '8px 0 10px', letterSpacing: '.03em' }}>
+      <h1 className="cinzel" style={{ fontSize: 'clamp(30px,7vw,44px)', color: '#F6ECD7', margin: '8px 0 10px', letterSpacing: '.03em' }}>
         Tu universo viviente
       </h1>
       <p className="sub" style={{ marginBottom: 22 }}>

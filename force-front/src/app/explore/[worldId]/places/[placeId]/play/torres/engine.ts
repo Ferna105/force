@@ -50,6 +50,10 @@ export interface TorresMountOpts {
 export interface TorresGameInstance {
   mount(opts: TorresMountOpts): Promise<void>;
   start(): void;
+  /** Controles táctiles (GameTouchPad). Mismo camino que el teclado. */
+  setInput(action: 'left' | 'right' | 'jump', down: boolean): void;
+  /** Suelta todo — al desmontar el pad o si el gesto se cancela. */
+  releaseInput(): void;
   reclaim(): void;
   retry(): void;
   getMode(): string;
@@ -219,12 +223,17 @@ export function createTorresGame(): TorresGameInstance {
   }
 
   // ---------- input ----------
+  /** Punto único de entrada: lo usan tanto el teclado como el pad táctil. */
+  function applyInput(action: 'left' | 'right' | 'jump', down: boolean) {
+    keys[action] = down;
+    if (action === 'jump' && down && player) player.jumpBuf = 9;
+  }
+
   function onKey(e: KeyboardEvent, down: boolean) {
     switch (e.code) {
-      case 'ArrowLeft': case 'KeyA': keys.left = down; break;
-      case 'ArrowRight': case 'KeyD': keys.right = down; break;
-      case 'Space': case 'ArrowUp': case 'KeyW':
-        keys.jump = down; if (down && player) player.jumpBuf = 9; break;
+      case 'ArrowLeft': case 'KeyA': applyInput('left', down); break;
+      case 'ArrowRight': case 'KeyD': applyInput('right', down); break;
+      case 'Space': case 'ArrowUp': case 'KeyW': applyInput('jump', down); break;
       default: return;
     }
     e.preventDefault();
@@ -658,6 +667,8 @@ export function createTorresGame(): TorresGameInstance {
       cb.onState?.('ready');
     },
     start,
+    setInput(action: 'left' | 'right' | 'jump', down: boolean) { applyInput(action, down); },
+    releaseInput() { keys.left = keys.right = keys.jump = false; },
     reclaim() { endRun('reclaim'); },
     retry() { start(); },
     getMode() { return mode; },

@@ -48,7 +48,7 @@ function LoginContent() {
       <div className="auth-card">
         <div style={{ textAlign: 'center', marginBottom: 22 }}>
           <div className="kicker">Bienvenido de vuelta</div>
-          <h1 className="cinzel" style={{ fontSize: 38, color: '#F6ECD7', margin: '8px 0 0', letterSpacing: '.03em' }}>Iniciar sesión</h1>
+          <h1 className="cinzel" style={{ fontSize: 'clamp(28px,7vw,38px)', color: '#F6ECD7', margin: '8px 0 0', letterSpacing: '.03em' }}>Iniciar sesión</h1>
         </div>
         <div className="panel">
           <form onSubmit={handleSubmit(onSubmit)}>

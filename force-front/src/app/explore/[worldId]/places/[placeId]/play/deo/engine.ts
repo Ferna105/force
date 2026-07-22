@@ -49,6 +49,10 @@ export interface DeoMountOpts {
 export interface DeoGameInstance {
   mount(opts: DeoMountOpts): Promise<void>;
   start(): void;
+  /** Controles táctiles (GameTouchPad). Mismo camino que el teclado. */
+  setInput(action: 'left' | 'right' | 'jump', down: boolean): void;
+  /** Suelta todo — al desmontar el pad o si el gesto se cancela. */
+  releaseInput(): void;
   reclaim(): void;
   retry(): void;
   getMode(): string;
@@ -219,11 +223,17 @@ export function createDeoGame(): DeoGameInstance {
   }
 
   // ---------- input ----------
+  /** Punto único de entrada: lo usan tanto el teclado como el pad táctil. */
+  function applyInput(action: 'left' | 'right' | 'jump', down: boolean) {
+    keys[action] = down;
+    if (action === 'jump' && down && player) player.jumpBuf = 8;
+  }
+
   function onKey(e: KeyboardEvent, down: boolean) {
     switch (e.code) {
-      case 'ArrowLeft': case 'KeyA': keys.left = down; break;
-      case 'ArrowRight': case 'KeyD': keys.right = down; break;
-      case 'Space': keys.jump = down; if (down && player) player.jumpBuf = 8; break;
+      case 'ArrowLeft': case 'KeyA': applyInput('left', down); break;
+      case 'ArrowRight': case 'KeyD': applyInput('right', down); break;
+      case 'Space': applyInput('jump', down); break;
       case 'ArrowUp': case 'ArrowDown': break; // verticales no hacen nada
       default: return;                          // otras teclas: no intervenir
     }
@@ -542,6 +552,10 @@ export function createDeoGame(): DeoGameInstance {
       cb.onState?.('ready');
     },
     start,
+    /** Controles táctiles (GameTouchPad). Mismo camino que el teclado. */
+    setInput(action: 'left' | 'right' | 'jump', down: boolean) { applyInput(action, down); },
+    /** Suelta todo — al desmontar el pad o si el gesto se cancela. */
+    releaseInput() { keys.left = keys.right = keys.jump = false; },
     reclaim() { endRun('reclaim'); },
     retry() { start(); },
     getMode() { return mode; },

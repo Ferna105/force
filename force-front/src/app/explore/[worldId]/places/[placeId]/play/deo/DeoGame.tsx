@@ -10,6 +10,7 @@ import GameHeader from '../GameHeader';
 import GameLoading, { LOADING_MS } from '../GameLoading';
 import GameRewardModal from '../GameRewardModal';
 import GameCooldownModal from '../GameCooldownModal';
+import GameTouchPad from '../GameTouchPad';
 import { createDeoGame, type DeoCause, type DeoGameInstance, type DeoHud, type DeoState } from './engine';
 
 // Fases de la pantalla. El motor del canvas vive aparte; estas controlan
@@ -136,6 +137,11 @@ export default function DeoGame({
   const onStart = () => gameRef.current?.start();
   const onReclaimHud = () => { if (gameRef.current?.getMode() === 'playing') gameRef.current.reclaim(); };
   const onRetry = () => gameRef.current?.retry();
+  // Controles táctiles (mismo camino que el teclado dentro del motor).
+  const onPadInput = useCallback((action: 'left' | 'right' | 'jump', down: boolean) => {
+    gameRef.current?.setInput(action, down);
+  }, []);
+  const onPadRelease = useCallback(() => { gameRef.current?.releaseInput(); }, []);
 
   // Encabezado genérico, siempre visible (también durante la carga).
   const header = (
@@ -173,6 +179,9 @@ export default function DeoGame({
           <span className="grp"><kbd>◀</kbd><kbd>▶</kbd> Mover</span>
           <span className="grp"><kbd>espacio</kbd> Saltar</span>
         </div>
+
+        {/* Pad táctil: sólo visible en dispositivos touch (ver .game-pad). */}
+        {phase === 'playing' && <GameTouchPad onInput={onPadInput} onRelease={onPadRelease} />}
 
         {/* READY */}
         <div className={`overlay${phase === 'ready' ? ' show' : ''}`}>
